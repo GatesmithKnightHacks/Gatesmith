@@ -17,6 +17,8 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --frozen --no-dev --no-install-project --extra ui --extra neon
 COPY src ./src
 RUN uv sync --frozen --no-dev --extra ui --extra neon
+# The API offers the bundled examples as jobs (12 §1.2); it reads their manifests from here.
+COPY examples ./examples
 
 RUN useradd --system --create-home --uid 10001 qscore
 USER qscore

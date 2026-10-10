@@ -4,7 +4,11 @@
  */
 import { useSyncExternalStore } from 'react'
 import { navigate, ROUTES, type RoutePath } from '../app/router'
+import type { ScoreRow } from '../screens/workspace/data'
+import type { Finding } from '../ui/parts'
+import { api, ApiError, LIVE, type Job } from './api'
 import { ATTEMPTS, type AttemptStatus } from './demo'
+import { findingsFrom, rowsFrom, suppressedCount } from './live'
 
 export type Phase =
   | 'intake' // S-01
@@ -17,6 +21,21 @@ export type Phase =
   | 'stopped' // S-07, the engine recommends stopping (M5)
   | 'report' // S-09
   | 'export' // S-10
+  | 'scored' // live: a real scorecard landed; the run stops here until the loop is connected
+
+/** A real run on the platform (live build only). Null while the scripted demo engine drives. */
+export type RealRun = {
+  example: string
+  jobId: string | null
+  step: 'submitting' | 'queued' | 'claimed' | 'running' | 'diagnose' | 'done'
+  message: string
+  gpuOnline: boolean | null
+  findings: Finding[]
+  rows: ScoreRow[]
+  suppressed: number
+  scorecardStatus: string | null
+  error: string | null
+}
 
 export type ScoreStage = 'validate' | 'compile' | 'measure' | 'diagnose' | 'done'
 export type CandidateState = 'writing' | 'verifying' | 'verified'
@@ -39,6 +58,8 @@ export type RunState = {
   ladderStep: number // verification ladder steps passed, 0–2
   accepted: boolean
   stopCard: boolean
+  /** live build: the real job behind this run; null on the scripted demo engine */
+  real: RealRun | null
 }
 
 const allAttempts = (fn: (n: number, round: number) => AttemptStatus | 'hidden') =>
@@ -64,6 +85,7 @@ const workspaceSnapshot: RunState = {
   ladderStep: 2,
   accepted: false,
   stopCard: false,
+  real: null,
 }
 
 const SNAPSHOTS: Partial<Record<RoutePath, Partial<RunState>>> = {
@@ -130,6 +152,144 @@ export function ensureSnapshot(route: RoutePath) {
 
 /* ── Actions: the live flow ──────────────────────────────────────────── */
 
+/* ── Live build: a real job on the platform queue (qscore/docs/deployment.md §4) ─────────── */
+
+const POLL_MS = 2000
+const MAX_POLL_FAILURES = 3
+/** Bumped by every new live run and by reset, so answers for an abandoned run are ignored. */
+let generation = 0
+
+const LIVE_PROGRESS: Record<RealRun['step'], number> = {
+  submitting: 0.03,
+  queued: 0.08,
+  claimed: 0.2,
+  running: 0.45,
+  diagnose: 0.9,
+  done: 1,
+}
+const LIVE_STAGE: Record<RealRun['step'], ScoreStage> = {
+  submitting: 'validate',
+  queued: 'validate',
+  claimed: 'validate',
+  running: 'measure',
+  diagnose: 'diagnose',
+  done: 'done',
+}
+
+function setReal(gen: number, patch: Partial<RealRun>, extra: Partial<RunState> = {}) {
+  if (gen !== generation || !state.real) return
+  const real = { ...state.real, ...patch }
+  set({ ...extra, real, ...(patch.step ? { scoreProgress: LIVE_PROGRESS[real.step], scoreStage: LIVE_STAGE[real.step] } : {}) })
+}
+
+function failLive(gen: number, message: string) {
+  setReal(gen, { error: message }, { phase: 'scored' })
+}
+
+function stepFor(job: Job, events: { kind: string; data: { item_id?: string } }[], current: RealRun): Partial<RealRun> {
+  if (events.some((e) => e.kind === 'run_finished') || (current.step === 'diagnose' && job.state === 'running'))
+    return { step: 'diagnose', message: 'Writing the scorecard' }
+  if (job.state === 'running') {
+    const item = [...events].reverse().find((e) => e.kind === 'item_started')
+    if (item) return { step: 'running', message: `Scoring ${item.data.item_id ?? 'the circuit'} on the worker` }
+    return { step: 'running', message: current.step === 'running' ? current.message : 'Scoring on the worker' }
+  }
+  if (job.state === 'claimed') return { step: 'claimed', message: 'A worker claimed the job' }
+  return {
+    step: 'queued',
+    message:
+      job.attempts > 0
+        ? `A worker stopped; waiting for another (attempt ${job.attempts + 1} of ${job.max_attempts})`
+        : 'Waiting for a worker to claim the job',
+  }
+}
+
+async function finishLive(gen: number, jobId: string) {
+  const rows = await api.scorecards(jobId)
+  if (gen !== generation) return
+  if (!rows.length) return failLive(gen, 'The job finished without a scorecard.')
+  const card = rows[0].scorecard
+  const findings = findingsFrom(card)
+  setReal(
+    gen,
+    {
+      step: 'done',
+      message: `Scored ${card.item.id}`,
+      findings,
+      rows: rowsFrom(card),
+      suppressed: suppressedCount(card),
+      scorecardStatus: card.status,
+    },
+    { phase: 'findings', findingsShown: 0 },
+  )
+  // M2, as in the scripted flow: the cards land 40 ms apart, then the run rests on the scorecard.
+  for (let i = 1; i <= findings.length; i++) after(80 + (i - 1) * 40, () => gen === generation && set({ findingsShown: i }))
+  after(80 + findings.length * 40 + 200, () => gen === generation && set({ phase: 'scored' }))
+}
+
+function pollLive(gen: number, jobId: string, lastSeq: number, failures: number) {
+  after(POLL_MS, async () => {
+    if (gen !== generation) return
+    try {
+      const [job, events] = await Promise.all([api.job(jobId), api.events(jobId, lastSeq)])
+      if (gen !== generation || !state.real) return
+      if (job.state === 'done') return await finishLive(gen, jobId)
+      if (job.state === 'failed') return failLive(gen, `The job failed: ${job.error?.message ?? 'no details were recorded'}`)
+      if (job.state === 'cancelled') return failLive(gen, 'The job was cancelled.')
+      setReal(gen, stepFor(job, events, state.real))
+      pollLive(gen, jobId, events.length ? events[events.length - 1].seq : lastSeq, 0)
+    } catch (e) {
+      if (gen !== generation) return
+      const message = e instanceof ApiError ? e.message : String(e)
+      if (failures + 1 >= MAX_POLL_FAILURES) return failLive(gen, `Lost contact with the platform: ${message}`)
+      pollLive(gen, jobId, lastSeq, failures + 1)
+    }
+  })
+}
+
+/** S-03 Confirm and score in the live build: submit a real job and follow it until it is scored. */
+async function runLive() {
+  const gen = ++generation
+  clearTimers()
+  const example = state.selectedExample
+  set({
+    live: true,
+    phase: 'scoring',
+    findingsShown: 0,
+    selectedFinding: null,
+    round: 1,
+    loopProgress: 0,
+    attempts: allAttempts(() => 'hidden'),
+    accepted: false,
+    stopCard: false,
+    real: {
+      example,
+      jobId: null,
+      step: 'submitting',
+      message: 'Submitting the job',
+      gpuOnline: null,
+      findings: [],
+      rows: [],
+      suppressed: 0,
+      scorecardStatus: null,
+      error: null,
+    },
+  })
+  setReal(gen, { step: 'submitting' })
+  navigate(ROUTES.workspace, { transition: 'confirm' })
+  try {
+    const health = await api.health()
+    setReal(gen, { gpuOnline: health.gpu_online })
+    if (!health.examples.includes(example))
+      return failLive(gen, `${example} is a design example only. The platform runs ${health.examples.join(' and ')}.`)
+    const { id } = await api.submitJob(example)
+    setReal(gen, { jobId: id, step: 'queued', message: 'Waiting for a worker to claim the job' })
+    pollLive(gen, id, 0, 0)
+  } catch (e) {
+    failLive(gen, e instanceof ApiError ? e.message : String(e))
+  }
+}
+
 export const actions = {
   selectExample(id: RunState['selectedExample']) {
     set({ selectedExample: id })
@@ -138,13 +298,15 @@ export const actions = {
   /** S-01 Continue → S-03. Validation checks land top to bottom, 40 ms apart. */
   continueToPreflight() {
     clearTimers()
-    set({ ...workspaceSnapshot, ...SNAPSHOTS[ROUTES.preflight], live: true, preflightChecks: 0 })
+    // Keep the picked example: the live build submits it (the snapshot would reset it to sidechain_qaoa).
+    set({ ...workspaceSnapshot, ...SNAPSHOTS[ROUTES.preflight], selectedExample: state.selectedExample, live: true, preflightChecks: 0 })
     navigate(ROUTES.preflight, { transition: 'forward' })
     for (let i = 1; i <= 4; i++) after(180 + i * 40, () => set({ preflightChecks: i }))
   },
 
   /** S-03 Confirm and score → S-04 (M1). The scan runs exactly as long as the engine. */
   confirmAndScore() {
+    if (LIVE) return void runLive() // live build: a real job instead of the scripted scan
     clearTimers()
     set({
       live: true,
@@ -249,6 +411,7 @@ export const actions = {
 
   /** Start over from the intake screen. */
   reset() {
+    generation += 1 // abandon any live job's pending answers
     clearTimers()
     state = { ...workspaceSnapshot, ...SNAPSHOTS[ROUTES.newRun], live: false }
     listeners.forEach((l) => l())

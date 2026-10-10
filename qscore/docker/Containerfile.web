@@ -9,6 +9,9 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY design /src/design
 COPY web ./
+# Live build: "Confirm and score" submits real jobs to /api (web/src/data/api.ts). `npm run dev`
+# without this variable keeps the scripted demo engine.
+ENV VITE_API_MODE=live
 RUN npm run build
 
 FROM caddy:2

@@ -28,6 +28,8 @@ services:
     restart: unless-stopped
     env_file:
       - ${QSCORE_ENV_FILE:-/opt/qscore/.env}
+    environment:
+      API_ROOT_PATH: /api   # Caddy strips /api; this keeps the API's /docs page working behind it
     expose:
       - "8080"
 

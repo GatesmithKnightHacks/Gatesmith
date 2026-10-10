@@ -14,9 +14,12 @@
 | Migrations `0001`–`0003` on branches `dev` and `production` | applied | 11 §3, CP-0004, CP-0005 |
 | Queue + grants smoke test (41 checks) | passing on `dev` | 14 §2 (queue faults) |
 | Role passwords | set on `production` only | 11 §3.2 |
-| Engine code that uses Neon (`record/neon.py`, `worker.py`, `qscore db migrate`) | **not written** | 11 §4–5, T05, T22 |
+| `record/neon.py` (Neon store: platform + worker methods) | written, tested locally against the MVP engine | 11 §3–5 |
+| Platform API `api/app.py` | written, tested locally (direct and behind Caddy) | 12 §2, T28 |
+| `worker.py` | **not written**; the engine owner decides who writes it (§3.1) | 11 §5, T22 |
+| `qscore db migrate` | not written; migrations were applied by hand | 05 §11, T05 |
 | Deploy files `qscore/docker/` (image, compose, Caddy, scripts) | written, tested locally | 12 §3 |
-| Vultr server (Docker + Caddy, HTTPS via `<ip>.sslip.io`) | not created yet | 12 §3 |
+| Vultr server (Docker + Caddy, HTTPS via `<ip>.sslip.io`) | live: `https://149.28.122.224.sslip.io` | 12 §3 |
 | Hugging Face org, repos, tokens | not started | 11 §7, CP-0006 |
 
 ## 2. Neon
@@ -104,16 +107,70 @@ from `PUBLIC` (CP-0005). Anything not in this table fails with `insufficient_pri
 8. **Lost workers:** a job with no heartbeat for 60 s returns to `queued` (`attempts` + 1); the third
    loss marks it `failed` with `error.type = 'LostWorker'`.
 
-## 4. Contract for the platform API (`api/app.py`)
+`qscore.record.neon.NeonStore` already implements every step above: `upsert_worker`, `touch_worker`,
+`requeue_stale`, `claim_job`, `start_job`, `heartbeat`, `insert_events`, `insert_scorecard`,
+`finish_job`, `fail_job`. Build it with `NeonStore.from_settings(get_settings())`.
 
-- Create jobs with `insert into jobs (kind, project_id, manifest_id, payload, requires, created_by)`.
-  `payload` is `qscore.job/v0.2`; `requires` holds **only `true` flags** (CP-0005).
-- Confirm: `select confirm_manifest(:sha, 'stored');` returns true once confirmed (repeat calls keep
-  the first confirmation and return true), false for an unknown hash.
-- Cancel: `select cancel_job(:id);` returns true for a queued job, NULL otherwise (claimed jobs run to the end).
-- Call `select requeue_stale();` on status reads (12 §2).
-- GPU indicator: `gpu_online = now() - job_status.gpu_last_seen < 30 s` (12 §4).
-- Leaderboard: `select * from leaderboard;` (definitions in `0001_init.sql`, from CP-0004).
+### 3.1 What a worker must do with the MVP engine (verified 2026-10-10 against `main` at 98a5ab8)
+
+- **A score job** carries the bundled example's folder name in `payload["x-example"]` and the
+  manifest's hash in `payload["manifest_sha256"]`. Run
+  `services.score_project(examples/<x-example>/qscore.yaml, out_dir, on_event=collect, confirm="yes")`,
+  then `insert_events(job_id, collected)` and `insert_scorecard(job_id, card)` for each scorecard.
+  The confirmation is already stored in Neon by the platform, which is why `confirm="yes"` is correct.
+- **Guard the entry point.** The engine compiles in a spawn-based process pool, which re-imports the
+  main module in every child. A worker started as a script without `if __name__ == "__main__":`
+  breaks the pool (`BrokenProcessPool`) and every scorecard comes out `partial`.
+- **Install `git`.** Provenance calls the `git` program; without it scoring crashes
+  (`FileNotFoundError: 'git'`). Inside a checkout it records the commit; outside one it records none.
+- **Events are coarse in the MVP:** `run_started`, `item_started`, `item_finished`, `run_finished`.
+  The UI can show stage changes, not a percentage.
+- **Timing measured in Docker on a laptop:** `sbox_oracle` about 1.5 min, `sidechain_qaoa` (builder via
+  the sandbox, 5-size sweep) about 2.3 min. Both `complete`; QAOA gives D01 + D03, as the demo expects.
+
+## 4. Platform API (`api/app.py`): what the web app calls
+
+Served on port 8080; Caddy exposes it under `/api` (prefix stripped). Interactive docs: `/api/docs`.
+
+| Method and path (browser) | Returns | Notes |
+|---|---|---|
+| `GET /api/health` | `{ok, version, gpu_online, gpu_last_seen, examples}` | `gpu_online`: a GPU worker checked in within 30 s (12 §4) |
+| `POST /api/jobs` body `{"example": "sidechain_qaoa"}` | `201 {id, state, kind, example, items}` | Open; bundled examples only. `422` unknown example, `429` limits |
+| `GET /api/jobs/{id}` | `{id, kind, state, example, items, attempts, …timestamps, error, result_summary}` | Also recovers stale jobs (12 §2) |
+| `GET /api/jobs/{id}/events?after=SEQ` | `[{seq, at, kind, data}]` | Poll with the last seen `seq` |
+| `GET /api/jobs/{id}/scorecards` | `[{item_id, item_sha256, status, worst_severity, findings_count, scorecard, …}]` | `scorecard` is the full `qscore.scorecard/v0.2` |
+| `GET /api/scorecards/{item_sha256}` | the latest scorecard for that item | `404` if none |
+| `GET /api/jobs/{id}/attempts` | `[qscore.attempt/v0.2]` | Empty until the improvement loop exists |
+| `GET /api/leaderboard` | leaderboard view rows | Empty until the loop exists |
+| `POST /api/jobs/{id}/cancel` | `{id, state: "cancelled"}` | Needs `Authorization: Bearer <QSCORE_PLATFORM_TOKEN>`; `409` unless queued |
+
+Job states for the UI: `queued` (waiting for a worker; show "waiting for GPU/worker"), `claimed`,
+`running`, `done`, `failed` (show `error`), `cancelled`. Errors: `503` when Neon is unreachable,
+`404` unknown job, `422` malformed id.
+
+Under the hood: `create_job` writes `requires` with **only `true` flags** (CP-0005), the platform
+records the confirmation with `confirm_manifest(sha, 'stored')`, and status reads call
+`requeue_stale()`.
+
+**Limits (open submission):** at most 10 unfinished web jobs in total, and 5 submissions per client per
+10 minutes. Change `MAX_OPEN_JOBS`, `PER_CLIENT_LIMIT`, `PER_CLIENT_WINDOW_S` in `api/app.py`.
+
+### 4.1 How the web app uses it (live build)
+
+- **Live vs demo is a build setting.** `Containerfile.web` builds with `VITE_API_MODE=live`; `npm run dev`
+  without it keeps the scripted demo engine, so design review and the Playwright flow test are unchanged.
+- **Live flow:** S-01 pick a bundled example → S-03 *Confirm and score* → `POST /api/jobs` → the workspace
+  polls `/api/jobs/{id}` and `/events` every 2 s (`web/src/data/run.ts`, `runLive`) → on `done` it loads
+  `/scorecards` and shows the real findings and scorecard rows (`web/src/data/live.ts`). The run stops
+  there: *Request fix* is inert and a notice says the loop is not connected yet.
+- **Honest labels:** the circuit and QASM panes are marked "illustration · not this run"; failures show the
+  API's message and a *Start over* button, never demo data. Deep-linked design snapshots, the scripted
+  S-03 checks and the loop screens (S-06, S-07, S-09) are still design data.
+- **New files:** `web/src/data/api.ts` (client), `web/src/data/live.ts` (scorecard → cards and rows),
+  `web/src/screens/workspace/LiveStatus.tsx`. Edited: `run.ts` (live flow; S-01's pick now survives
+  *Continue*), `S04Workspace.tsx` (data source when a live run exists).
+- **Verified 2026-10-10** with the production images, a test worker running the MVP engine and headless
+  Chrome: both examples submit, score and render (QAOA: 5 findings; S-box: 11), no console errors.
 
 ## 5. Engine changes the database already expects (owner: engine)
 
@@ -138,6 +195,9 @@ The SQL follows approved proposals that `schemas/` does not implement yet:
 | 4 | Leaderboard `median_latency_ms` and `cost_usd` per layer call | Original view: per attempt | Calls that return nothing still cost time and money |
 | 5 | `confirm_manifest` keeps the first confirmation; returns boolean | CP-0005 names it only | Retries are safe |
 | 6 | Indexes `manifests(sha256)`, `scorecards(item_sha256)` | not listed | Lookups by hash in 12 §2 endpoints |
+| 7 | `POST /jobs` is open (no token), limited to bundled examples, 10 open jobs, 5 per client per 10 min | 12 §2: write endpoints need the platform token | The UI is a static browser app and cannot keep a secret (decided by the user, 2026-10-10) |
+| 8 | A score job names its bundled example in `payload["x-example"]`; no Hub bundle | CP-0006: inputs travel as Hub bundles | Bundled examples already exist on every worker; `.qasm` uploads will use Hub bundles |
+| 9 | `POST /projects/{name}/manifests` and `POST /manifests/{sha}/confirm` not implemented | 12 §2 | Only bundled examples for now; `POST /jobs` stores the confirmation itself |
 
 ## 7. Vultr (platform host)
 
@@ -180,11 +240,12 @@ Run the scripts with `bash <script>` (the executable bit is not preserved from W
   `/api/jobs/123/events` as `/jobs/123/events`; with the platform stopped, `/api/*` → 503 message, `/` still 200.
 - Not testable locally: the real certificate, the clone on the server, swap. They run on first bootstrap.
 
-### 7.3 For whoever writes `api/app.py` (T28)
+### 7.3 Notes for the API and the web app
 
-- The image's `CMD` expects a module-level FastAPI object named `app` in `qscore.api.app`, served on port 8080
-  behind Caddy (`--proxy-headers`). It serves the API only; define routes **without** an `/api` prefix
-  (`/health`, `/jobs`, ...). The web app is served by Caddy, same origin, so no CORS setup is needed.
+- `api/app.py` exists (§4). The image's `CMD` runs its module-level FastAPI `app` on port 8080 behind
+  Caddy (`--proxy-headers`); compose sets `API_ROOT_PATH=/api` so `/api/docs` works. Routes are defined
+  **without** an `/api` prefix. The platform image copies `qscore/examples/` (minus `broken/`) so the API
+  can read the bundled manifests. It fails at startup if `QSCORE_NEON_DSN` is unset or empty.
 - **Web app:** call the API with relative URLs under `/api/` (e.g. `fetch('/api/jobs/' + id)`), never a
   hard-coded host. For `npm run dev` on a laptop, proxy `/api` to a local platform in `vite.config.ts`
   (`server.proxy`), stripping the prefix the same way.

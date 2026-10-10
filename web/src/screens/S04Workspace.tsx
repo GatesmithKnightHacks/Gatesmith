@@ -7,8 +7,10 @@
  */
 import { useState } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
+import { LIVE } from '../data/api'
 import { FINDINGS, RUN, SUPPRESSED } from '../data/demo'
 import { actions, useRun } from '../data/run'
+import { LiveStatus } from './workspace/LiveStatus'
 import { SectionIcons } from '../ui/icons'
 import {
   Field,
@@ -70,26 +72,42 @@ export function S04Workspace() {
   const [sboxRequested, setSboxRequested] = useState<string | null>(null)
   const [restored, setRestored] = useState(false)
 
-  const empty = state === 'empty'
+  // Live build: a real job drives this screen; before one starts it is empty, never the demo snapshot.
+  const real = run.real
+  const empty = state === 'empty' || (LIVE && !real && state === null)
   const sbox = state === 'partial'
   const frozenScoring = state === 'scoring'
   const scoring = frozenScoring || run.phase === 'scoring'
   const progress = frozenScoring ? 0.62 : run.scoreProgress
   const stage = frozenScoring ? 'measure' : run.scoreStage
   const gpuOff = state === 'gpu-off'
-  const seedsTab = scTab === 'seeds' || state === 'seeds'
+  const seedsTab = !real && (scTab === 'seeds' || state === 'seeds') // live: no per-seed data yet
 
-  const findingsShown = empty || scoring ? 0 : sbox ? 4 : run.phase === 'findings' ? run.findingsShown : 3
+  const findingsShown =
+    empty || scoring
+      ? 0
+      : real
+        ? run.phase === 'findings'
+          ? run.findingsShown
+          : real.findings.length
+        : sbox
+          ? 4
+          : run.phase === 'findings'
+            ? run.findingsShown
+            : 3
   const landing = run.phase === 'findings'
-  const started = !empty && !scoring && !sbox && run.phase !== 'findings'
-  const attempts = empty || scoring || sbox ? hiddenAll() : run.attempts
-  const selected = sbox ? sboxRequested : findingsShown >= 2 ? run.selectedFinding : null
+  const started = !real && !empty && !scoring && !sbox && run.phase !== 'findings'
+  const attempts = empty || scoring || sbox || real ? hiddenAll() : run.attempts
+  const selected = sbox ? sboxRequested : findingsShown >= 2 || real ? run.selectedFinding : null
 
-  const regions = {
-    accepted: started && attempts[4] === 'accepted',
-    D03: findingsShown >= 2,
-    D04: findingsShown >= 3,
-  }
+  // Live: the circuit drawing is an illustration, so it never claims a region of the real circuit.
+  const regions = real
+    ? { accepted: false, D03: false, D04: false }
+    : {
+        accepted: started && attempts[4] === 'accepted',
+        D03: findingsShown >= 2,
+        D04: findingsShown >= 3,
+      }
 
   /* ── Primary action ─────────────────────────────────────────────────── */
   // While a run is in progress the primary opens the loop view.
@@ -105,6 +123,9 @@ export function S04Workspace() {
   else if (run.phase === 'findings') primary = { label: 'Scoring (100%)', progress: 1, onClick: undefined }
   else if (run.phase === 'stopped' || run.phase === 'report' || run.phase === 'export')
     primary = { label: 'Export final', progress: undefined, onClick: () => actions.exportFinal() }
+  if (real?.error) primary = { label: 'Start over', progress: undefined, onClick: () => actions.reset() }
+  else if (real && run.phase === 'scored')
+    primary = { label: 'Improvement loop: not connected yet', progress: undefined, onClick: undefined }
 
   const scan = scoring
     ? frozenScoring
@@ -116,10 +137,12 @@ export function S04Workspace() {
 
   const inspector = (
     <>
-      <ModeTabs active={mode} onChange={setMode} />
+      <ModeTabs active={real ? 'platform' : mode} onChange={setMode} />
       <ModeBlock
         line={
-          mode === 'platform'
+          real
+            ? `Runs on the platform queue · ${real.gpuOnline ? 'GPU worker online' : 'GPU worker offline'}`
+            : mode === 'platform'
             ? 'Runs on the platform queue · GPU worker online'
             : sbox
               ? 'Runs on this machine · CPU, 20 q fits · improve waits for the GPU'
@@ -131,6 +154,14 @@ export function S04Workspace() {
         </PrimaryButton>
         {empty ? <div className="ws-empty-hint">Findings appear here, ranked</div> : <PoweredBy />}
       </ModeBlock>
+      {real && (real.error || run.phase === 'scored') && (
+        <div className="ws-notice">
+          <div className={`ws-notice-row${real.error ? ' is-strong' : ''}`}>
+            <span className="ws-notice-dot" style={{ background: real.error ? '#FF986E' : '#667E83' }} />
+            <span>{real.error ?? 'Scored on the platform. The improvement loop is not connected yet, so fixes cannot be requested from this run.'}</span>
+          </div>
+        </div>
+      )}
       {gpuOff && (
         <div className="ws-notice">
           <div className="ws-notice-row">
@@ -173,7 +204,17 @@ export function S04Workspace() {
           {SectionIcons.list}
           <span className="insp-section-title">Findings</span>
           <span className="insp-section-meta">
-            {scoring || empty ? (empty ? 'not scored' : 'scoring') : sbox ? '4 open' : restored ? '4 open' : '3 open · 1 suppressed'}
+            {scoring || empty
+              ? empty
+                ? 'not scored'
+                : 'scoring'
+              : real
+                ? `${real.findings.length} open${real.suppressed ? ` · ${real.suppressed} suppressed` : ''}`
+                : sbox
+                  ? '4 open'
+                  : restored
+                    ? '4 open'
+                    : '3 open · 1 suppressed'}
           </span>
           <Chevron open={findingsOpen} />
         </button>
@@ -181,14 +222,14 @@ export function S04Workspace() {
           <div className="insp-section-clip">
           <div className="ws-cards">
             {findingsShown === 0 && <div className="ws-cards-empty">Findings appear here, ranked</div>}
-            {(sbox ? SBOX_FINDINGS : restored && findingsShown >= 3 ? [...FINDINGS, D08] : FINDINGS).slice(0, findingsShown + (restored ? 1 : 0)).map((f) => {
+            {(real ? real.findings : sbox ? SBOX_FINDINGS : restored && findingsShown >= 3 ? [...FINDINGS, D08] : FINDINGS).slice(0, findingsShown + (!real && restored ? 1 : 0)).map((f) => {
               const isSel = selected === f.rule
               return (
                 <FindingCard
-                  key={f.rule}
+                  key={`${f.rule}-${f.rank}`} // a real scorecard can repeat a rule
                   finding={f}
                   selected={isSel}
-                  name={isSel ? 'finding-card' : undefined}
+                  name={isSel && !real ? 'finding-card' : undefined}
                   style={{
                     ...(landing || f.rule === 'D08' ? { animation: 'ws-land var(--motion-base) var(--ease-enter) both' } : {}),
                     ...(state === 'focus' && f.rule === 'D01'
@@ -196,11 +237,12 @@ export function S04Workspace() {
                       : {}),
                   }}
                   onSelect={() => (sbox ? setSboxRequested(f.rule) : actions.selectFinding(f.rule))}
-                  onRequest={() => (sbox ? setSboxRequested(f.rule) : actions.requestFix(f.rule))}
+                  // Live: no loop yet, so Request fix must not open the scripted fix review.
+                  onRequest={real ? undefined : () => (sbox ? setSboxRequested(f.rule) : actions.requestFix(f.rule))}
                 />
               )
             })}
-            {findingsShown >= 3 && !sbox && !restored && (
+            {findingsShown >= 3 && !sbox && !restored && !real && (
               <div style={landing ? { animation: 'ws-land var(--motion-base) var(--ease-enter) both' } : undefined}>
                 <SuppressedRow rule={SUPPRESSED.rule} label={SUPPRESSED.label} onRestore={() => setRestored(true)} />
               </div>
@@ -216,7 +258,12 @@ export function S04Workspace() {
     <Shell
       rail="runs"
       status={
-        gpuOff ? (
+        real ? (
+          <>
+            <GpuStatus online={!!real.gpuOnline} />
+            <span className="mono topbar-job">{real.jobId ? `job ${real.jobId.slice(0, 8)}` : 'submitting'}</span>
+          </>
+        ) : gpuOff ? (
           <>
             <GpuStatus online={false} />
             <span className="mono topbar-job">job {RUN.job}</span>
@@ -225,10 +272,14 @@ export function S04Workspace() {
       }
       tabs={
         <TabStrip
-          tabs={[
-            { id: 'a', label: RUN.file, active: !sbox },
-            { id: 'b', label: RUN.other, active: sbox },
-          ]}
+          tabs={
+            real
+              ? [{ id: 'a', label: real.example, active: true }]
+              : [
+                  { id: 'a', label: RUN.file, active: !sbox },
+                  { id: 'b', label: RUN.other, active: sbox },
+                ]
+          }
         />
       }
       inspector={inspector}
@@ -242,7 +293,13 @@ export function S04Workspace() {
                 { id: 'circuit', label: 'Circuit', active: circuitTab === 'circuit', onClick: () => setCircuitTab('circuit') },
                 { id: 'diff', label: 'Diff', active: circuitTab === 'diff', onClick: () => setCircuitTab('diff') },
               ]}
-              meta={<Zoom idx={zoomIdx} count={CIRCUIT_ZOOMS.length} width={44} step={7} onChange={setZoomIdx} />}
+              meta={
+                real ? (
+                  <span className="mono">illustration · not this run</span>
+                ) : (
+                  <Zoom idx={zoomIdx} count={CIRCUIT_ZOOMS.length} width={44} step={7} onChange={setZoomIdx} />
+                )
+              }
             />
             <div className="ws-circuit-body">
               {sbox ? (
@@ -276,12 +333,27 @@ export function S04Workspace() {
                 { id: 'seeds', label: 'Seeds', active: seedsTab, onClick: () => setScTab('seeds') },
                 { id: 'hardware', label: 'Hardware', onClick: () => navigate(ROUTES.estimate, { transition: 'forward' }) },
               ]}
-              meta={seedsTab ? <span className="mono">spread 0.18</span> : 'baseline · best of 8'}
+              meta={
+                real
+                  ? `${real.example} · ${real.scorecardStatus ?? 'scoring'}`
+                  : seedsTab
+                    ? <span className="mono">spread 0.18</span>
+                    : 'baseline · best of 8'
+              }
             />
             {empty ? (
               <ScorecardEmpty />
             ) : scoring ? (
-              <ScorecardScoring progress={progress} stage={stage} />
+              real ? <LiveStatus real={real} progress={progress} /> : <ScorecardScoring progress={progress} stage={stage} />
+            ) : real ? (
+              real.rows.length ? (
+                <ScorecardRows rows={real.rows} />
+              ) : (
+                <div className="sc-empty">
+                  <div>No scorecard for this run</div>
+                  <div className="mono sc-empty-sub">{real.error ?? 'scorecard not loaded'}</div>
+                </div>
+              )
             ) : state === 'partial' ? (
               <ScorecardPartial />
             ) : seedsTab ? (
@@ -293,7 +365,10 @@ export function S04Workspace() {
 
           {/* QASM */}
           <section className="tile ws-qasm-tile">
-            <TileHeader tabs={[{ id: 'qasm', label: 'QASM', active: true }]} meta={sbox ? 'OpenQASM 2.0 · 20 q' : 'OpenQASM 2.0 · 12 q'} />
+            <TileHeader
+              tabs={[{ id: 'qasm', label: 'QASM', active: true }]}
+              meta={real ? 'illustration · not this run' : sbox ? 'OpenQASM 2.0 · 20 q' : 'OpenQASM 2.0 · 12 q'}
+            />
             {sbox ? (
               <div className="qasm">
                 {SBOX_QASM.map((text, i) => (
@@ -316,7 +391,11 @@ export function S04Workspace() {
           selected={selected}
           gpuOff={gpuOff}
           emptyNote={
-            sbox
+            real
+              ? scoring
+                ? 'Round 1 starts when scoring finishes'
+                : 'The improvement loop is not connected yet. This run stops at the scorecard.'
+              : sbox
               ? 'Not improved yet · round 1 starts when the GPU frees up'
               : empty
                 ? 'Rounds appear here once the engine has scored the circuit'
