@@ -128,6 +128,8 @@ function Block({ a, status, focused, onFocus, onOpen }: { a: Attempt; status: Bl
       onClick={onOpen}
       onKeyDown={onKey}
     >
+      {/* the whole block is the hit target, not just the painted curve */}
+      <rect x={x - 6} y={lane.name - 16} width="152" height={lane.base - lane.name + 22} fill="transparent" />
       {focused && (
         <rect x={x - 6} y={lane.name - 16} width="152" height={lane.base - lane.name + 22} rx="2" fill="none" stroke="#5FEEA3" strokeWidth="2" />
       )}

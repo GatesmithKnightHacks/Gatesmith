@@ -3,7 +3,7 @@ import { navigate, ROUTES, useHashParams } from '../app/router'
 import { actions, useRun } from '../data/run'
 import { Chevron } from '../ui/icons'
 import { EditorButton, Field, FieldRow, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Switch, Tile } from '../ui/parts'
-import { Content, Shell, TabStrip } from '../ui/Shell'
+import { Content, GpuStatus, Shell, TabStrip } from '../ui/Shell'
 import { QaoaCircuit } from './intake/QaoaCircuit'
 import './intake/intake.css'
 import './intake/s01.css'
@@ -29,6 +29,91 @@ const PLAN = [
   ['Estimated time', 'about 40 s to score'],
   ['Not checked', 'mirror_score · hardware runs'],
 ]
+/* Two states are about a different, larger circuit; the whole screen follows it. */
+type Subject = {
+  file: string
+  line: string
+  caption: string
+  canvas: [string, string]
+  facts: [string[][], string[][]]
+  plan: string[][]
+  badPlan: string[]
+  assumptions: string[][]
+  lead: string
+}
+const SUBJECTS: Record<'rejected' | 'impractical', Subject> = {
+  rejected: {
+    file: 'sidechain_qaoa_xl.qasm',
+    line: 'Runs on this machine · CPU, 41 q does not fit',
+    caption: 'A 41-qubit, two-layer QAOA for side-chain packing. It is too large to simulate on this machine, so nothing can run until it is smaller.',
+    canvas: ['41 q · not drawn', 'larger than the 31 q this machine simulates'],
+    facts: [
+      [
+        ['Qubits', '41 q'],
+        ['Gates', '296'],
+        ['Two-qubit gates', '180'],
+        ['Depth', '214'],
+      ],
+      [
+        ['Intent', 'expectation'],
+        ['Item', 'packing_qaoa_xl'],
+        ['Measured', '41 of 41 q'],
+        ['Format', 'OpenQASM 2.0'],
+      ],
+    ],
+    plan: [
+      ['Device', 'FakeTorino · 133 q'],
+      ['Method', 'statevector · double'],
+      ['Memory', '32 TB of 31 GB'],
+      ['Seeds', '11 23 37 41 53 67 79 97'],
+      ['Estimated time', 'not feasible'],
+      ['Not checked', 'everything · blocked by Q301'],
+    ],
+    badPlan: ['Memory', 'Estimated time'],
+    assumptions: [
+      ['Bit order', 'Little-endian: q0 is the rightmost bit.'],
+      ['Measurement', 'All 41 qubits, read as one 41-bit string from c[41].'],
+      ['Equivalence', 'Not checked: 41 q is past every exact method here.'],
+    ],
+    lead: 'Nothing can be scored until the circuit fits in 31 q.',
+  },
+  impractical: {
+    file: 'sidechain_qaoa_30.qasm',
+    line: 'Runs on this machine · CPU, 30 q fits, slowly',
+    caption: 'A 30-qubit, two-layer QAOA for side-chain packing. It fits, but every exact check takes minutes, so rounds will be slow.',
+    canvas: ['30 q · drawn after scoring', 'too dense to read at this size'],
+    facts: [
+      [
+        ['Qubits', '30 q'],
+        ['Gates', '186'],
+        ['Two-qubit gates', '112'],
+        ['Depth', '140'],
+      ],
+      [
+        ['Intent', 'expectation'],
+        ['Item', 'packing_qaoa_30'],
+        ['Measured', '30 of 30 q'],
+        ['Format', 'OpenQASM 2.0'],
+      ],
+    ],
+    plan: [
+      ['Device', 'FakeTorino · 133 q'],
+      ['Method', 'statevector · double'],
+      ['Memory', '16 GB of 31 GB'],
+      ['Seeds', '11 23 37 41 53 67 79 97'],
+      ['Estimated time', 'about 9 min per verify'],
+      ['Not checked', 'mirror_score · 2 unaffordable metrics'],
+    ],
+    badPlan: [],
+    assumptions: [
+      ['Bit order', 'Little-endian: q0 is the rightmost bit.'],
+      ['Measurement', 'All 30 qubits, read as one 30-bit string from c[30].'],
+      ['Equivalence', 'Random-state sampling only; exact checks stop at 12 q.'],
+    ],
+    lead: 'Scores 8 seeds against D01 to D10 in about 6 min.',
+  },
+}
+
 const CHECKS = [
   ['OpenQASM 2.0 parses', '20 lines'],
   ['Manifest matches the circuit', '12 q · 12 c'],
@@ -181,14 +266,23 @@ export function S03Preflight() {
   const validating = landed < 4
   const blocked = forced === 'issues' || forced === 'rejected'
   const canConfirm = !validating && !blocked
+  const subject = forced === 'rejected' || forced === 'impractical' ? SUBJECTS[forced] : null
+  const facts = subject?.facts ?? [FACTS_L, FACTS_R]
+  const plan = subject?.plan ?? PLAN
 
   return (
     <Shell
       rail="new"
+      status={
+        <>
+          <GpuStatus online={forced !== 'gpu-off'} />
+          <span className="mono topbar-job">job 7f3a·0412</span>
+        </>
+      }
       tabs={
         <TabStrip
           tabs={[
-            { id: 'a', label: 'sidechain_qaoa.qasm', active: true },
+            { id: 'a', label: subject?.file ?? 'sidechain_qaoa.qasm', active: true },
             { id: 'b', label: 'sbox_oracle.qasm' },
           ]}
         />
@@ -196,7 +290,7 @@ export function S03Preflight() {
       inspector={
         <>
           <ModeTabs active={mode} onChange={setMode} />
-          <ModeBlock line="Runs on this machine · CPU, 12 q fits" />
+          <ModeBlock line={subject?.line ?? 'Runs on this machine · CPU, 12 q fits'} />
           <BudgetSection auto={auto} setAuto={setAuto} />
           <div className="s03-confirm">
             {forced === 'impractical' && (
@@ -224,7 +318,7 @@ export function S03Preflight() {
               </div>
             )}
             <p className="s03-confirm-lead">
-              {validating ? `Validating · ${landed} of 4 checks` : 'Scores 8 seeds against D01 to D10 in about 40 s.'}
+              {validating ? `Validating · ${landed} of 4 checks` : (subject?.lead ?? 'Scores 8 seeds against D01 to D10 in about 40 s.')}
             </p>
             <PrimaryButton onClick={() => actions.confirmAndScore()} disabled={!canConfirm} name="primary-action" style={{ paddingBlock: 0 }}>
               Confirm and score
@@ -261,16 +355,23 @@ export function S03Preflight() {
         >
           <div className="s03-canvas-slot">
             <div className="s03-canvas" style={{ viewTransitionName: 'circuit-canvas' }}>
-              <QaoaCircuit />
+              {subject ? (
+                <div className="s03-canvas-empty">
+                  <div className="mono s03-canvas-empty-title">{subject.canvas[0]}</div>
+                  <div className="s03-canvas-empty-sub">{subject.canvas[1]}</div>
+                </div>
+              ) : (
+                <QaoaCircuit />
+              )}
             </div>
           </div>
           <div className="s03-caption">
             <p className="s03-caption-text">
-              A 12-qubit, two-layer QAOA for side-chain packing. Gatesmith will estimate its expectation value and cut two-qubit gates without changing the
-              answer.
+              {subject?.caption ??
+                'A 12-qubit, two-layer QAOA for side-chain packing. Gatesmith will estimate its expectation value and cut two-qubit gates without changing the answer.'}
             </p>
             <div className="s03-facts">
-              {[FACTS_L, FACTS_R].map((col, ci) => (
+              {facts.map((col, ci) => (
                 <div key={ci} className="s03-facts-col">
                   {col.map(([k, v], i) => (
                     <div key={k} className={`s03-row${i === col.length - 1 ? ' is-last' : ''}`}>
@@ -290,10 +391,10 @@ export function S03Preflight() {
             meta={<span className="ik-meta-mono">nothing runs until you confirm</span>}
             bodyClassName="s03-plan-body"
           >
-            {PLAN.map(([k, v], i) => (
-              <div key={k} className={`s03-plan-row${i === PLAN.length - 1 ? ' is-last' : ''}`}>
+            {plan.map(([k, v], i) => (
+              <div key={k} className={`s03-plan-row${i === plan.length - 1 ? ' is-last' : ''}`}>
                 <span className="s03-row-label">{k}</span>
-                <span className="mono s03-row-value">{v}</span>
+                <span className={`mono s03-row-value${subject?.badPlan.includes(k) ? ' is-bad' : ''}`}>{v}</span>
               </div>
             ))}
           </Tile>
@@ -331,7 +432,7 @@ export function S03Preflight() {
             )}
             <div className="s03-block">
               <div className="s03-block-title">Assumptions the engine made</div>
-              {ASSUMPTIONS.map(([k, v]) => (
+              {(subject?.assumptions ?? ASSUMPTIONS).map(([k, v]) => (
                 <div key={k} className="s03-assume">
                   <span className="s03-assume-k">{k}</span>
                   <span className="s03-assume-v">{v}</span>

@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
 import { actions, useRun } from '../data/run'
 import { ATTEMPTS, REGRESSION_MESSAGE, STOP_RECOMMENDATION } from '../data/demo'
+import { Status } from '../ui/status'
 import { Content, GpuStatus, Shell } from '../ui/Shell'
 import { EditorButton, ModeTabs, PrimaryButton } from '../ui/parts'
 import { AutoSwitch, Cell, ISection, Icons, Row, Rows, RunTabs, Word } from './improve/common'
@@ -47,6 +48,9 @@ export function S07Loop() {
   } else if (live) {
     status = { ...FINAL, ...(Object.fromEntries(Object.entries(run.attempts).filter(([n]) => Number(n) >= 7)) as Record<number, BlockStatus>) }
     mode = run.stopCard ? 'stopped' : run.phase === 'stopped' ? 'added' : 'running4'
+  } else if (!state && !run.stopCard) {
+    // Continue anyway on the snapshot dismisses the stop card too.
+    mode = 'added'
   }
 
   // Transport: Play steps one round per 1.2 s through the recorded rounds.
@@ -200,28 +204,57 @@ export function S07Loop() {
               worse={state === 'worse-than-before' && replay == null}
               focusAttempt={focusN}
               onFocusAttempt={setFocusN}
-              onOpenAttempt={() => navigate(ROUTES.fixReview, { transition: 'request-fix' })}
+              onOpenAttempt={(n) => {
+                // Each attempt opens in Fix review with the engine's verdict on it (M6: Enter opens one in Fix review).
+                const verdict = FINAL[n]
+                if (verdict === 'rejected' || verdict === 'inconclusive') window.location.hash = `#${ROUTES.fixReview}?state=${verdict}`
+                else navigate(ROUTES.fixReview, { transition: 'request-fix' })
+              }}
             />
           </div>
         </section>
 
-        {state === 'worse-than-before' && (
-          <div className="lp-regression" role="status">
+        {/* Worse than before: the banner takes the scorecard's place, so nothing clips. */}
+        {state === 'worse-than-before' ? (
+          <div className="lp-regression is-slot" role="status">
             <svg width="14" height="18" viewBox="0 -2 14 18" aria-hidden>
               <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
             <div className="lp-regression-text">
               <div className="lp-regression-title">Attempt #8 made the circuit worse, so the engine kept the current one.</div>
               <div className="lp-regression-body">{REGRESSION_MESSAGE}</div>
+              <div className="lp-regression-facts">
+                {[
+                  ['#8', 'block_resynthesis · local · granite-8b', 'rejected'],
+                  ['two_qubit_count', '33 → 31 gates', 'better'],
+                  ['two_qubit_depth', '22 → 27 layers', 'worse · constraint broken'],
+                ].map(([k, v, verdict]) => (
+                  <div key={k} className="lp-regression-fact">
+                    <span className="mono lp-regression-k">{k}</span>
+                    <span className="mono lp-regression-v">{v}</span>
+                    <span className="lp-regression-verdict">
+                      {verdict === 'better' ? (
+                        <Status kind="improved" label="better" />
+                      ) : verdict === 'rejected' ? (
+                        <Status kind="rejected" />
+                      ) : (
+                        <Status kind="failed" label={verdict} />
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="lp-regression-actions">
-              <EditorButton>Open attempt #8</EditorButton>
-              <EditorButton>Open an issue</EditorButton>
+              <EditorButton onClick={() => (window.location.hash = `#${ROUTES.fixReview}?state=worse-than-before`)}>Open attempt #8</EditorButton>
+              <EditorButton onClick={() => window.open('https://github.com/GridGxly/Gatesmith/issues/new', '_blank', 'noopener')}>
+                Open an issue
+              </EditorButton>
             </div>
           </div>
+        ) : (
+          <Scorecard />
         )}
-
-        <Scorecard />
       </Content>
     </Shell>
   )
@@ -444,7 +477,19 @@ function Inspector({ mode, state, live, attempts }: { mode: Mode; state: StateNa
       ),
     }
     primary = exportFinal
-    pair = [<EditorButton wide key="c">Continue anyway</EditorButton>, openReport]
+    pair = [
+      <EditorButton
+        wide
+        key="c"
+        onClick={() => {
+          actions.continueAnyway()
+          window.location.hash = `#${ROUTES.loop}`
+        }}
+      >
+        Continue anyway
+      </EditorButton>,
+      openReport,
+    ]
     caption = 'The engine keeps 33 gates. Another round is unlikely to help.'
     line = 'Runs on this machine · auto mode · 5 of 5 rounds'
   } else if (state === 'budget-hit') {

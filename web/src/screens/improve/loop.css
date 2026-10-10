@@ -310,3 +310,36 @@
   gap: 10px;
   padding-top: var(--spacing-3);
 }
+
+/* In the scorecard's slot: fills it and carries the attempt's facts. */
+.lp-regression.is-slot {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.lp-regression-facts {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spacing-3);
+  max-width: 720px;
+}
+.lp-regression-fact {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-top: 1px solid color-mix(in srgb, var(--color-signal-bad) 22%, transparent);
+}
+.lp-regression-k {
+  width: 140px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+.lp-regression-v {
+  flex: 1 1 0;
+  color: var(--color-text-primary);
+}
+.lp-regression-verdict {
+  color: var(--color-signal-bad);
+}
+.lp-regression-verdict.is-good {
+  color: var(--color-signal-good);
+}

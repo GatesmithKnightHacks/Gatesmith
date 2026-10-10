@@ -60,17 +60,25 @@ export function S05Estimate() {
     }
   }
 
-  const loopLabel = `Running round ${run.round} of 4 (${Math.round(run.loopProgress * 100)}%)`
+  // The empty state is about sbox_oracle; the whole screen follows it.
+  const sbox = state === 'empty'
+  const loopLabel = sbox ? 'Queued · GPU position 1' : `Running round ${run.round} of 4 (${Math.round(run.loopProgress * 100)}%)`
   const meta =
     state === 'loading'
       ? 'estimating 3 of 5 backends · 4,000 shots'
-      : 'current circuit · after round 2 · 36 two-qubit gates · 4,000 shots'
+      : sbox
+        ? 'sbox_oracle · 20 q · 118 two-qubit gates · 4,000 shots'
+        : 'current circuit · after round 2 · 36 two-qubit gates · 4,000 shots'
 
   const inspector = (
     <>
       <ModeTabs active={mode} onChange={setMode} />
       <ModeBlock line="Estimated on this machine · no QPU used">
-        <PrimaryButton name="primary-action" progress={run.loopProgress}>
+        <PrimaryButton
+          name="primary-action"
+          progress={sbox ? undefined : run.loopProgress}
+          onClick={sbox ? undefined : () => navigate(ROUTES.loop, { transition: 'forward' })}
+        >
           {loopLabel}
         </PrimaryButton>
         <PoweredBy />
@@ -97,7 +105,7 @@ export function S05Estimate() {
             ['Free tier', '10 min / month'],
             ['Shots', '4,000'],
             ['Calibration snapshot', 'qiskit-ibm-runtime 0.29'],
-            ['Chosen backend', BACKENDS[chosen].name],
+            ['Chosen backend', sbox ? 'none · no estimate' : BACKENDS[chosen].name],
           ]}
           after={
             <p className="est-insp-note">
@@ -107,7 +115,7 @@ export function S05Estimate() {
           }
         />
         <InspSection
-          title="Why FakeTorino leads"
+          title={sbox ? 'Why there is no estimate' : 'Why FakeTorino leads'}
           open={open.why}
           onToggle={() => toggle('why')}
           icon={
@@ -118,12 +126,21 @@ export function S05Estimate() {
               <path d="M6 8l6-3M6 10l6 3" fill="none" stroke="#FFFFFF" strokeWidth="1.4" />
             </svg>
           }
-          rows={[
-            ['Native two-qubit gate', 'CZ'],
-            ['Median CZ error', '2.6e-3'],
-            ['Median readout error', '1.9e-2'],
-            ['SWAPs after routing', '14 ops'],
-          ]}
+          rows={
+            sbox
+              ? [
+                  ['Links the circuit needs', 'all-to-all · 20 q'],
+                  ['Two-qubit gates', '118 before routing'],
+                  ['SWAPs after routing', 'past 400 on every backend'],
+                  ['Estimate', 'withheld, not zero'],
+                ]
+              : [
+                  ['Native two-qubit gate', 'CZ'],
+                  ['Median CZ error', '2.6e-3'],
+                  ['Median readout error', '1.9e-2'],
+                  ['SWAPs after routing', '14 ops'],
+                ]
+          }
         />
         <InspSection
           title="Where the circuit lands"
@@ -138,8 +155,8 @@ export function S05Estimate() {
           }
           rows={[
             ['Lattice', 'heavy-hex · degree ≤ 3'],
-            ['Physical qubits used', '12 of 133'],
-            ['Pairs that need a SWAP', '5 of 11'],
+            ['Physical qubits used', sbox ? '20 of 133' : '12 of 133'],
+            ['Pairs that need a SWAP', sbox ? 'most of them' : '5 of 11'],
           ]}
           after={
             <div className="est-insp-action">
@@ -157,8 +174,8 @@ export function S05Estimate() {
       tabs={
         <TabStrip
           tabs={[
-            { id: 'a', label: RUN.file, active: true, onClick: () => navigate(ROUTES.workspace, { transition: 'back' }) },
-            { id: 'b', label: RUN.other },
+            { id: 'a', label: RUN.file, active: !sbox, onClick: () => navigate(ROUTES.workspace, { transition: 'back' }) },
+            { id: 'b', label: RUN.other, active: sbox },
           ]}
         />
       }
@@ -200,6 +217,51 @@ export function S05Estimate() {
                   </p>
                   <p className="est-unsupported-note">The scorecard still holds. Hardware rows show their reason instead of a number.</p>
                 </div>
+              ) : null}
+              {state === 'empty' ? (
+                <>
+                  <div className="est-table">
+                    <div className="est-row is-head">
+                      <span className="est-c-name">Backend</span>
+                      <span className="est-c-q">Qubits</span>
+                      <span className="est-c-rel">reliability_heuristic</span>
+                      <span className="est-c-time">QPU time</span>
+                      <span className="est-c-cost">Estimated cost</span>
+                    </div>
+                    {BACKENDS.map((b) => (
+                      <div key={b.name} className="est-row is-unsupported">
+                        <span className="est-c-name mono">{b.name}</span>
+                        <span className="est-c-q mono">{b.qubits} q</span>
+                        <span className="est-c-rel mono est-reason">routes past 400 SWAPs</span>
+                        <span className="est-c-time mono est-reason">n/a</span>
+                        <span className="est-c-cost mono est-reason">n/a</span>
+                      </div>
+                    ))}
+                  </div>
+                  <section className="est-section">
+                    <div className="est-section-head">
+                      <h3>What still holds for sbox_oracle</h3>
+                      <span className="mono">from the scorecard · run 7f37·a2e4</span>
+                    </div>
+                    <div className="est-cards">
+                      {[
+                        ['width', '20', 'q'],
+                        ['two_qubit_count', '118', 'gates'],
+                        ['depth', '212', 'layers'],
+                        ['routing_overhead', '0.52', 'ratio'],
+                      ].map(([label, to, unit]) => (
+                        <div key={label} className="est-card">
+                          <span className="est-card-label">{label}</span>
+                          <span className="est-card-values">
+                            <span className="mono est-card-to">{to}</span>
+                            <span className="mono est-card-unit">{unit}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="est-section-note">Fewer two-qubit gates also shrink the routing problem. Once sbox_oracle routes under 400 SWAPs, an estimate appears here.</p>
+                  </section>
+                </>
               ) : (
                 <div className="est-table">
                   {state === 'error' && (

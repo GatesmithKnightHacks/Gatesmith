@@ -344,3 +344,26 @@
   padding-top: var(--spacing-3);
   color: var(--color-text-secondary);
 }
+
+/* Rejected and impractical states describe a larger circuit. */
+.s03-canvas-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1);
+  width: 100%;
+  height: 100%;
+  text-align: center;
+}
+.s03-canvas-empty-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+}
+.s03-canvas-empty-sub {
+  color: var(--color-text-secondary);
+}
+.s03-row-value.is-bad {
+  color: var(--color-signal-bad);
+}

@@ -75,6 +75,86 @@ const FILES_META: Partial<Record<S02State, string>> = {
   'private-repo': 'not scanned',
 }
 
+/* What the rest of the screen says while a state holds, so no tile contradicts the state cell. */
+const BLOCKED: Partial<Record<S02State, { line: string; manifest: string; manifestMeta: string }>> = {
+  scanning: {
+    line: 'Scanning on this machine · nothing is run',
+    manifest: 'The manifest is drafted when the scan finishes.',
+    manifestMeta: 'waiting for the scan',
+  },
+  'no-circuit': {
+    line: 'Scanned on this machine · no circuit to use yet',
+    manifest: 'Nothing to draft yet: export the builder or upload a .qasm file first.',
+    manifestMeta: 'nothing to write',
+  },
+  'no-qiskit': {
+    line: 'Scanned on this machine · no Qiskit circuit found',
+    manifest: 'Nothing to draft: Gatesmith only reads Qiskit circuits for now.',
+    manifestMeta: 'nothing to write',
+  },
+  'private-repo': {
+    line: 'Not scanned · the repo is private',
+    manifest: 'Nothing to draft: the repo was not cloned.',
+    manifestMeta: 'nothing to write',
+  },
+}
+
+type CheckRow = { kind: 'ok' | 'warn' | 'bad' | 'pending'; text: string; meta: string }
+
+const CHECK_ROWS: Partial<Record<S02State, CheckRow[]>> = {
+  scanning: [
+    { kind: 'ok', text: 'Qiskit 1.3 found in pyproject.toml', meta: 'qiskit==1.3.2' },
+    { kind: 'pending', text: 'Aer simulator', meta: 'checking' },
+    { kind: 'pending', text: 'Builder signatures', meta: 'after parse' },
+    { kind: 'pending', text: 'Hardware credentials', meta: 'after parse' },
+  ],
+  'no-circuit': [
+    { kind: 'ok', text: 'Qiskit 1.3 found in pyproject.toml', meta: 'qiskit==1.3.2' },
+    { kind: 'ok', text: 'build_qaoa returns a QuantumCircuit', meta: 'signature only' },
+    { kind: 'ok', text: 'No hardware credentials in the repo', meta: 'nothing is sent' },
+    { kind: 'warn', text: 'No OpenQASM file in the repo', meta: '214 files read' },
+  ],
+  'no-qiskit': [
+    { kind: 'bad', text: 'No qiskit package in pyproject.toml or requirements.txt', meta: 'Q210' },
+    { kind: 'pending', text: 'Aer simulator', meta: 'not checked' },
+    { kind: 'pending', text: 'Builder signatures', meta: 'not checked' },
+    { kind: 'ok', text: 'No hardware credentials in the repo', meta: 'nothing is sent' },
+  ],
+  'private-repo': [
+    { kind: 'pending', text: 'Qiskit version', meta: 'not cloned' },
+    { kind: 'pending', text: 'Aer simulator', meta: 'not cloned' },
+    { kind: 'pending', text: 'Builder signatures', meta: 'not cloned' },
+    { kind: 'pending', text: 'Hardware credentials', meta: 'not cloned' },
+  ],
+}
+
+const LOG_ROWS: Partial<Record<S02State, { kind: 'ok' | 'running' | 'pending' | 'bad'; label: string; meta: string }[]>> = {
+  scanning: [
+    { kind: 'ok', label: 'Clone', meta: '1.2 s · depth 1' },
+    { kind: 'running', label: 'Search', meta: '96 of 214 files' },
+    { kind: 'pending', label: 'Parse', meta: 'next' },
+    { kind: 'pending', label: 'Draft the manifest', meta: 'last' },
+  ],
+  'private-repo': [
+    { kind: 'bad', label: 'Clone', meta: 'HTTP 404 · Q205' },
+    { kind: 'pending', label: 'Search', meta: 'not run' },
+    { kind: 'pending', label: 'Parse', meta: 'not run' },
+    { kind: 'pending', label: 'Draft the manifest', meta: 'not run' },
+  ],
+  'no-qiskit': [
+    { kind: 'ok', label: 'Clone', meta: '1.2 s · depth 1' },
+    { kind: 'ok', label: 'Search', meta: '0.9 s · 214 files' },
+    { kind: 'ok', label: 'Parse', meta: '0.4 s · 0 circuits' },
+    { kind: 'pending', label: 'Draft the manifest', meta: 'nothing to draft' },
+  ],
+  'no-circuit': [
+    { kind: 'ok', label: 'Clone', meta: '1.2 s · depth 1' },
+    { kind: 'ok', label: 'Search', meta: '0.9 s · 214 files' },
+    { kind: 'ok', label: 'Parse', meta: '0.5 s · 0 circuits, 1 builder' },
+    { kind: 'pending', label: 'Draft the manifest', meta: 'nothing to draft' },
+  ],
+}
+
 const icons = {
   repo: (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
@@ -110,6 +190,21 @@ const icons = {
       <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.6" strokeLinejoin="round" />
     </svg>
   ),
+  bad: (
+    <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
+      <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  ),
+  pending: (
+    <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
+      <circle cx="7" cy="7" r="3.5" fill="none" stroke="#667E83" strokeWidth="1.4" />
+    </svg>
+  ),
+  running: (
+    <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
+      <circle cx="7" cy="7" r="3.5" fill="#2EA3F8" />
+    </svg>
+  ),
 }
 
 function Section({ icon, title, meta, children }: { icon: ReactNode; title: string; meta?: string; children: ReactNode }) {
@@ -139,6 +234,9 @@ export function S02RepoScan() {
   const [selected, setSelected] = useState(0)
   const useThese = () => navigate(ROUTES.preflight, { transition: 'forward' })
   const empty = state === 'no-circuit' || state === 'no-qiskit' || state === 'private-repo'
+  const blocked = BLOCKED[state]
+  const logRows = LOG_ROWS[state]
+  const checkRows = CHECK_ROWS[state]
 
   return (
     <Shell
@@ -155,26 +253,45 @@ export function S02RepoScan() {
       inspector={
         <>
           <ModeTabs />
-          <ModeBlock line="Scanned on this machine · nothing was run">
-            <PrimaryButton
-              onClick={() => {
-                actions.selectExample('sidechain_qaoa')
-                actions.continueToPreflight()
-              }}
-              name="primary-action"
-            >
-              Use these
-            </PrimaryButton>
+          <ModeBlock line={blocked?.line ?? 'Scanned on this machine · nothing was run'}>
+            {state === 'scanning' ? (
+              <PrimaryButton progress={0.45} name="primary-action">
+                Scanning (45%)
+              </PrimaryButton>
+            ) : (
+              <PrimaryButton
+                disabled={!!blocked}
+                onClick={() => {
+                  actions.selectExample('sidechain_qaoa')
+                  actions.continueToPreflight()
+                }}
+                name="primary-action"
+              >
+                Use these
+              </PrimaryButton>
+            )}
             <div className="s02-using">
-              <span>Using</span>
-              <span className="mono s02-using-file">sidechain_qaoa.qasm</span>
-              <span>and a new</span>
-              <span className="mono s02-using-file">qscore.yaml</span>
+              {blocked ? (
+                <span>{state === 'scanning' ? 'Pick a circuit when the scan finishes' : 'Nothing selected'}</span>
+              ) : (
+                <>
+                  <span>Using</span>
+                  <span className="mono s02-using-file">sidechain_qaoa.qasm</span>
+                  <span>and a new</span>
+                  <span className="mono s02-using-file">qscore.yaml</span>
+                </>
+              )}
             </div>
           </ModeBlock>
           <Section icon={icons.repo} title="Repository">
             <div className="ik-insp-rows">
-              {REPO.map(([k, v]) => (
+              {REPO.map(([k, v]) =>
+                k === 'Scanned' && state === 'scanning'
+                  ? [k, '96 of 214 files']
+                  : state === 'private-repo' && (k === 'Commit' || k === 'Scanned')
+                    ? [k, 'not cloned']
+                    : [k, v],
+              ).map(([k, v]) => (
                 <div key={k} className="ik-insp-row">
                   <span className="ik-insp-row-label">{k}</span>
                   <span className="ik-insp-row-value">{v}</span>
@@ -182,13 +299,17 @@ export function S02RepoScan() {
               ))}
             </div>
           </Section>
-          <Section icon={icons.log} title="Scan log" meta="2.8 s">
+          <Section icon={icons.log} title="Scan log" meta={state === 'scanning' ? 'running' : state === 'private-repo' ? 'stopped' : '2.8 s'}>
             <div className="ik-insp-rows">
-              {LOG.map(([k, v], i) => (
-                <div key={k} className="ik-insp-row s02-log-row" style={{ animationDelay: `${i * 40}ms` }}>
-                  {icons.check}
-                  <span className="s02-log-label">{k}</span>
-                  <span className="mono s02-log-meta">{v}</span>
+              {(logRows ?? LOG.map(([label, meta]) => ({ kind: 'ok' as const, label, meta }))).map((r, i) => (
+                <div
+                  key={r.label}
+                  className={`ik-insp-row s02-log-row${r.kind === 'pending' ? ' is-pending' : ''}`}
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  {r.kind === 'ok' ? icons.check : icons[r.kind]}
+                  <span className="s02-log-label">{r.label}</span>
+                  <span className="mono s02-log-meta">{r.meta}</span>
                 </div>
               ))}
             </div>
@@ -272,9 +393,16 @@ export function S02RepoScan() {
           <Tile
             className="s02-manifest"
             tabs={[{ id: 'manifest', label: 'Manifest', active: true }]}
-            meta={<span className="ik-meta-mono">will write qscore.yaml</span>}
+            meta={<span className="ik-meta-mono">{blocked?.manifestMeta ?? 'will write qscore.yaml'}</span>}
             bodyClassName="s02-manifest-body"
           >
+            {blocked ? (
+              <div className="s02-empty s02-manifest-empty">
+                <div className="s02-empty-title">No manifest yet</div>
+                <div className="s02-empty-note">{blocked.manifest}</div>
+              </div>
+            ) : (
+              <>
             <p>No qscore.yaml found. Gatesmith will write one from the circuit.</p>
             <div className="s02-code">
               <pre className="s02-gutter">{Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(2, ' ')).join('\n')}</pre>
@@ -290,22 +418,38 @@ export function S02RepoScan() {
                 </div>
               ))}
             </div>
+              </>
+            )}
           </Tile>
           <Tile className="s02-check" tabs={[{ id: 'check', label: 'Qiskit check', active: true }]} bodyClassName="s02-check-body">
-            <div className="s02-check-first">
-              {icons.checkWide}
-              <span className="s02-check-text">Qiskit 1.3 found in pyproject.toml</span>
-              <span className="mono s02-check-meta">qiskit==1.3.2</span>
-            </div>
-            <div className="s02-check-rows">
-              {CHECKS.map((c) => (
-                <div key={c.text} className="s02-check-row">
-                  {c.ok ? icons.checkWide : icons.warn}
-                  <span className="s02-check-text">{c.text}</span>
-                  <span className="mono s02-check-meta">{c.meta}</span>
+            {checkRows ? (
+              <div className="s02-check-rows s02-check-rows-state">
+                {checkRows.map((c) => (
+                  <div key={c.text} className={`s02-check-row is-${c.kind}`}>
+                    {c.kind === 'ok' ? icons.checkWide : icons[c.kind]}
+                    <span className="s02-check-text">{c.text}</span>
+                    <span className="mono s02-check-meta">{c.meta}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="s02-check-first">
+                  {icons.checkWide}
+                  <span className="s02-check-text">Qiskit 1.3 found in pyproject.toml</span>
+                  <span className="mono s02-check-meta">qiskit==1.3.2</span>
                 </div>
-              ))}
-            </div>
+                <div className="s02-check-rows">
+                  {CHECKS.map((c) => (
+                    <div key={c.text} className="s02-check-row">
+                      {c.ok ? icons.checkWide : icons.warn}
+                      <span className="s02-check-text">{c.text}</span>
+                      <span className="mono s02-check-meta">{c.meta}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </Tile>
         </div>
       </Content>

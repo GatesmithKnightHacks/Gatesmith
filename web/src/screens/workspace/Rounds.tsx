@@ -24,9 +24,11 @@ type Props = {
   started: boolean
   selected: string | null
   gpuOff?: boolean
+  /** Shown across the lanes before any round has run. */
+  emptyNote?: string
 }
 
-export function Rounds({ attempts, liveRound, started, selected, gpuOff }: Props) {
+export function Rounds({ attempts, liveRound, started, selected, gpuOff, emptyNote }: Props) {
   const [zoomIdx, setZoomIdx] = useState(2)
   const [viewRound, setViewRound] = useState<number | null>(null)
   const [playing, setPlaying] = useState(false)
@@ -50,6 +52,15 @@ export function Rounds({ attempts, liveRound, started, selected, gpuOff }: Props
       if (timer.current) clearInterval(timer.current)
     }
   }, [playing, liveRound])
+
+  // Controls that cannot act right now look disabled instead of doing nothing.
+  const can = {
+    first: started && round > 1,
+    prev: started && round > 1,
+    play: started && liveRound > 1,
+    next: started && viewRound !== null,
+    last: started && viewRound !== null,
+  }
 
   const transport = {
     first: () => (setPlaying(false), setViewRound(1)),
@@ -79,37 +90,37 @@ export function Rounds({ attempts, liveRound, started, selected, gpuOff }: Props
         </div>
         <div className="ws-rounds-controls">
           <div className="ws-transport">
-            <button aria-label="First round" onClick={transport.first}>
+            <button aria-label="First round" disabled={!can.first} onClick={transport.first}>
               <svg width="14" height="14" viewBox="0 0 24 24">
-                <path d="M6 5v14" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
-                <path d="M19 5l-10 7 10 7z" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M6 5v14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M19 5l-10 7 10 7z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
             </button>
-            <button aria-label="Previous round" onClick={transport.prev}>
+            <button aria-label="Previous round" disabled={!can.prev} onClick={transport.prev}>
               <svg width="16" height="14" viewBox="0 0 28 24">
-                <path d="M13 5L3 12l10 7zM25 5l-10 7 10 7z" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M13 5L3 12l10 7zM25 5l-10 7 10 7z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
             </button>
-            <button aria-label={playing ? 'Pause playback' : 'Play rounds'} onClick={transport.play}>
+            <button aria-label={playing ? 'Pause playback' : 'Play rounds'} disabled={!can.play} onClick={transport.play}>
               {playing ? (
                 <svg width="14" height="14" viewBox="0 0 24 24">
-                  <path d="M8 5v14M16 5v14" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" />
+                  <path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
               ) : (
                 <svg width="14" height="14" viewBox="0 0 24 24">
-                  <path d="M7 5l12 7-12 7z" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
+                  <path d="M7 5l12 7-12 7z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
                 </svg>
               )}
             </button>
-            <button aria-label="Next round" onClick={transport.next}>
+            <button aria-label="Next round" disabled={!can.next} onClick={transport.next}>
               <svg width="16" height="14" viewBox="0 0 28 24">
-                <path d="M3 5l10 7-10 7zM15 5l10 7-10 7z" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M3 5l10 7-10 7zM15 5l10 7-10 7z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
             </button>
-            <button aria-label="Live round" onClick={transport.last}>
+            <button aria-label="Live round" disabled={!can.last} onClick={transport.last}>
               <svg width="14" height="14" viewBox="0 0 24 24">
-                <path d="M18 5v14" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
-                <path d="M5 5l10 7-10 7z" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M18 5v14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M5 5l10 7-10 7z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
             </button>
           </div>
@@ -176,7 +187,7 @@ export function Rounds({ attempts, liveRound, started, selected, gpuOff }: Props
             <span className="ws-lane-note">lower is better</span>
           </div>
           <div className="ws-lane-chart is-count">
-            <div className="ws-lane-axis is-count">
+            <div className="ws-lane-axis is-count" style={emptyNote ? { visibility: 'hidden' } : undefined}>
               <span>48</span>
               <span>40</span>
               <span>32</span>
@@ -187,6 +198,7 @@ export function Rounds({ attempts, liveRound, started, selected, gpuOff }: Props
             </svg>
           </div>
         </div>
+        {!started && emptyNote && <div className="ws-rounds-empty">{emptyNote}</div>}
         {started && (
           <>
             <div className="ws-playhead" style={{ left: playX }} />

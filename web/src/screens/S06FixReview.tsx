@@ -4,7 +4,7 @@
  * States (?state=): verifying, rejected, inconclusive, invalid, worse-than-before, keyboard-focus, offline.
  */
 import { useEffect, useState, type ReactNode } from 'react'
-import { useHashParams } from '../app/router'
+import { navigate, ROUTES, useHashParams } from '../app/router'
 import { actions, useRun } from '../data/run'
 import { REGRESSION_MESSAGE } from '../data/demo'
 import { Content, GpuStatus, Shell } from '../ui/Shell'
@@ -82,14 +82,14 @@ export function S06FixReview() {
           <span className="mono topbar-job">job 7f3a·0412</span>
         </>
       }
-      inspector={<Inspector outcome={outcome} state={state} live={live} userAccepted={userAccepted} />}
+      inspector={<Inspector outcome={outcome} state={state} userAccepted={userAccepted} />}
     >
       <Content>
         <Tile
           name="finding-card"
           style={{ flexShrink: 0 }}
           tabs={[
-            { id: 'circuit', label: 'Circuit' },
+            { id: 'circuit', label: 'Circuit', onClick: () => (actions.selectFinding('D03'), navigate(ROUTES.workspace, { transition: 'back' })) },
             { id: 'diff', label: 'Diff', active: true },
           ]}
           meta={<span className="mono">D03 commuting block · q3 to q6 · lines 13 to 18</span>}
@@ -123,13 +123,17 @@ export function S06FixReview() {
         {state === 'worse-than-before' && <RegressionBanner />}
 
         <div className="fr-lower">
-          <Verification outcome={outcome} ladderStep={ladderStep} />
-          <BeforeAfter outcome={outcome} live={live} userAccepted={userAccepted} />
+          {/* With the regression banner up, the secondary blocks step aside so nothing clips. */}
+          <Verification outcome={outcome} ladderStep={ladderStep} compact={state === 'worse-than-before'} />
+          <BeforeAfter outcome={outcome} live={live} userAccepted={userAccepted} compact={state === 'worse-than-before'} />
         </div>
       </Content>
     </Shell>
   )
 }
+
+/** The regression message asks for a GitHub issue; open a new one on the project. */
+const openIssue = () => window.open('https://github.com/GridGxly/Gatesmith/issues/new', '_blank', 'noopener')
 
 /* ── Verification ─────────────────────────────────────────────────────── */
 
@@ -259,7 +263,7 @@ function ladder(outcome: Outcome, step: number): { steps: Step[]; meta: string }
   }
 }
 
-function Verification({ outcome, ladderStep }: { outcome: Outcome; ladderStep: number }) {
+function Verification({ outcome, ladderStep, compact = false }: { outcome: Outcome; ladderStep: number; compact?: boolean }) {
   const v = VERDICT[outcome]
   const { steps, meta } = ladder(outcome, ladderStep)
   return (
@@ -323,6 +327,7 @@ function Verification({ outcome, ladderStep }: { outcome: Outcome; ladderStep: n
           <p className="fr-note">Random-state evidence never changes the status. It appears only when an exact check is out of reach.</p>
         </div>
 
+        {!compact && (
         <div className="fr-group">
           <div className="im-group-title">
             <span>Check details</span>
@@ -348,6 +353,7 @@ function Verification({ outcome, ladderStep }: { outcome: Outcome; ladderStep: n
             </Row>
           </Rows>
         </div>
+        )}
       </div>
     </Tile>
   )
@@ -377,7 +383,17 @@ function useVerdictCount(stepping: boolean) {
   return n
 }
 
-function BeforeAfter({ outcome, live, userAccepted }: { outcome: Outcome; live: boolean; userAccepted: boolean }) {
+function BeforeAfter({
+  outcome,
+  live,
+  userAccepted,
+  compact = false,
+}: {
+  outcome: Outcome
+  live: boolean
+  userAccepted: boolean
+  compact?: boolean
+}) {
   const verified = outcome === 'accepted'
   const [stepping] = useState(() => live && !verified)
   const counted = useVerdictCount(stepping && verified)
@@ -485,6 +501,7 @@ function BeforeAfter({ outcome, live, userAccepted }: { outcome: Outcome; live: 
           </Rows>
         </div>
 
+        {!compact && (
         <div className="fr-group">
           <div className="im-group-title">
             <span>Every seed improved</span>
@@ -501,6 +518,7 @@ function BeforeAfter({ outcome, live, userAccepted }: { outcome: Outcome; live: 
           </div>
           <SeedChart />
         </div>
+        )}
       </div>
     </Tile>
   )
@@ -582,7 +600,7 @@ function RegressionBanner() {
         <div className="fr-regression-title">This change made the circuit worse, so the engine kept the current one.</div>
         <div className="fr-regression-body">{REGRESSION_MESSAGE}</div>
       </div>
-      <EditorButton>Open an issue</EditorButton>
+      <EditorButton onClick={openIssue}>Open an issue</EditorButton>
     </div>
   )
 }
@@ -592,21 +610,24 @@ function RegressionBanner() {
 function Inspector({
   outcome,
   state,
-  live,
   userAccepted,
 }: {
   outcome: Outcome
   state: StateName | null
-  live: boolean
   userAccepted: boolean
 }) {
   const verified = outcome === 'accepted'
   const kept = outcome === 'rejected' || outcome === 'inconclusive' || outcome === 'invalid'
+  // The workspace with D03 selected: its QASM lines 13–18 carry the region rail.
+  const openInQasm = () => {
+    actions.selectFinding('D03')
+    navigate(ROUTES.workspace, { transition: 'back' })
+  }
 
   let primary: ReactNode
   if (verified) {
     primary = (
-      <PrimaryButton onClick={live && !userAccepted ? () => actions.accept() : undefined} name="primary-action">
+      <PrimaryButton onClick={!userAccepted ? () => actions.accept() : undefined} name="primary-action">
         {userAccepted ? 'Accepted' : 'Accept'}
       </PrimaryButton>
     )
@@ -656,15 +677,15 @@ function Inspector({
           <div className="secondary-pair">
             {kept ? (
               <>
-                <EditorButton wide>Open in QASM</EditorButton>
-                <EditorButton wide>Open an issue</EditorButton>
+                <EditorButton wide onClick={openInQasm}>Open in QASM</EditorButton>
+                <EditorButton wide onClick={openIssue}>Open an issue</EditorButton>
               </>
             ) : (
               <>
                 <EditorButton wide onClick={() => actions.keepCurrent()} style={focus ? FOCUS_RING : undefined}>
                   Keep current
                 </EditorButton>
-                <EditorButton wide>Open in QASM</EditorButton>
+                <EditorButton wide onClick={openInQasm}>Open in QASM</EditorButton>
               </>
             )}
           </div>

@@ -337,3 +337,29 @@
   color: var(--color-text-secondary);
   font-size: var(--text-label);
 }
+
+/* States: the manifest and Qiskit check agree with the state cell. */
+.s02-manifest-empty {
+  flex: 1 1 0;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-6);
+}
+.s02-empty-note {
+  max-width: 300px;
+  color: var(--color-text-secondary);
+  line-height: var(--leading-ui);
+}
+.s02-check-rows-state {
+  padding: 12px;
+}
+.s02-check-row.is-pending .s02-check-text,
+.s02-check-row.is-pending .s02-check-meta,
+.s02-log-row.is-pending .s02-log-label,
+.s02-log-row.is-pending .s02-log-meta {
+  color: var(--color-text-disabled);
+}
+.s02-check-row.is-bad .s02-check-text,
+.s02-check-row.is-bad .s02-check-meta {
+  color: var(--color-signal-bad);
+}

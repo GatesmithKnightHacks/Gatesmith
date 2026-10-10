@@ -434,3 +434,14 @@
     transform: translateY(-4px);
   }
 }
+
+/* Empty state: every backend shows its reason instead of a number. */
+.est-table-unsupported {
+  margin-top: var(--spacing-4);
+}
+.est-row.is-unsupported {
+  cursor: default;
+}
+.est-reason {
+  color: var(--color-text-disabled);
+}

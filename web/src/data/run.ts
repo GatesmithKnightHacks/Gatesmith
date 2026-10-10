@@ -210,7 +210,8 @@ export const actions = {
 
   /** M4: the accept moment, then the loop view (S-07) finishes round 4 and stops (M5). */
   accept() {
-    set({ phase: 'accepting', accepted: true })
+    // From a deep-linked snapshot too: the accept moment starts the live flow from here.
+    set({ phase: 'accepting', accepted: true, live: true })
     set((st) => ({ attempts: { ...st.attempts, 5: 'rejected', 6: 'accepted' } }))
     // count 36 → 35 → 34 → 33 over 600 ms, each step a little longer than the last
     after(140, () => set({ twoQubit: 35 }))

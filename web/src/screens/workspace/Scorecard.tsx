@@ -4,12 +4,12 @@
  * from the states board.
  */
 import { Status } from '../../ui/status'
-import { SCORECARD, SEEDS } from './data'
+import { SBOX_SCORECARD, SCORECARD, SEEDS, type ScoreRow } from './data'
 
-export function ScorecardRows() {
+export function ScorecardRows({ rows = SCORECARD }: { rows?: ScoreRow[] }) {
   return (
     <div className="sc-rows">
-      {SCORECARD.map((r) => {
+      {rows.map((r) => {
         if (r.kind === 'group')
           return (
             <div key={r.label} className="sc-group">
@@ -108,25 +108,7 @@ export function ScorecardPartial() {
         <span className="sc-banner-text">2 metrics skipped, unaffordable at 20 qubits</span>
         <button className="sc-banner-link">Details</button>
       </div>
-      <div className="sc-partial">
-        {[
-          ['width', '20', 'q'],
-          ['depth', '212', 'layers'],
-          ['two_qubit_count', '118', 'gates'],
-        ].map(([id, v, u]) => (
-          <div key={id} className="sc-partial-row">
-            <span className="sc-label">{id}</span>
-            <span className="sc-partial-num mono">{v}</span>
-            <span className="sc-partial-unit mono">{u}</span>
-          </div>
-        ))}
-        {['simulated_task_score', 'mirror_score'].map((id) => (
-          <div key={id} className="sc-partial-row is-skipped">
-            <span className="sc-label">{id}</span>
-            <span>skipped · unaffordable</span>
-          </div>
-        ))}
-      </div>
+      <ScorecardRows rows={SBOX_SCORECARD} />
     </>
   )
 }

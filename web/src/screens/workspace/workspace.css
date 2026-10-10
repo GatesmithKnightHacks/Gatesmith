@@ -16,11 +16,6 @@
   min-width: 0;
 }
 
-/* S-04/S-05 boards put the undo/redo pair 10px from the edge (the S-00 template uses 8). */
-.shell:has(.ws-top, .est-tile) .tabstrip-history {
-  padding-right: 10px;
-}
-
 /* ── Circuit ─────────────────────────────────────────────────────────── */
 .ws-circuit-body {
   display: flex;
@@ -487,7 +482,15 @@
 .ws-zoom button {
   display: flex;
   opacity: 1;
-  transition: opacity var(--motion-instant) var(--ease-standard);
+  color: var(--color-text-primary);
+  transition: opacity var(--motion-instant) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.ws-transport button:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+.ws-transport button:disabled:hover {
+  opacity: 1;
 }
 .ws-transport button:hover,
 .ws-zoom button:hover {
@@ -559,6 +562,15 @@
   font-size: var(--text-label);
   line-height: 14px;
   white-space: nowrap;
+}
+.ws-rounds-empty {
+  position: absolute;
+  inset: 0 0 0 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  pointer-events: none;
 }
 .ws-lanes {
   position: relative;

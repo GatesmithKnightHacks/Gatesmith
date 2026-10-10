@@ -117,6 +117,24 @@ export const SCORECARD: ScoreRow[] = [
   { kind: 'skipped', id: 'mirror_score', reason: 'skipped · not selected' },
 ]
 
+/** sbox_oracle's partial scorecard (run 7f37·a2e4): two research metrics are unaffordable at 20 qubits. */
+export const SBOX_SCORECARD: ScoreRow[] = [
+  { kind: 'group', label: 'resources' },
+  { kind: 'metric', id: 'width', value: '20', unit: 'q' },
+  { kind: 'metric', id: 'two_qubit_count', value: '118', unit: 'gates' },
+  { kind: 'metric', id: 'depth', value: '212', unit: 'layers' },
+  { kind: 'group', label: 'hardware · FakeTorino' },
+  { kind: 'metric', id: 'routing_overhead', value: '0.52', unit: 'ratio', status: 'high', bar: { fill: 30, marker: 18 } },
+  { kind: 'metric', id: 'swaps_inserted', value: '61', unit: 'ops' },
+  { kind: 'metric', id: 'reliability_heuristic', value: '0.214' },
+  { kind: 'group', label: 'opportunities' },
+  { kind: 'metric', id: 'resynthesis_potential', value: '38', unit: 'gates', status: 'warning' },
+  { kind: 'metric', id: 'linear_block', value: '6', unit: 'cx', status: 'warning' },
+  { kind: 'group', label: 'research' },
+  { kind: 'skipped', id: 'simulated_task_score', reason: 'skipped · unaffordable' },
+  { kind: 'skipped', id: 'mirror_score', reason: 'skipped · unaffordable' },
+]
+
 /** Seeds tab: two-qubit count per seed; the chosen seed is outlined (states board). */
 export const SEEDS = [
   { seed: 11, h: 86 },
