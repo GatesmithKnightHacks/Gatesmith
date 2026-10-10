@@ -2,12 +2,13 @@
 
 Each rule reads computed metric results and returns findings. A rule whose metric is not
 `computed` returns no finding and is recorded in `skipped` with the reason (never silent).
-MVP slice S4 evaluates D01-D06 and D08; D07 and D09 arrive with M2, D10 is final product.
+Evaluates D01-D09; D10 is final product (CP-0023).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import pairwise
 from typing import Any
 
 from qscore.diagnose.policy import Policy
@@ -27,8 +28,6 @@ TITLES = {
     "D10": "Low task score",
 }
 NOT_IN_SLICE = {
-    "D07": "rule arrives with M2 (CP-0023)",
-    "D09": "rule arrives with M2 (CP-0023)",
     "D10": "simulation metrics are final product (CP-0023)",
 }
 
@@ -99,6 +98,78 @@ def _full_layers(metrics: dict[str, MetricResult], logical: bool) -> tuple[int, 
     d = metrics["depth"]
     depth = int(d.evidence["logical"]) if logical and d.evidence else int(_num(d))
     return (0, max(depth - 1, 0))
+
+
+def _d05(structure: dict[str, Any], p: dict[str, Any]) -> list[Finding]:
+    """One finding per Clifford or linear-function block of min_qubits..max_qubits qubits.
+    A linear block inside a reported Clifford block is the same opportunity (cx/swap are
+    Clifford) and is not reported twice. Severity is always `warning` (CP-0008)."""
+    lo, hi = p["min_qubits"], p["max_qubits"]
+    found: list[Finding] = []
+    covered: set[int] = set()
+    for kind, key in (
+        ("clifford", "clifford_blocks"),
+        ("linear_function", "linear_function_blocks"),
+    ):
+        for block in structure[key]:
+            n = len(block["qubits"])
+            if not lo <= n <= hi or (
+                kind == "linear_function" and covered >= set(block["gate_indices"])
+            ):
+                continue
+            if kind == "clifford":
+                covered |= set(block["gate_indices"])
+            found.append(
+                _finding(
+                    "D05",
+                    len(found) + 1,
+                    FindingSeverity.WARNING,
+                    Threshold(name="min_qubits", value=lo, margin=(n - lo) / lo),
+                    {"block_type": kind, "num_qubits": n, "num_ops": block["num_ops"]},
+                    Region(
+                        scope="logical",
+                        qubits=block["qubits"],
+                        layers=tuple(block["layers"]),
+                        gate_indices=block["gate_indices"],
+                    ),
+                    ["block_resynthesis"],
+                )
+            )
+    return found
+
+
+def _d09(fit: dict[str, Any], per_size: list[dict[str, Any]], p: dict[str, Any]) -> Finding | None:
+    """Routing overhead strictly rising across >= min_sizes sizes (ordered by qubit count), or
+    b_compiled - b_logical >= exponent_gap_min (both fits present, CP-0007). Severity `high`
+    when both criteria hold, else `warning` (CP-0008). No region; no request (07 §1)."""
+    rows = sorted(per_size, key=lambda r: r["qubits"])
+    overheads = [float(r["routing_overhead"]) for r in rows]
+    rising = len(rows) >= p["min_sizes"] and all(a < b for a, b in pairwise(overheads))
+    gap = (
+        None
+        if fit["b_compiled"] is None or fit["b_logical"] is None
+        else float(fit["b_compiled"]) - float(fit["b_logical"])
+    )
+    thr = p["exponent_gap_min"]
+    steep = gap is not None and gap >= thr
+    if not (rising or steep):
+        return None
+    return _finding(
+        "D09",
+        1,
+        FindingSeverity.HIGH if rising and steep else FindingSeverity.WARNING,
+        None
+        if gap is None
+        else Threshold(name="exponent_gap", value=thr, margin=(gap - thr) / thr),
+        {
+            "overhead_rising": rising,
+            "exponent_gap": gap,
+            **fit,
+            "per_size": rows,
+        },
+        None,
+        ["routing_search", "commutation_aware_routing"],
+    )
 
 
 def evaluate(metrics: dict[str, MetricResult], policy: Policy) -> Diagnosis:
@@ -212,9 +283,10 @@ def evaluate(metrics: dict[str, MetricResult], policy: Policy) -> Diagnosis:
                 )
             )
 
-    out.skipped.append(
-        {"rule": "D05", "reason": "Clifford/linear block detection arrives with M2 (CP-0023)"}
-    )
+    if (why := _ok(metrics, "structure")) is not None:
+        out.skipped.append({"rule": "D05", "reason": why})
+    else:
+        out.findings.extend(_d05(_dict(metrics["structure"]), t["D05"]))
 
     if (why := _ok(metrics, "reliability_heuristic", "depth")) is not None:
         out.skipped.append({"rule": "D06", "reason": why})
@@ -247,6 +319,29 @@ def evaluate(metrics: dict[str, MetricResult], policy: Policy) -> Diagnosis:
                     )
                 )
 
+    if (why := _ok(metrics, "scheduled_duration")) is not None:
+        out.skipped.append({"rule": "D07", "reason": why})
+    else:
+        ev = metrics["scheduled_duration"].evidence or {}
+        ratio, thr = float(ev["ratio_to_median_t2"]), t["D07"]["ratio_to_t2_min"]
+        if ratio >= thr:
+            margin = (ratio - thr) / thr
+            out.findings.append(
+                _finding(
+                    "D07",
+                    1,
+                    severity("D07", margin, policy),
+                    Threshold(name="ratio_to_median_t2", value=thr, margin=margin),
+                    {
+                        "scheduled_duration_s": _num(metrics["scheduled_duration"]),
+                        "median_t2_s": ev["median_t2_s"],
+                        "ratio_to_median_t2": ratio,
+                    },
+                    None,
+                    ["routing_search", "commutation_aware_routing"],
+                )
+            )
+
     if (why := _ok(metrics, "entanglement_variance", "depth")) is not None:
         out.skipped.append({"rule": "D08", "reason": why})
     else:
@@ -267,6 +362,13 @@ def evaluate(metrics: dict[str, MetricResult], policy: Policy) -> Diagnosis:
                     ["layout_search"],
                 )
             )
+
+    if (why := _ok(metrics, "scalability")) is not None:
+        out.skipped.append({"rule": "D09", "reason": why})
+    else:
+        m = metrics["scalability"]
+        if (f := _d09(_dict(m), (m.evidence or {})["per_size"], t["D09"])) is not None:
+            out.findings.append(f)
 
     for rule, reason in NOT_IN_SLICE.items():
         out.skipped.append({"rule": rule, "reason": reason})

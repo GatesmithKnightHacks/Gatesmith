@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import cached_property
 
 from qiskit import QuantumCircuit
@@ -10,14 +11,20 @@ from qscore.compile import pipeline, select, stages
 from qscore.compile.pipeline import CompiledResult, CompileSet
 from qscore.compile.stages import RoutedResult
 from qscore.manifest.resolve import ResolvedItem
-from qscore.schemas.manifest import Execution, Objective, TargetSpec
+from qscore.schemas.manifest import TASK_INTENTS, Execution, Objective, SizeSweep, TargetSpec
 from qscore.targets.registry import TargetBundle, get_target
 
 
 class ScoringContext:
-    def __init__(self, resolved: ResolvedItem, logical: QuantumCircuit) -> None:
+    def __init__(
+        self,
+        resolved: ResolvedItem,
+        logical: QuantumCircuit,
+        rebuild: Callable[[int], QuantumCircuit] | None = None,
+    ) -> None:
         self.resolved = resolved
         self._logical = logical
+        self._rebuild = rebuild
         item = resolved.item
         assert item.target is not None and item.objective is not None and item.execution is not None
         self.target_spec: TargetSpec = item.target
@@ -27,6 +34,20 @@ class ScoringContext:
     @property
     def logical(self) -> QuantumCircuit:
         return self._logical
+
+    @property
+    def has_task(self) -> bool:
+        """The item's intent carries a task (known_output, distribution, expectation; 04 §2.1)."""
+        return self.resolved.item.invariants.intent in TASK_INTENTS
+
+    @property
+    def size_sweep(self) -> SizeSweep | None:
+        return self.resolved.item.size_sweep
+
+    @property
+    def rebuild(self) -> Callable[[int], QuantumCircuit] | None:
+        """Builder at another size-sweep value (the sandbox, M3); None for QASM items."""
+        return self._rebuild
 
     @property
     def seeds(self) -> list[int]:

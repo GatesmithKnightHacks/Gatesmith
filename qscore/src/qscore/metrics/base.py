@@ -6,6 +6,7 @@ exception into `status: failed`. Helpers build outcomes; the engine adds id/grou
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Literal, Protocol
@@ -15,6 +16,7 @@ from qiskit.circuit import QuantumCircuit
 from qscore.compile.pipeline import CompiledResult, CompileSet
 from qscore.compile.stages import RoutedResult
 from qscore.schemas.common import MetricGroup, MetricKind, Status
+from qscore.schemas.manifest import SizeSweep
 from qscore.targets.registry import TargetBundle
 
 
@@ -37,6 +39,8 @@ class ScoringContext(Protocol):
     @property
     def logical(self) -> QuantumCircuit: ...
     @property
+    def has_task(self) -> bool: ...
+    @property
     def target(self) -> TargetBundle: ...
     @property
     def compile_set(self) -> CompileSet: ...
@@ -48,6 +52,13 @@ class ScoringContext(Protocol):
     def routing_stage(self) -> RoutedResult: ...
     @property
     def raw_translation(self) -> QuantumCircuit: ...
+    @property
+    def seeds(self) -> list[int]: ...
+    @property
+    def size_sweep(self) -> SizeSweep | None: ...
+    @property
+    def rebuild(self) -> Callable[[int], QuantumCircuit] | None:
+        """Builds the item at another value of the size-sweep argument; None without a builder."""
 
 
 @dataclass(frozen=True)

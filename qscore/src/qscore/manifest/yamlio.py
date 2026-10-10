@@ -11,6 +11,7 @@ from ruamel.yaml.error import YAMLError
 
 from qscore.errors import InvalidInput
 from qscore.schemas.common import Location
+from qscore.schemas.run import IssueModel, IssueReportModel
 
 
 class PositionMap:
@@ -48,8 +49,31 @@ def load_yaml(path: Path) -> tuple[Any, PositionMap]:
         data = YAML(typ="rt").load(path.read_text(encoding="utf-8"))
     except YAMLError as exc:
         mark = getattr(exc, "problem_mark", None)
-        raise InvalidInput(
-            f"[Q100] {path.name}: YAML could not be parsed: {exc}",
-            report={"line": mark.line + 1 if mark else None},
-        ) from exc
+        problem = getattr(exc, "problem", None) or str(exc)
+        issue = IssueModel(
+            code="Q100",
+            severity="error",
+            location=Location(
+                file=path.name,
+                line=mark.line + 1 if mark else None,
+                column=mark.column + 1 if mark else None,
+            ),
+            message=f"YAML could not be parsed: {problem}",
+            hint="Check indentation and quoting at this position.",
+            docs="docs/issues.md#q100",
+        )
+        report = single_issue_report(path.name, issue)
+        raise InvalidInput(f"[Q100] {path.name}: YAML could not be parsed", report=report) from exc
     return data, PositionMap(path.name, data)
+
+
+def single_issue_report(file: str, issue: IssueModel) -> IssueReportModel:
+    return IssueReportModel.model_validate(
+        {
+            "schema": "qscore.issues/v0.2",
+            "manifest": file,
+            "errors": 1,
+            "warnings": 0,
+            "issues": [issue],
+        }
+    )

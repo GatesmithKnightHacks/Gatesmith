@@ -140,3 +140,42 @@ def test_manifest_with_synthetic_target_needs_no_calibration(tmp_path: Path) -> 
     assert card.target.calibration_id is None
     reliability = next(m for m in card.metrics if m.id == "reliability_heuristic")
     assert (reliability.status, reliability.reason) == ("unavailable", "target has no calibration")
+
+
+def test_semantic_issues_of_every_item_come_back_at_once(tmp_path: Path) -> None:
+    # 05 §3-4: stage 4 runs on every item before any compute; one report, located in the YAML.
+    from qscore import services
+    from qscore.errors import InvalidInput
+
+    (tmp_path / "bell.qasm").write_text(BELL)
+    (tmp_path / "mid.qasm").write_text(
+        BELL.replace("qreg q[2];", "qreg q[2];\ncreg c[1];") + "measure q[0] -> c[0];\nx q[0];\n"
+    )
+    (tmp_path / "qscore.yaml").write_text(
+        "schema: qscore.project/v0.2\nproject: {name: p}\n"
+        "defaults: {target: {backend: line-5}}\n"
+        "circuits:\n"
+        "  - id: bell\n    source: {qasm: bell.qasm}\n"
+        "    invariants:\n      intent: reversible_function\n"
+        "  - id: mid\n    source: {qasm: mid.qasm}\n"
+    )
+    with pytest.raises(InvalidInput) as info:
+        services.score_project(tmp_path / "qscore.yaml", tmp_path / "o")
+    issues = info.value.report.issues
+    assert [(i.code, i.item) for i in issues] == [("Q400", "bell"), ("Q402", "mid")]
+    assert (issues[0].location.line, issues[0].location.field) == (
+        8,  # the `intent:` key
+        "circuits[0].invariants.intent",
+    )
+    assert not (tmp_path / "o" / "scorecards").exists()  # nothing was computed
+    code, _ = run(
+        [
+            "score",
+            "--manifest",
+            str(tmp_path / "qscore.yaml"),
+            "--yes",
+            "--out",
+            str(tmp_path / "o"),
+        ]
+    )
+    assert code == 2

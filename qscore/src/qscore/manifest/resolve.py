@@ -94,10 +94,21 @@ def _file_hash(path: Path, code: str = "Q200") -> str:
 
 
 def resolve_items(manifest: ProjectManifest, manifest_dir: Path) -> list[ResolvedItem]:
+    return [
+        ResolvedItem(item, root, item_hash(item, root), origins)
+        for item, root, origins in merge_items(manifest, manifest_dir)
+    ]
+
+
+def merge_items(
+    manifest: ProjectManifest, manifest_dir: Path
+) -> list[tuple[CircuitItem, Path, dict[str, str]]]:
+    """Every item with its inherited blocks filled, its root and block origins; reads no files
+    (the reference pass runs on these before anything is hashed, 05 §3)."""
     root = (manifest_dir / manifest.project.root).resolve()
     manifest_defaults = manifest.defaults.model_dump(mode="json", exclude_none=True)
     defaults = merge(BUILTIN_DEFAULTS, manifest_defaults)
-    out = []
+    out: list[tuple[CircuitItem, Path, dict[str, str]]] = []
     for item in manifest.circuits:
         raw = item.model_dump(mode="json", exclude_none=True)
         merged = merge(defaults, {k: v for k, v in raw.items() if k in INHERITED})
@@ -113,7 +124,7 @@ def resolve_items(manifest: ProjectManifest, manifest_dir: Path) -> list[Resolve
             else "default"
             for k in INHERITED
         }
-        out.append(ResolvedItem(resolved, root, item_hash(resolved, root), origins))
+        out.append((resolved, root, origins))
     return out
 
 

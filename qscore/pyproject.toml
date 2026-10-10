@@ -11,6 +11,8 @@ dependencies = [
     "qiskit-aer>=0.17,<0.18",
     "qiskit-ibm-runtime>=0.50",
     "qiskit-qasm3-import>=0.6",
+    # Imported directly for QASM3ParsingError, which qasm3.loads lets escape (CP-0027).
+    "openqasm3>=1.0",
     "mqt.qcec>=3.11,<4",
     "numpy>=2.0",
     "scipy>=1.14",

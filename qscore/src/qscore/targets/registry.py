@@ -67,6 +67,26 @@ def _from_coupling(name: str, cmap: CouplingMap, basis: tuple[str, ...]) -> Targ
     return TargetBundle(name, target, basis, target.num_qubits, None, False, False, False)
 
 
+_SYNTHETIC = (r"line-(\d+)", r"grid-(\d+)x(\d+)", r"heavy-hex-(\d+)")
+
+
+def target_problem(spec: TargetSpec) -> tuple[str, str] | None:
+    """`(code, message)` when a named target is unknown (Q206) or a synthetic target asks for
+    backend calibration (Q103); None otherwise. Builds nothing (reference pass, 05 §3)."""
+    name = spec.backend
+    if name is None or name in NAMED_BACKENDS:
+        return None
+    if not any(re.fullmatch(p, name) for p in _SYNTHETIC):
+        return "Q206", f"unknown target {name!r}"
+    if spec.calibration == "from_backend":
+        return (
+            "Q103",
+            f"target {name} is synthetic and has no backend calibration; "
+            "set target.calibration: none",
+        )
+    return None
+
+
 def get_target(spec: TargetSpec) -> TargetBundle:
     """Build the target named by `spec` (raises `InvalidInput` for unknown names, Q206)."""
     if spec.backend is None:
@@ -89,19 +109,15 @@ def get_target(spec: TargetSpec) -> TargetBundle:
             with_cal,
             with_cal,
         )
-    if spec.calibration == "from_backend":
-        raise InvalidInput(
-            f"[Q103] target {name} is synthetic and has no backend calibration; "
-            "set target.calibration: none",
-            report=None,
-        )
+    if problem := target_problem(spec):
+        raise InvalidInput(f"[{problem[0]}] {problem[1]}", report=None)
     if m := re.fullmatch(r"line-(\d+)", name):
         return _from_coupling(name, CouplingMap.from_line(int(m[1])), CX_BASIS)
     if m := re.fullmatch(r"grid-(\d+)x(\d+)", name):
         return _from_coupling(name, CouplingMap.from_grid(int(m[1]), int(m[2])), CX_BASIS)
     if m := re.fullmatch(r"heavy-hex-(\d+)", name):
         return _from_coupling(name, CouplingMap.from_heavy_hex(int(m[1])), CZ_BASIS)
-    raise InvalidInput(f"[Q206] unknown target {name!r}", report=None)
+    raise AssertionError(f"target {name!r} passed target_problem but has no builder")
 
 
 def all_to_all_for(bundle: TargetBundle, num_qubits: int) -> TargetBundle:
