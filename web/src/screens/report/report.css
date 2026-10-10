@@ -1,0 +1,593 @@
+/* ── S-09 layout ─────────────────────────────────────────────────────── */
+.rp-circuits {
+  flex: 0 0 416px;
+}
+.rp-pair {
+  display: flex;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+}
+.rp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  width: 483px;
+  margin: 0;
+}
+.rp-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 16px;
+}
+.rp-panel-title {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+.rp-panel-meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+
+.rp-lower {
+  display: flex;
+  gap: var(--spacing-1);
+  flex: 1 1 0;
+  min-height: 0;
+}
+.rp-metrics {
+  flex: 1 1 0;
+}
+.rp-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  flex-shrink: 0;
+  width: 420px;
+}
+.rp-rounds {
+  flex-shrink: 0;
+}
+.rp-estimate {
+  flex: 1 1 0;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────── */
+.rp-table {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 12px 12px;
+}
+.rp-tr {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 32px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.rp-tr.is-last {
+  border-bottom: 0;
+}
+.rp-th {
+  height: 28px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.rp-tr-noted {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  height: auto;
+  padding-block: var(--spacing-2);
+}
+.rp-tr-line {
+  display: flex;
+  align-items: center;
+  height: 16px;
+}
+.rp-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.rp-c-name {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.rp-th .rp-c-name {
+  color: var(--color-text-tertiary);
+}
+.rp-c-name.is-primary {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+.rp-c-num {
+  flex-shrink: 0;
+  width: 56px;
+  text-align: right;
+  color: var(--color-text-primary);
+}
+.rp-c-num.is-before {
+  color: var(--color-text-tertiary);
+}
+.rp-th .rp-c-num,
+.rp-th .rp-c-change,
+.rp-th .rp-c-count {
+  color: var(--color-text-tertiary);
+}
+.rp-c-unit {
+  flex-shrink: 0;
+  width: 56px;
+  padding-left: var(--spacing-2);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.rp-c-change {
+  flex-shrink: 0;
+  width: 64px;
+  text-align: right;
+  color: var(--color-text-primary);
+}
+.rp-c-span {
+  flex-shrink: 0;
+  width: 232px;
+  text-align: right;
+  color: var(--color-text-primary);
+}
+.rp-c-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 104px;
+  padding-left: 20px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.rp-th .rp-c-status {
+  color: var(--color-text-tertiary);
+}
+.rp-c-status.is-good {
+  color: var(--color-signal-good);
+}
+.rp-c-count {
+  flex-shrink: 0;
+  width: 64px;
+  text-align: right;
+  color: var(--color-text-primary);
+}
+.rp-c-count.is-wide {
+  width: 84px;
+}
+.rp-layer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-primary);
+}
+.rp-layer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.rp-rounds-table .rp-tr.is-last {
+  border-bottom: 0;
+}
+.rp-rounds-note {
+  padding-top: var(--spacing-2);
+  color: var(--color-text-secondary);
+}
+
+/* ── Partial / one round states ──────────────────────────────────────── */
+.rp-partial .rp-table {
+  padding-top: 0;
+}
+.rp-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin: 12px 12px 4px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--color-signal-warn);
+  background: color-mix(in srgb, var(--color-signal-warn) 12%, var(--color-surface-panel));
+  color: var(--color-text-primary);
+}
+.rp-partial-value {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.rp-tr.is-skipped .rp-c-name,
+.rp-tr.is-skipped .rp-partial-value {
+  color: var(--color-text-disabled);
+}
+.rp-one {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+.rp-one-hero {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+  padding-bottom: var(--spacing-2);
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.rp-one-before {
+  color: var(--color-text-tertiary);
+}
+.rp-one-after {
+  font-size: 24px;
+  line-height: 28px;
+}
+.rp-one-label {
+  color: var(--color-text-secondary);
+}
+.rp-one-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  height: 28px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.rp-one-layer {
+  width: 150px;
+}
+.rp-one-strategy {
+  flex: 1 1 0;
+  color: var(--color-text-secondary);
+}
+.rp-one-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.rp-one-status.is-good {
+  color: var(--color-signal-good);
+}
+.rp-one-status.is-bad {
+  color: var(--color-signal-bad);
+}
+
+/* ── Estimate ────────────────────────────────────────────────────────── */
+.rp-estimate-cards {
+  display: flex;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+}
+.rp-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  flex: 1 1 0;
+  padding: var(--spacing-3);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+.rp-stat-label {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.rp-stat-values {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+}
+.rp-stat-before {
+  color: var(--color-text-tertiary);
+}
+.rp-stat-after {
+  color: var(--color-text-primary);
+  font-size: 24px;
+  line-height: 28px;
+}
+.rp-estimate-note {
+  padding: 0 12px 12px;
+  color: var(--color-text-secondary);
+}
+
+/* ── Inspector ───────────────────────────────────────────────────────── */
+.rp-mode-line {
+  flex-shrink: 0;
+  padding: 16px 16px 0;
+  color: var(--color-text-primary);
+}
+.rp-insp-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.rp-export {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  flex-shrink: 0;
+  padding: 12px 16px 16px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.rp-export-text {
+  color: var(--color-text-secondary);
+}
+.rp-facts-note {
+  padding-top: var(--spacing-2);
+  color: var(--color-text-secondary);
+}
+.rp-left-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 28px;
+  border-top: 1px solid var(--color-surface-app);
+}
+.rp-left-word {
+  flex-shrink: 0;
+  width: 56px;
+  color: var(--color-signal-info);
+}
+.rp-left-title {
+  flex: 1 1 0;
+  color: var(--color-text-primary);
+}
+.rp-left-rule {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.rp-why {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 28px;
+  border-top: 1px solid var(--color-surface-app);
+  color: var(--color-text-secondary);
+}
+.rp-why-value {
+  color: var(--color-text-primary);
+}
+.rp-error-head,
+.rp-loading-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rp-loading-line {
+  color: var(--color-text-primary);
+}
+.rp-loading-line .mono {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.rp-error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.rp-error-word {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-signal-bad);
+}
+.rp-error-code {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.rp-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rp-empty-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 20px;
+}
+.rp-offline {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--color-text-primary);
+}
+.rp-offline-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-signal-warn);
+  flex-shrink: 0;
+}
+
+/* ── QASM diff tab ───────────────────────────────────────────────────── */
+.qd {
+  display: flex;
+  gap: var(--spacing-3);
+  flex: 1 1 0;
+  min-height: 0;
+  padding: var(--spacing-3);
+}
+.qd-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  width: 300px;
+}
+.qd-list-head {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 16px;
+}
+.qd-fix {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+.qd-fix:hover {
+  border-color: var(--color-border-control);
+}
+.qd-fix.is-selected {
+  border-color: var(--color-signal-select);
+}
+.qd-fix-top {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.qd-fix-n {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.qd-fix-strategy {
+  flex: 1 1 0;
+  color: var(--color-text-primary);
+}
+.qd-fix-delta {
+  color: var(--color-signal-good);
+}
+.qd-fix-meta {
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.qd-code {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--color-surface-inset);
+}
+.qd-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding-inline: var(--spacing-3);
+  border-bottom: 1px solid var(--color-surface-app);
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+}
+.qd-code-meta {
+  color: var(--color-text-tertiary);
+}
+.qd-note {
+  padding: 10px 12px;
+  color: var(--color-text-secondary);
+}
+.qd-lines {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: 20px;
+}
+.qd-line {
+  display: flex;
+  border-left: 2px solid transparent;
+}
+.qd-line.is-del {
+  border-left-color: var(--color-signal-bad);
+  background: color-mix(in srgb, var(--color-signal-bad) 10%, transparent);
+}
+.qd-line.is-add {
+  border-left-color: var(--color-signal-good);
+  background: color-mix(in srgb, var(--color-signal-good) 8%, transparent);
+}
+.qd-gutter {
+  flex-shrink: 0;
+  width: 34px;
+  text-align: right;
+  color: var(--color-text-disabled);
+}
+.qd-sign {
+  flex-shrink: 0;
+  width: 22px;
+  text-align: center;
+  color: var(--color-text-tertiary);
+}
+.qd-line.is-del .qd-sign {
+  color: var(--color-signal-bad);
+}
+.qd-line.is-add .qd-sign {
+  color: var(--color-signal-good);
+}
+.qd-text {
+  color: var(--color-text-primary);
+}
+.qd-line.is-del .qd-text {
+  color: var(--color-text-secondary);
+}
+
+/* ── Motion · M5 report lands ────────────────────────────────────────── */
+.rp-content.is-arriving .rp-panel-original {
+  animation: rp-split-left var(--motion-slow) var(--ease-standard) both;
+}
+.rp-content.is-arriving .rp-panel-final {
+  animation: rp-split-right var(--motion-slow) var(--ease-standard) both;
+}
+.rp-content.is-arriving .circuit-region,
+.rp-content.is-arriving .circuit-region-tag {
+  animation: rp-region var(--motion-base) var(--ease-enter) both;
+  animation-delay: var(--motion-fast);
+}
+.rp-content.is-arriving .rp-arrive {
+  animation: rp-rise var(--motion-base) var(--ease-enter) both;
+  animation-delay: calc(var(--motion-slow) + var(--i, 0) * var(--stagger));
+}
+
+/* Both start where one circuit sat, centered, then part to their columns (247.5 = half of 483 + 12). */
+@keyframes rp-split-left {
+  from {
+    transform: translateX(247.5px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+@keyframes rp-split-right {
+  from {
+    transform: translateX(-247.5px);
+  }
+}
+@keyframes rp-region {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes rp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-content.is-arriving .rp-panel-original,
+  .rp-content.is-arriving .rp-panel-final,
+  .rp-content.is-arriving .rp-arrive {
+    animation-name: rp-region;
+  }
+}
+
+/* Tiles that size to their content (the shared tile body grows by default). */
+.rp-rounds > .tile-body,
+.rp-metrics > .tile-body {
+  flex: 0 0 auto;
+}

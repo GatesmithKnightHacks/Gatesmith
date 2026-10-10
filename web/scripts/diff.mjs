@@ -9,6 +9,7 @@
  * and prints the share of pixels that differ.
  */
 import { chromium } from '@playwright/test'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -43,6 +44,8 @@ for (const id of ids) {
     console.log(`${id}: no design export`)
     continue
   }
+  // Paper exports are Display P3; compare in sRGB like the browser.
+  execFileSync('python3', [path.join(root, 'scripts', 'srgb.py'), designPath], { stdio: 'inherit' })
   const a = PNG.sync.read(fs.readFileSync(designPath))
   const b = PNG.sync.read(fs.readFileSync(actualPath))
   const { width, height } = a

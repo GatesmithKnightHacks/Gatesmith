@@ -1,0 +1,133 @@
+/* Shared by S-00 to S-03 (intake group). */
+
+/* Data table rows: label lane, fixed value + unit slots. */
+.ik-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 28px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.ik-row.is-last {
+  border-bottom: 0;
+}
+.ik-row-label {
+  flex: 1 1 0;
+  color: var(--color-text-secondary);
+}
+.ik-row-head {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.ik-row-value {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+.ik-row-unit {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  width: 40px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+}
+
+/* Inspector rows with a rule above and below (Resources, This machine). */
+.ik-insp-rows {
+  display: flex;
+  flex-direction: column;
+}
+.ik-insp-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 28px;
+  border-top: 1px solid var(--color-surface-app);
+}
+.ik-insp-row:last-child {
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.ik-insp-row-label {
+  flex: 1 1 0;
+  color: var(--color-text-secondary);
+}
+.ik-insp-row-value {
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.ik-meta-mono {
+  font-family: var(--font-mono);
+}
+
+/* Circuit canvas tile body */
+.ik-canvas {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  background: var(--color-surface-canvas);
+}
+
+/* QAOA circuit drawing (S-02, S-03) */
+.qc {
+  position: relative;
+  flex-shrink: 0;
+  align-self: stretch;
+  height: 352px;
+  overflow: clip;
+}
+.qc-wire {
+  position: absolute;
+  left: 28px;
+  right: 8px;
+  height: 2px;
+  background: #6ed2b94d;
+}
+.qc-label {
+  position: absolute;
+  left: 6px;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: 12px;
+}
+.qc-box {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-text-secondary);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 12px;
+}
+.qc-box.is-muted {
+  border-color: var(--color-border-control);
+}
+.qc-line {
+  position: absolute;
+  width: 1.5px;
+  height: 28px;
+  background: var(--color-text-primary);
+}
+.qc-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  border: 1.5px solid var(--color-text-primary);
+  background: var(--color-text-primary);
+}
+.qc-target {
+  position: absolute;
+}
