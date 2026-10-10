@@ -120,5 +120,5 @@
   /* ── Layout ─────────────────────────────────────────────────────── */
   --container-rail: 50px; /* six 20px icons on a 78px pitch */
   --container-topbar: 52px; /* plus a 2px ground-colored bottom border */
-  --container-inspector: 304px;
+  --container-inspector: 380px; /* mode tabs, primary action, collapsible sections */
 }
