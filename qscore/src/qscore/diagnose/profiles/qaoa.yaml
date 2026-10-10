@@ -1,0 +1,5 @@
+profile: qaoa
+overrides:
+  D03: {min_ops: 4}
+off:
+  D05: QAOA cost layers are diagonal, not Clifford blocks worth resynthesizing

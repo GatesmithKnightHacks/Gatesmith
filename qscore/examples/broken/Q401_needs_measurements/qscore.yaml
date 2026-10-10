@@ -1,0 +1,8 @@
+schema: qscore.project/v0.2
+project: {name: broken, root: .}
+circuits:
+  - id: bell
+    source: {qasm: bell.qasm}
+    invariants:
+      intent: known_output
+      task: {bitstring: '00', min_probability: 0.4, shots: 1000}

@@ -1,0 +1,13 @@
+{
+  "exit_code": 2,
+  "issues": [
+    {
+      "code": "Q206",
+      "item": "bell",
+      "file": "qscore.yaml",
+      "line": 6,
+      "column": 14,
+      "field": "circuits[0].target.backend"
+    }
+  ]
+}

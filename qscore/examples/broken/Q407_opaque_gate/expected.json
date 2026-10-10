@@ -1,0 +1,13 @@
+{
+  "exit_code": 2,
+  "issues": [
+    {
+      "code": "Q407",
+      "item": "bell",
+      "file": "qscore.yaml",
+      "line": 5,
+      "column": 5,
+      "field": "circuits[0].source"
+    }
+  ]
+}

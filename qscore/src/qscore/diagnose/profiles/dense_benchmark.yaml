@@ -1,0 +1,4 @@
+profile: dense_benchmark
+overrides:
+  D01: {routing_overhead_min: 0.5}
+off: {}

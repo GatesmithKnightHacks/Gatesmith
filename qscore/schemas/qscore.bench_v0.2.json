@@ -1,0 +1,365 @@
+{
+  "$defs": {
+    "BenchRow": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "circuit": {
+          "title": "Circuit",
+          "type": "string"
+        },
+        "device": {
+          "enum": [
+            "cpu",
+            "gpu"
+          ],
+          "title": "Device",
+          "type": "string"
+        },
+        "fusion_max_qubit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fusion Max Qubit"
+        },
+        "median_s": {
+          "minimum": 0,
+          "title": "Median S",
+          "type": "number"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "p10_s": {
+          "minimum": 0,
+          "title": "P10 S",
+          "type": "number"
+        },
+        "p90_s": {
+          "minimum": 0,
+          "title": "P90 S",
+          "type": "number"
+        },
+        "precision": {
+          "enum": [
+            "single",
+            "double"
+          ],
+          "title": "Precision",
+          "type": "string"
+        },
+        "qubits": {
+          "minimum": 1,
+          "title": "Qubits",
+          "type": "integer"
+        },
+        "throughput": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Throughput"
+        }
+      },
+      "required": [
+        "circuit",
+        "qubits",
+        "method",
+        "precision",
+        "fusion_max_qubit",
+        "device",
+        "median_s",
+        "p10_s",
+        "p90_s"
+      ],
+      "title": "BenchRow",
+      "type": "object"
+    },
+    "GpuInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "arch": {
+          "title": "Arch",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "arch"
+      ],
+      "title": "GpuInfo",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Versions, seeds and settings behind a result (specs/04-contracts.md §3).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "aer_build": {
+          "title": "Aer Build",
+          "type": "string"
+        },
+        "fallbacks_enabled": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fallbacks Enabled",
+          "type": "array"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Finished At"
+        },
+        "git_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Git Commit"
+        },
+        "git_dirty": {
+          "title": "Git Dirty",
+          "type": "boolean"
+        },
+        "gpu": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GpuInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hardware_profile_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hardware Profile Id"
+        },
+        "lock_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lock Sha256"
+        },
+        "mqt_qcec": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mqt Qcec"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "python": {
+          "title": "Python",
+          "type": "string"
+        },
+        "qiskit": {
+          "title": "Qiskit",
+          "type": "string"
+        },
+        "qiskit_aer": {
+          "title": "Qiskit Aer",
+          "type": "string"
+        },
+        "qscore": {
+          "title": "Qscore",
+          "type": "string"
+        },
+        "rocm": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rocm"
+        },
+        "seeds": {
+          "$ref": "#/$defs/SeedInfo"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "thresholds_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Thresholds Sha256"
+        }
+      },
+      "required": [
+        "qscore",
+        "git_commit",
+        "git_dirty",
+        "lock_sha256",
+        "python",
+        "qiskit",
+        "qiskit_aer",
+        "aer_build",
+        "mqt_qcec",
+        "profile",
+        "fallbacks_enabled",
+        "seeds",
+        "thresholds_sha256",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "SeedInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "simulator_base": {
+          "title": "Simulator Base",
+          "type": "integer"
+        },
+        "transpiler": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Transpiler",
+          "type": "array"
+        }
+      },
+      "required": [
+        "transpiler",
+        "simulator_base"
+      ],
+      "title": "SeedInfo",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.bench/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "crossover": {
+      "additionalProperties": true,
+      "title": "Crossover",
+      "type": "object"
+    },
+    "devices": {
+      "items": {
+        "enum": [
+          "cpu",
+          "gpu"
+        ],
+        "type": "string"
+      },
+      "title": "Devices",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "reps": {
+      "minimum": 1,
+      "title": "Reps",
+      "type": "integer"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/BenchRow"
+      },
+      "title": "Rows",
+      "type": "array"
+    },
+    "schema": {
+      "const": "qscore.bench/v0.2",
+      "title": "Schema",
+      "type": "string"
+    },
+    "suite": {
+      "title": "Suite",
+      "type": "string"
+    },
+    "warmup": {
+      "minimum": 0,
+      "title": "Warmup",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema",
+    "suite",
+    "devices",
+    "reps",
+    "warmup",
+    "rows",
+    "provenance"
+  ],
+  "title": "BenchResult",
+  "type": "object"
+}

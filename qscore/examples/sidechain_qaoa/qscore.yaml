@@ -1,0 +1,23 @@
+schema: qscore.project/v0.2
+project:
+  name: sidechain-packing
+  root: .
+circuits:
+  - id: packing_qaoa_p2
+    source:
+      builder: src/packing/qaoa.py::build_qaoa
+      args: {n_residues: 4, rotamers: 3, p: 2}
+      parameters: {file: params/qaoa_p2.json}
+    size_sweep: {arg: n_residues, values: [2, 3, 4, 5, 6]}
+    invariants:
+      intent: expectation
+      global_phase: ignore
+      final_permutation: allowed
+      task: {observable: hamiltonians/packing_4.json, tolerance: 0.02, shots: 4000}
+      reliability: {min_vs_baseline: 1.0}
+    permitted:
+      changes: [layout, routing, commuting_reorder, block_resynthesis]
+      ancillas: {add: 0, reuse: true}
+      approximation: none
+      scope: region
+    diagnose: {profile: qaoa}

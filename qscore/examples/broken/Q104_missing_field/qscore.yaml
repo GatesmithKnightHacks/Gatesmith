@@ -1,0 +1,5 @@
+schema: qscore.project/v0.2
+project: {name: broken, root: .}
+circuits:
+  - id: bell
+    invariants: {intent: exact_unitary}

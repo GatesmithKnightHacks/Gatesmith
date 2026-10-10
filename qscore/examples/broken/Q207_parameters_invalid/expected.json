@@ -1,0 +1,13 @@
+{
+  "exit_code": 2,
+  "issues": [
+    {
+      "code": "Q207",
+      "item": "chain",
+      "file": "qscore.yaml",
+      "line": 5,
+      "column": 58,
+      "field": "circuits[0].source.parameters"
+    }
+  ]
+}

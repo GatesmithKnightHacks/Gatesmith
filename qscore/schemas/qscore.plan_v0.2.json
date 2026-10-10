@@ -1,0 +1,205 @@
+{
+  "$defs": {
+    "ItemPlan": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "item_id": {
+          "title": "Item Id",
+          "type": "string"
+        },
+        "metrics": {
+          "items": {
+            "$ref": "#/$defs/MetricPlan"
+          },
+          "title": "Metrics",
+          "type": "array"
+        },
+        "totals": {
+          "$ref": "#/$defs/PlanTotals"
+        }
+      },
+      "required": [
+        "item_id",
+        "metrics",
+        "totals"
+      ],
+      "title": "ItemPlan",
+      "type": "object"
+    },
+    "MetricPlan": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "device": {
+          "enum": [
+            "cpu",
+            "gpu"
+          ],
+          "title": "Device",
+          "type": "string"
+        },
+        "est_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est Bytes"
+        },
+        "est_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Est Seconds"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "enum": [
+                "single",
+                "double"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precision"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "skipped",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "device",
+        "status"
+      ],
+      "title": "MetricPlan",
+      "type": "object"
+    },
+    "PlanTotals": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "est_bytes": {
+          "minimum": 0,
+          "title": "Est Bytes",
+          "type": "integer"
+        },
+        "est_seconds": {
+          "minimum": 0,
+          "title": "Est Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "est_bytes",
+        "est_seconds"
+      ],
+      "title": "PlanTotals",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.plan/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "hardware_profile_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Hardware Profile Id"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/ItemPlan"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "memory_mode": {
+      "enum": [
+        "model_loaded",
+        "exclusive"
+      ],
+      "title": "Memory Mode",
+      "type": "string"
+    },
+    "schema": {
+      "const": "qscore.plan/v0.2",
+      "title": "Schema",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "items",
+    "memory_mode",
+    "hardware_profile_id"
+  ],
+  "title": "Plan",
+  "type": "object"
+}

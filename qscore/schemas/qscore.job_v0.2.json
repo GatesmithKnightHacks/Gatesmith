@@ -1,0 +1,413 @@
+{
+  "$defs": {
+    "BenchOptions": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "devices": {
+          "items": {
+            "enum": [
+              "cpu",
+              "gpu"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Devices",
+          "type": "array"
+        },
+        "reps": {
+          "minimum": 1,
+          "title": "Reps",
+          "type": "integer"
+        },
+        "suite": {
+          "title": "Suite",
+          "type": "string"
+        }
+      },
+      "required": [
+        "suite",
+        "devices",
+        "reps"
+      ],
+      "title": "BenchOptions",
+      "type": "object"
+    },
+    "ConformOptions": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "fixtures": {
+          "default": "default",
+          "title": "Fixtures",
+          "type": "string"
+        },
+        "layer": {
+          "title": "Layer",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "title": "ConformOptions",
+      "type": "object"
+    },
+    "ImproveOptions": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "layers": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        },
+        "max_proposals": {
+          "minimum": 1,
+          "title": "Max Proposals",
+          "type": "integer"
+        },
+        "rounds": {
+          "minimum": 1,
+          "title": "Rounds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "layers",
+        "rounds",
+        "max_proposals"
+      ],
+      "title": "ImproveOptions",
+      "type": "object"
+    },
+    "JobBudget": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "gpu_time_s": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gpu Time S"
+        },
+        "wall_time_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wall Time S"
+        }
+      },
+      "title": "JobBudget",
+      "type": "object"
+    },
+    "JobOptions": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "device": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "cpu",
+            "gpu"
+          ],
+          "title": "Device",
+          "type": "string"
+        },
+        "groups": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/MetricGroup"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Groups"
+        },
+        "metrics": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metrics"
+        },
+        "no_cache": {
+          "default": false,
+          "title": "No Cache",
+          "type": "boolean"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "enum": [
+                "single",
+                "double"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precision"
+        },
+        "seeds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seeds"
+        },
+        "skip": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Skip",
+          "type": "array"
+        }
+      },
+      "title": "JobOptions",
+      "type": "object"
+    },
+    "JobRequirements": {
+      "additionalProperties": false,
+      "description": "Boolean capability flags only, so matching is JSONB containment (§7).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "aer_gpu": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Aer Gpu"
+        },
+        "gpu": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gpu"
+        },
+        "hub_write": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hub Write"
+        },
+        "local_model": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local Model"
+        },
+        "neon_write": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Neon Write"
+        }
+      },
+      "title": "JobRequirements",
+      "type": "object"
+    },
+    "MetricGroup": {
+      "enum": [
+        "resources",
+        "hardware",
+        "opportunities",
+        "research"
+      ],
+      "title": "MetricGroup",
+      "type": "string"
+    }
+  },
+  "$id": "qscore.job/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "bench": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BenchOptions"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "budget": {
+      "$ref": "#/$defs/JobBudget"
+    },
+    "conform": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConformOptions"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "improve": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ImproveOptions"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "items": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "kind": {
+      "enum": [
+        "validate",
+        "score",
+        "improve",
+        "bench",
+        "conform",
+        "profile"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "manifest_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Manifest Sha256"
+    },
+    "options": {
+      "$ref": "#/$defs/JobOptions"
+    },
+    "project": {
+      "title": "Project",
+      "type": "string"
+    },
+    "requires": {
+      "$ref": "#/$defs/JobRequirements"
+    },
+    "schema": {
+      "const": "qscore.job/v0.2",
+      "title": "Schema",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "kind",
+    "project"
+  ],
+  "title": "JobSpec",
+  "type": "object"
+}

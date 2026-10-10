@@ -1,0 +1,13 @@
+{
+  "exit_code": 2,
+  "issues": [
+    {
+      "code": "Q103",
+      "item": "Bell Pair",
+      "file": "qscore.yaml",
+      "line": 4,
+      "column": 5,
+      "field": "circuits[0].id"
+    }
+  ]
+}

@@ -1,0 +1,790 @@
+{
+  "$defs": {
+    "AttemptCompute": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "cpu_s": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cpu S"
+        },
+        "device": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Device"
+        },
+        "gpu_s": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gpu S"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Ms"
+        },
+        "tokens": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tokens"
+        }
+      },
+      "title": "AttemptCompute",
+      "type": "object"
+    },
+    "AttemptFinding": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Region"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rule": {
+          "pattern": "^D\\d{2}$",
+          "title": "Rule",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule"
+      ],
+      "title": "AttemptFinding",
+      "type": "object"
+    },
+    "AttemptItem": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "item_sha256": {
+          "title": "Item Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "item_sha256"
+      ],
+      "title": "AttemptItem",
+      "type": "object"
+    },
+    "BeforeAfter": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "after": {
+          "title": "After",
+          "type": "number"
+        },
+        "before": {
+          "title": "Before",
+          "type": "number"
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ],
+      "title": "BeforeAfter",
+      "type": "object"
+    },
+    "ConstraintCheck": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "after": {
+          "title": "After",
+          "type": "number"
+        },
+        "before": {
+          "title": "Before",
+          "type": "number"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "metric",
+        "ok",
+        "before",
+        "after"
+      ],
+      "title": "ConstraintCheck",
+      "type": "object"
+    },
+    "FallbackUse": {
+      "additionalProperties": false,
+      "description": "One activation of a planned fallback (specs/17-fallbacks.md §1).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^FB-\\d{2}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "scope": {
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reason",
+        "at",
+        "scope"
+      ],
+      "title": "FallbackUse",
+      "type": "object"
+    },
+    "GpuInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "arch": {
+          "title": "Arch",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "arch"
+      ],
+      "title": "GpuInfo",
+      "type": "object"
+    },
+    "LayerInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "LayerInfo",
+      "type": "object"
+    },
+    "PermittedCheck": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "violations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Violations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "title": "PermittedCheck",
+      "type": "object"
+    },
+    "Prediction": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "direction": {
+          "enum": [
+            "decrease",
+            "increase"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "estimate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimate"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "direction"
+      ],
+      "title": "Prediction",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Versions, seeds and settings behind a result (specs/04-contracts.md §3).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "aer_build": {
+          "title": "Aer Build",
+          "type": "string"
+        },
+        "fallbacks_enabled": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fallbacks Enabled",
+          "type": "array"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Finished At"
+        },
+        "git_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Git Commit"
+        },
+        "git_dirty": {
+          "title": "Git Dirty",
+          "type": "boolean"
+        },
+        "gpu": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GpuInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hardware_profile_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hardware Profile Id"
+        },
+        "lock_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lock Sha256"
+        },
+        "mqt_qcec": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mqt Qcec"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "python": {
+          "title": "Python",
+          "type": "string"
+        },
+        "qiskit": {
+          "title": "Qiskit",
+          "type": "string"
+        },
+        "qiskit_aer": {
+          "title": "Qiskit Aer",
+          "type": "string"
+        },
+        "qscore": {
+          "title": "Qscore",
+          "type": "string"
+        },
+        "rocm": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rocm"
+        },
+        "seeds": {
+          "$ref": "#/$defs/SeedInfo"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "thresholds_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Thresholds Sha256"
+        }
+      },
+      "required": [
+        "qscore",
+        "git_commit",
+        "git_dirty",
+        "lock_sha256",
+        "python",
+        "qiskit",
+        "qiskit_aer",
+        "aer_build",
+        "mqt_qcec",
+        "profile",
+        "fallbacks_enabled",
+        "seeds",
+        "thresholds_sha256",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Region": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "gate_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Gate Indices",
+          "type": "array"
+        },
+        "layers": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Layers",
+          "type": "array"
+        },
+        "qubits": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Qubits",
+          "type": "array"
+        },
+        "scope": {
+          "enum": [
+            "logical",
+            "compiled"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "qubits",
+        "layers"
+      ],
+      "title": "Region",
+      "type": "object"
+    },
+    "SeedInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "simulator_base": {
+          "title": "Simulator Base",
+          "type": "integer"
+        },
+        "transpiler": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Transpiler",
+          "type": "array"
+        }
+      },
+      "required": [
+        "transpiler",
+        "simulator_base"
+      ],
+      "title": "SeedInfo",
+      "type": "object"
+    },
+    "VerificationResult": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "evidence": {
+          "additionalProperties": true,
+          "title": "Evidence",
+          "type": "object"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/VerificationStatus"
+        },
+        "time_s": {
+          "minimum": 0,
+          "title": "Time S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "method",
+        "status",
+        "time_s"
+      ],
+      "title": "VerificationResult",
+      "type": "object"
+    },
+    "VerificationStatus": {
+      "enum": [
+        "passed",
+        "failed",
+        "inconclusive",
+        "unsupported"
+      ],
+      "title": "VerificationStatus",
+      "type": "string"
+    }
+  },
+  "$id": "qscore.attempt/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "attempt_id": {
+      "format": "uuid",
+      "title": "Attempt Id",
+      "type": "string"
+    },
+    "compute": {
+      "$ref": "#/$defs/AttemptCompute"
+    },
+    "constraints": {
+      "items": {
+        "$ref": "#/$defs/ConstraintCheck"
+      },
+      "title": "Constraints",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "accepted",
+        "rejected",
+        "inconclusive",
+        "invalid"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "decision_reason": {
+      "title": "Decision Reason",
+      "type": "string"
+    },
+    "fallbacks_used": {
+      "items": {
+        "$ref": "#/$defs/FallbackUse"
+      },
+      "title": "Fallbacks Used",
+      "type": "array"
+    },
+    "finding": {
+      "$ref": "#/$defs/AttemptFinding"
+    },
+    "item": {
+      "$ref": "#/$defs/AttemptItem"
+    },
+    "job_id": {
+      "format": "uuid",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "layer": {
+      "$ref": "#/$defs/LayerInfo"
+    },
+    "measured": {
+      "additionalProperties": {
+        "$ref": "#/$defs/BeforeAfter"
+      },
+      "title": "Measured",
+      "type": "object"
+    },
+    "parse_ok": {
+      "title": "Parse Ok",
+      "type": "boolean"
+    },
+    "permitted_check": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PermittedCheck"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "prediction": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Prediction"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "proposal_sha256": {
+      "title": "Proposal Sha256",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    },
+    "round": {
+      "minimum": 0,
+      "title": "Round",
+      "type": "integer"
+    },
+    "schema": {
+      "const": "qscore.attempt/v0.2",
+      "title": "Schema",
+      "type": "string"
+    },
+    "strategy": {
+      "title": "Strategy",
+      "type": "string"
+    },
+    "verification": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VerificationResult"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "schema",
+    "attempt_id",
+    "job_id",
+    "round",
+    "item",
+    "request_id",
+    "finding",
+    "layer",
+    "strategy",
+    "proposal_sha256",
+    "parse_ok",
+    "decision",
+    "decision_reason",
+    "provenance",
+    "created_at"
+  ],
+  "title": "AttemptRecord",
+  "type": "object"
+}

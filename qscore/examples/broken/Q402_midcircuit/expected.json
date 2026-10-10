@@ -1,0 +1,13 @@
+{
+  "exit_code": 2,
+  "issues": [
+    {
+      "code": "Q402",
+      "item": "bell",
+      "file": "qscore.yaml",
+      "line": 6,
+      "column": 18,
+      "field": "circuits[0].invariants.intent"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+schema: qscore.project/v0.2
+project: {name: broken, root: .}
+circuits:
+  - id: bell
+    source: {qasm: bell.qasm}
+    invariants: {intent: reversible_function, final_permutation: allowed}

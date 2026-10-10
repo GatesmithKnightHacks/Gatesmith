@@ -1,0 +1,101 @@
+{
+  "$id": "qscore.event/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "data": {
+      "additionalProperties": true,
+      "title": "Data",
+      "type": "object"
+    },
+    "item_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Item Id"
+    },
+    "job_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Job Id"
+    },
+    "kind": {
+      "enum": [
+        "run_started",
+        "stage_started",
+        "stage_finished",
+        "item_started",
+        "item_finished",
+        "metric_done",
+        "warning",
+        "error",
+        "fallback_used",
+        "telemetry",
+        "run_finished"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema": {
+      "const": "qscore.event/v0.2",
+      "title": "Schema",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "stage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stage"
+    }
+  },
+  "required": [
+    "schema",
+    "run_id",
+    "seq",
+    "at",
+    "kind",
+    "message"
+  ],
+  "title": "Event",
+  "type": "object"
+}
