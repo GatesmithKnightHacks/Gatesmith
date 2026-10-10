@@ -65,14 +65,14 @@ export function StatusIcon({ kind, size = 10 }: { kind: StatusWord; size?: numbe
     case 'resolved':
       return (
         <svg {...s}>
-          <path d="M2.5 7.5l3 3 6-7" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M3 7.5l2.5 2.5L11 4.5" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )
     case 'failed':
     case 'rejected':
       return (
         <svg {...s}>
-          <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       )
     case 'inconclusive':

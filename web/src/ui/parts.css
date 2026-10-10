@@ -297,12 +297,13 @@
   background: var(--color-text-secondary);
   transition: transform var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard);
 }
+/* On is white with a dark knob: mint stays reserved for the one primary action. */
 .switch.is-on {
-  background: var(--color-action-primary);
+  background: var(--color-white);
 }
 .switch.is-on .switch-knob {
   transform: translateX(12px);
-  background: var(--color-text-on-accent);
+  background: var(--color-surface-app);
 }
 
 /* ── Rows ────────────────────────────────────────────────────────────── */
