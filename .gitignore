@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# qscore local state (cache, runs, scorecards, spool) — results go to Neon/Hub
+.qscore/
+qscore/runs/
+qscore/scorecards/
+
+# Secrets and large artifacts (R8.3, R10)
+.env
+.env.*
+*.whl
+*.safetensors
+*.gguf

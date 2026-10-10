@@ -1,0 +1,10 @@
+schema: qscore.project/v0.2
+project:
+  name: sbox-oracle
+  root: .
+circuits:
+  - id: sbox_oracle
+    source: {qasm: circuits/sbox_layer_4x.qasm}     # 4 PRESENT S-boxes on 16 bits + 4 ancillas = 20 qubits
+    invariants: {intent: reversible_function, final_permutation: forbidden}
+    objective: {primary: toffoli_count, direction: minimize}
+    permitted: {changes: [reversible_rewrite], ancillas: {add: 0, reuse: true}}

@@ -1,0 +1,292 @@
+{
+  "$defs": {
+    "AerInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "build": {
+          "enum": [
+            "cpu",
+            "rocm"
+          ],
+          "title": "Build",
+          "type": "string"
+        },
+        "gpu_available": {
+          "title": "Gpu Available",
+          "type": "boolean"
+        },
+        "options_supported": {
+          "$ref": "#/$defs/AerOptionsSupported"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "build",
+        "gpu_available",
+        "options_supported"
+      ],
+      "title": "AerInfo",
+      "type": "object"
+    },
+    "AerOptionsSupported": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "batched_shots_gpu": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Batched Shots Gpu"
+        },
+        "fusion": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fusion"
+        },
+        "max_parallel_experiments": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Max Parallel Experiments"
+        },
+        "runtime_parameter_bind_enable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Runtime Parameter Bind Enable"
+        }
+      },
+      "required": [
+        "batched_shots_gpu",
+        "runtime_parameter_bind_enable",
+        "fusion",
+        "max_parallel_experiments"
+      ],
+      "title": "AerOptionsSupported",
+      "type": "object"
+    },
+    "CpuInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "cores": {
+          "minimum": 1,
+          "title": "Cores",
+          "type": "integer"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "ram_gib": {
+          "exclusiveMinimum": 0,
+          "title": "Ram Gib",
+          "type": "number"
+        }
+      },
+      "required": [
+        "model",
+        "cores",
+        "ram_gib"
+      ],
+      "title": "CpuInfo",
+      "type": "object"
+    },
+    "GpuProfile": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "arch": {
+          "title": "Arch",
+          "type": "string"
+        },
+        "driver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Driver"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "rocm": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rocm"
+        },
+        "vram_gib": {
+          "exclusiveMinimum": 0,
+          "title": "Vram Gib",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "arch",
+        "vram_gib",
+        "rocm",
+        "driver"
+      ],
+      "title": "GpuProfile",
+      "type": "object"
+    },
+    "PerPrecision": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "double": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Double"
+        },
+        "single": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Single"
+        }
+      },
+      "title": "PerPrecision",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.profile/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "aer": {
+      "$ref": "#/$defs/AerInfo"
+    },
+    "cache_knee_qubits": {
+      "$ref": "#/$defs/PerPrecision"
+    },
+    "cpu": {
+      "$ref": "#/$defs/CpuInfo"
+    },
+    "crossover_qubits": {
+      "$ref": "#/$defs/PerPrecision"
+    },
+    "fusion_best": {
+      "$ref": "#/$defs/PerPrecision"
+    },
+    "gpu": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GpuProfile"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "measured_at": {
+      "format": "date-time",
+      "title": "Measured At",
+      "type": "string"
+    },
+    "notes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+    },
+    "overhead_factor": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Overhead Factor"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "schema": {
+      "const": "qscore.profile/v0.2",
+      "title": "Schema",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "profile_id",
+    "measured_at",
+    "cpu",
+    "gpu",
+    "aer",
+    "crossover_qubits",
+    "overhead_factor",
+    "fusion_best",
+    "cache_knee_qubits"
+  ],
+  "title": "HardwareProfile",
+  "type": "object"
+}
