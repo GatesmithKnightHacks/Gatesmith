@@ -12,7 +12,7 @@ export type Job = {
   started: string
   duration: string
   result: string
-  day: 'today' | 'yesterday'
+  day: 'today' | 'yesterday' | 'earlier'
   worker?: string
   model?: string
   queued?: string
@@ -67,3 +67,12 @@ export function eventsFor(j: Job): { time: string; word: string; note?: string; 
   if (j.state === 'failed') return [...base, ...rest, { time: 'end', word: 'failed', note: j.result }]
   return [...base, ...rest, { time: 'end', word: 'done', note: j.result }]
 }
+
+/** Older runs, shown after Load earlier runs (the same runs the intake and export screens list). */
+export const EARLIER: Job[] = [
+  { id: '5a02·0371', item: 'packing_qaoa_p2', file: 'sidechain_qaoa.qasm', kind: 'score', state: 'done', started: '13:12', duration: '38 s', result: '44 gates · score only', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 13:12:04 · waited 1 s' },
+  { id: '4e77·0350', item: 'sbox_oracle', file: 'sbox_layer_4x.qasm', kind: 'score', state: 'done', started: '11:47', duration: '2 m 01 s', result: '118 gates · score only', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 11:47:30 · waited 2 s' },
+  { id: '4e70·0344', item: 'grover_5q', file: 'grover_5q.qasm', kind: 'score', state: 'done', started: '10:05', duration: '21 s', result: '18 gates · none open', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 10:05:12 · waited 1 s' },
+  { id: '4e6a·0339', item: 'qft_8', file: 'qft_8.qasm', kind: 'score', state: 'done', started: '09:40', duration: '52 s', result: '56 gates · 3 findings, 1 high', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 09:40:21 · waited 1 s' },
+  { id: '4e66·0331', item: 'vqe_h2_4q', file: 'vqe_h2_4q.qasm', kind: 'score', state: 'done', started: '09:12', duration: '19 s', result: '6 gates · 1 finding, info', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 09:12:47 · waited 1 s' },
+]

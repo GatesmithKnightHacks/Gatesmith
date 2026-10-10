@@ -133,8 +133,14 @@ export function S16Bench() {
       tabs={
         <TabStrip
           tabs={[
-            { id: 'a', label: 'sidechain_qaoa.qasm', active: !empty },
-            { id: 'b', label: 'sbox_oracle.qasm', active: empty },
+            { id: 'a', label: 'sidechain_qaoa.qasm', active: !empty, onClick: () => empty && navigate(ROUTES.bench) },
+            {
+              id: 'b',
+              label: 'sbox_oracle.qasm',
+              active: empty,
+              // no block in sbox_oracle fits the in-house model: that tab is the empty state
+              onClick: () => !empty && (window.location.hash = '#/bench?state=empty'),
+            },
           ]}
         />
       }

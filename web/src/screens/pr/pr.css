@@ -620,3 +620,130 @@
 .gh-side-text.gh-link {
   color: var(--gh-accent);
 }
+
+/* Edit title and the Code menu, as GitHub renders them in dark dimmed. */
+button.gh-btn {
+  cursor: pointer;
+  font-family: var(--gh-sans);
+}
+button.gh-btn:hover {
+  background: var(--gh-border);
+}
+.gh-title-edit {
+  align-items: center;
+  gap: 8px;
+  padding-block: 8px 7px;
+}
+.gh-title-input {
+  flex: 1 1 0;
+  height: 32px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--gh-border);
+  background: var(--gh-canvas);
+  color: var(--gh-fg);
+  font: 400 14px/20px var(--gh-sans);
+  outline: none;
+}
+.gh-title-input:focus {
+  border-color: var(--gh-accent);
+  box-shadow: inset 0 0 0 1px var(--gh-accent);
+}
+.gh-link-btn {
+  color: var(--gh-accent);
+  font: 400 14px/20px var(--gh-sans);
+  cursor: pointer;
+}
+.gh-menu-anchor {
+  position: relative;
+}
+.gh-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  width: 400px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--gh-border);
+  background: var(--gh-subtle);
+  box-shadow: 0 8px 24px #1c2128cc;
+  animation: gh-menu-in 140ms cubic-bezier(0, 0, 0, 1) both;
+}
+@keyframes gh-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.gh-menu-title {
+  color: var(--gh-fg);
+  font: 600 14px/20px var(--gh-sans);
+  padding-bottom: 8px;
+}
+.gh-menu-tabs {
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid var(--gh-border-muted);
+  margin-bottom: 12px;
+}
+.gh-menu-tab {
+  padding-bottom: 8px;
+  border-bottom: 2px solid transparent;
+  color: var(--gh-muted);
+  font: 400 14px/20px var(--gh-sans);
+  cursor: pointer;
+}
+.gh-menu-tab.is-active {
+  color: var(--gh-fg);
+  font-weight: 600;
+  border-bottom-color: #ec775c;
+}
+.gh-menu-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gh-menu-url input {
+  flex: 1 1 0;
+  height: 28px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--gh-border);
+  background: var(--gh-canvas);
+  color: var(--gh-fg);
+  font: 400 12px/20px var(--gh-mono);
+  outline: none;
+}
+.gh-menu-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.gh-menu-copy:hover {
+  background: var(--gh-border-muted);
+}
+.gh-menu-note {
+  padding: 8px 0 12px;
+  color: var(--gh-muted);
+  font: 400 12px/18px var(--gh-sans);
+}
+.gh-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--gh-border-muted);
+  color: var(--gh-fg);
+  font: 400 14px/20px var(--gh-sans);
+  cursor: pointer;
+}
+.gh-menu-item:hover {
+  background: var(--gh-border-muted);
+}

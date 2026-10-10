@@ -2,7 +2,7 @@
  * S-11 · PR comment (E1). A GitHub pull request in dark dimmed with the gatesmith bot's score comment.
  * It follows GitHub's own rendering, not the Gatesmith shell or tokens. Static by design (M6).
  */
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
 import { LogoBurst } from '../ui/icons'
 import './pr/pr.css'
@@ -58,19 +58,7 @@ export function S11PrComment() {
       </header>
 
       <section className="gh-pr-head">
-        <div className="gh-title-row">
-          <h1 className="gh-title">
-            Reorder commuting block in sidechain_qaoa<span className="gh-number">#41</span>
-          </h1>
-          <div className="gh-title-actions">
-            <button className="gh-btn">Edit</button>
-            <button className="gh-btn gh-btn-code">
-              {s(CODE_ICON)}
-              Code
-              {s('M4.5 6.5L8 10l3.5-3.5')}
-            </button>
-          </div>
-        </div>
+        <PrTitle />
         <div className="gh-meta-row">
           <span className={`gh-state${state === 'failed' || state === 'error' ? ' is-open' : ''}`}>
             {s(PR_ICON, '#FFFFFF')}
@@ -389,6 +377,124 @@ function ChecksBox({ state, onDetails }: { state: PrState; onDetails: () => void
           <button className="gh-link" onClick={onDetails}>
             Details
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const REPO_URLS = {
+  HTTPS: 'https://github.com/knighthacks/qaoa-packing.git',
+  SSH: 'git@github.com:knighthacks/qaoa-packing.git',
+  'GitHub CLI': 'gh repo clone knighthacks/qaoa-packing',
+} as const
+
+/** The title row behaves like GitHub's: Edit turns the title into a field; Code opens the clone menu. */
+function PrTitle() {
+  const [title, setTitle] = useState('Reorder commuting block in sidechain_qaoa')
+  const [draft, setDraft] = useState<string | null>(null)
+  const [menu, setMenu] = useState(false)
+  const [proto, setProto] = useState<keyof typeof REPO_URLS>('HTTPS')
+  const [copied, setCopied] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menu) return
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !menuRef.current?.contains(e.target as Node)) setMenu(false)
+    }
+    window.addEventListener('mousedown', close)
+    window.addEventListener('keydown', close)
+    return () => {
+      window.removeEventListener('mousedown', close)
+      window.removeEventListener('keydown', close)
+    }
+  }, [menu])
+
+  useEffect(() => {
+    if (!copied) return
+    const t = window.setTimeout(() => setCopied(false), 2000)
+    return () => clearTimeout(t)
+  }, [copied])
+
+  if (draft !== null) {
+    const save = () => {
+      if (draft.trim()) setTitle(draft.trim())
+      setDraft(null)
+    }
+    return (
+      <div className="gh-title-row gh-title-edit">
+        <input
+          className="gh-title-input"
+          value={draft}
+          autoFocus
+          aria-label="Pull request title"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') setDraft(null)
+          }}
+        />
+        <button className="gh-btn" onClick={save}>
+          Save
+        </button>
+        <button className="gh-link-btn" onClick={() => setDraft(null)}>
+          Cancel
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="gh-title-row">
+      <h1 className="gh-title">
+        {title}
+        <span className="gh-number">#41</span>
+      </h1>
+      <div className="gh-title-actions">
+        <button className="gh-btn" onClick={() => setDraft(title)}>
+          Edit
+        </button>
+        <div className="gh-menu-anchor" ref={menuRef}>
+          <button className="gh-btn gh-btn-code" aria-expanded={menu} aria-haspopup="menu" onClick={() => setMenu((m) => !m)}>
+            {s(CODE_ICON)}
+            Code
+            {s('M4.5 6.5L8 10l3.5-3.5')}
+          </button>
+          {menu && (
+            <div className="gh-menu" role="menu">
+              <div className="gh-menu-title">Clone</div>
+              <div className="gh-menu-tabs">
+                {(Object.keys(REPO_URLS) as (keyof typeof REPO_URLS)[]).map((k) => (
+                  <button key={k} className={`gh-menu-tab${k === proto ? ' is-active' : ''}`} onClick={() => setProto(k)}>
+                    {k}
+                  </button>
+                ))}
+              </div>
+              <div className="gh-menu-url">
+                <input readOnly value={REPO_URLS[proto]} aria-label="Clone URL" onFocus={(e) => e.currentTarget.select()} />
+                <button
+                  className="gh-menu-copy"
+                  aria-label="Copy URL"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(REPO_URLS[proto]).catch(() => {})
+                    setCopied(true)
+                  }}
+                >
+                  {copied
+                    ? s('M3 8.5l3 3 7-7', '#57ab5a')
+                    : s('M5.5 5.5V3.5a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-2M3.5 5.5h6a1 1 0 011 1v6a1 1 0 01-1 1h-6a1 1 0 01-1-1v-6a1 1 0 011-1z')}
+                </button>
+              </div>
+              <p className="gh-menu-note">
+                {copied ? 'Copied.' : 'Clone using the web URL.'} The improved circuit is on the branch reorder-commuting.
+              </p>
+              <button className="gh-menu-item" onClick={() => navigate(ROUTES.export, { transition: 'forward' })}>
+                {s('M8 2.5v8M4.5 7L8 10.5 11.5 7M3 13.5h10')}
+                Download the improved files
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

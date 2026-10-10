@@ -446,3 +446,75 @@
   flex: 1 1 0;
   color: var(--color-text-tertiary);
 }
+
+/* ── Conformance fixtures page ───────────────────────────────────────── */
+.s14-conform {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.s14c-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 4px 12px 12px;
+}
+.s14c-table {
+  display: flex;
+  flex-direction: column;
+}
+.s14c-row {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding-inline: 8px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.s14c-head {
+  height: 28px;
+}
+.s14c-id {
+  width: 48px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+.s14c-fixture {
+  width: 160px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+}
+.s14c-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  justify-content: flex-end;
+  display: flex;
+}
+.s14c-head .s14c-cell.is-off {
+  color: var(--color-text-disabled);
+}
+.s14c-total {
+  border-bottom: 0;
+}
+.s14c-total .s14c-fixture {
+  color: var(--color-text-secondary);
+}
+.s14c-total .s14c-cell {
+  color: var(--color-text-primary);
+}
+.s14c-total .s14c-cell.is-bad {
+  color: var(--color-signal-bad);
+}
+.s14c-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: 12px 8px 0;
+}
+.s14c-note {
+  color: var(--color-text-secondary);
+}

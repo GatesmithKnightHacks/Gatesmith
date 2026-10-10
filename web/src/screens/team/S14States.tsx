@@ -127,6 +127,9 @@ export function boardStateView(state: string): BoardStateView | null {
                 <circle cx="7" cy="7" r="4" fill="#2EA3F8" />
               </svg>
               Loading (2 of 6 layers)
+              <span className="mono" style={{ marginLeft: 'auto', paddingRight: 12, color: 'var(--color-text-tertiary)', fontSize: 11 }}>
+                1 440 requests
+              </span>
             </div>
             <BoardTable rows={[row('qwen-v3'), row('reference')]} sort="vir" selectedId={null} padding="0" />
             {Array.from({ length: 4 }, (_, i) => (
@@ -208,7 +211,7 @@ export function boardStateView(state: string): BoardStateView | null {
       return {
         board: (
           <div className="s14-table">
-            <BoardTable rows={sortRows(BENCH, 'vir')} sort="vir" selectedId="granite-v3" focusId="deepseek-v3" padding="0" />
+            <BoardTable rows={sortRows(BENCH, 'vir')} sort="vir" selectedId="granite-v3" focusId="reference" padding="0" />
             <p className="s14-hint">↑ ↓ move focus · Enter selects · S changes the sort column · C copies the row</p>
           </div>
         ),

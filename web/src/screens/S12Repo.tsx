@@ -50,8 +50,19 @@ export function S12Repo() {
       tabs={
         <TabStrip
           tabs={[
-            { id: 'qaoa', label: 'knighthacks/qaoa-packing', active: !view?.sboxTab },
-            { id: 'sbox', label: 'knighthacks/sbox-oracles', active: !!view?.sboxTab },
+            {
+              id: 'qaoa',
+              label: 'knighthacks/qaoa-packing',
+              active: !view?.sboxTab,
+              onClick: () => view?.sboxTab && navigate(ROUTES.repo),
+            },
+            {
+              id: 'sbox',
+              label: 'knighthacks/sbox-oracles',
+              active: !!view?.sboxTab,
+              // that repo has no OpenQASM yet: its dashboard is the empty state
+              onClick: () => !view?.sboxTab && (window.location.hash = '#/repo?state=empty'),
+            },
           ]}
         />
       }

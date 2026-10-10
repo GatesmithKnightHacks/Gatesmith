@@ -21,6 +21,7 @@ import {
   useTimers,
 } from './stretch/parts'
 import { fmtGates, fmtRange, LAYER_DOT, ROUND3, ROUND4, WORDS, xOf, type Candidate } from './s15/data'
+import { CalibrationPanel } from './s15/Calibration'
 import './s15/s15.css'
 
 type Verdict = 'queued' | 'verifying' | 'done'
@@ -45,6 +46,10 @@ export function S15Screening() {
   const [roundScreened, setRoundScreened] = useState<boolean | null>(null)
   const [selected, setSelected] = useState(1)
   const [paused, setPaused] = useState(false)
+  // Candidates | Calibration: the tile keeps its height so the page never jumps.
+  const [view, setView] = useState<'candidates' | 'calibration'>('candidates')
+  const [lockHeight, setLockHeight] = useState<number | null>(null)
+  const candidatesRef = useRef<HTMLElement>(null)
   const timers = useTimers()
 
   // states that turn screening off on their own
@@ -145,8 +150,14 @@ export function S15Screening() {
       tabs={
         <TabStrip
           tabs={[
-            { id: 'a', label: 'sidechain_qaoa.qasm', active: true },
-            { id: 'b', label: 'sbox_oracle.qasm' },
+            { id: 'a', label: 'sidechain_qaoa.qasm', active: state !== 'unsupported', onClick: () => state && navigate(ROUTES.screening) },
+            {
+              id: 'b',
+              label: 'sbox_oracle.qasm',
+              active: state === 'unsupported',
+              // the predictor was not trained on 20-qubit oracles: that tab shows the fallback
+              onClick: () => state !== 'unsupported' && (window.location.hash = '#/screening?state=unsupported'),
+            },
           ]}
         />
       }
@@ -220,11 +231,28 @@ export function S15Screening() {
       }
     >
       <Content>
-        <section className="tile s15-candidates">
+        <section className="tile s15-candidates" ref={candidatesRef} style={lockHeight ? { height: lockHeight } : undefined}>
           <TileHeader
             tabs={[
-              { id: 'c', label: 'Candidates', active: true },
-              { id: 'k', label: 'Calibration' },
+              {
+                id: 'c',
+                label: 'Candidates',
+                active: view === 'candidates',
+                onClick: () => {
+                  setView('candidates')
+                  setLockHeight(null)
+                },
+              },
+              {
+                id: 'k',
+                label: 'Calibration',
+                active: view === 'calibration',
+                onClick: () => {
+                  if (view === 'calibration') return
+                  setLockHeight(candidatesRef.current?.offsetHeight ?? null)
+                  setView('calibration')
+                },
+              },
             ]}
             meta={
               <span className="mono">
@@ -234,7 +262,9 @@ export function S15Screening() {
               </span>
             }
           />
-          {state === 'disagree' && !paused ? (
+          {view === 'calibration' ? (
+            <CalibrationPanel recalibrated={paused} onRecalibrate={() => setPaused(true)} />
+          ) : state === 'disagree' && !paused ? (
             <DisagreeBanner onRecalibrate={() => setPaused(true)} />
           ) : state === 'offline' ? (
             <OfflineBanner />
@@ -247,7 +277,7 @@ export function S15Screening() {
               </p>
             </div>
           )}
-          {state === 'loading' ? (
+          {view === 'calibration' ? null : state === 'loading' ? (
             <LoadingPanel />
           ) : state === 'empty' ? (
             <EmptyPanel />

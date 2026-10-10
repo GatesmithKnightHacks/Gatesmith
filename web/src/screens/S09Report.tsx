@@ -4,7 +4,7 @@
  * the mint region draws in, then Metrics, Rounds and the estimate arrive 40 ms apart.
  */
 import { useEffect, useState } from 'react'
-import { useHashParams } from '../app/router'
+import { navigate, ROUTES, useHashParams } from '../app/router'
 import { actions, useRun } from '../data/run'
 import { RELIABILITY } from '../data/demo'
 import { Content, Shell, TabStrip } from '../ui/Shell'
@@ -323,8 +323,16 @@ function OneRound() {
 
 function ReportInspector({ state }: { state: ReportState }) {
   const [copied, flash] = useFlash()
+  const [retrying, setRetrying] = useState(false)
   const offline = state === 'offline'
   const loading = state === 'loading'
+
+  // Retry runs only the failed seed, then the full report lands.
+  const retry = () => {
+    if (retrying) return
+    setRetrying(true)
+    window.setTimeout(() => navigate(ROUTES.report, { replace: true }), 1400)
+  }
 
   return (
     <>
@@ -339,7 +347,7 @@ function ReportInspector({ state }: { state: ReportState }) {
               <div className="rp-error-head">
                 <span className="rp-error-word">
                   <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden>
-                    <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" fill="none" stroke="#FF3478" strokeWidth="1.8" strokeLinecap="round" />
+                    <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
                   Final benchmark failed
                 </span>
@@ -370,7 +378,9 @@ function ReportInspector({ state }: { state: ReportState }) {
             </div>
           )}
           {state === 'error' ? (
-            <PrimaryButton onClick={() => {}}>Retry seed 79</PrimaryButton>
+            <PrimaryButton onClick={retry} progress={retrying ? 0.5 : undefined}>
+              {retrying ? 'Retrying seed 79 (50%)' : 'Retry seed 79'}
+            </PrimaryButton>
           ) : state === 'empty' ? (
             <PrimaryButton onClick={() => actions.reset()}>Run again</PrimaryButton>
           ) : (
@@ -378,6 +388,8 @@ function ReportInspector({ state }: { state: ReportState }) {
               onClick={() => !loading && actions.openExport()}
               progress={loading ? 0.75 : undefined}
               name="primary-action"
+              // offline · keyboard focus: Tab lands on Export first
+              style={offline ? { outline: '2px solid var(--color-action-primary)', outlineOffset: 2 } : undefined}
             >
               {loading ? 'Building report (75%)' : 'Export'}
             </PrimaryButton>
@@ -393,9 +405,15 @@ function ReportInspector({ state }: { state: ReportState }) {
             >
               {copied ?? 'Copy report link'}
             </EditorButton>
-            <EditorButton wide disabled={loading} onClick={() => actions.reset()}>
-              Run again
-            </EditorButton>
+            {state === 'empty' ? (
+              <EditorButton wide onClick={() => actions.openExport()}>
+                Export
+              </EditorButton>
+            ) : (
+              <EditorButton wide disabled={loading} onClick={() => actions.reset()}>
+                Run again
+              </EditorButton>
+            )}
           </SecondaryPair>
         </div>
 

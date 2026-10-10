@@ -68,6 +68,7 @@ export function S10Export() {
 
   // Live interaction state, seeded from ?state= so each states-board cell can be opened directly.
   const [saved, setSaved] = useState<Partial<Record<FileId, 'saved' | 'done'>>>(() => (forced === 'downloaded' ? { qasm: 'saved' } : {}))
+  const anySaved = Object.keys(saved).length > 0
   const [codeTab, setCodeTab] = useState<'qiskit' | 'qasm'>(forced === 'converting' ? 'qasm' : 'qiskit')
   const [convert, setConvert] = useState<number | null>(forced === 'converting' ? 0.68 : null)
   const [converted, setConverted] = useState(false)
@@ -170,7 +171,9 @@ export function S10Export() {
                     </span>
                     <span className="ex-c-name ex-file-name">
                       <span className="mono">{f.name}</span>
-                      <span className="ex-file-note">{st ? (st === 'saved' ? 'to ~/Downloads' : 'downloaded to ~/Downloads') : f.note}</span>
+                      <span className="ex-file-note">
+                        {st ? (st === 'saved' ? 'to ~/Downloads' : 'downloaded to ~/Downloads') : anySaved ? 'not downloaded yet' : f.note}
+                      </span>
                     </span>
                     <span className="ex-c-size mono">{f.size}</span>
                     <span className="ex-c-sha mono">{f.sha}</span>

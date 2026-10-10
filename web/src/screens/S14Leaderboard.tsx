@@ -4,6 +4,8 @@ import { navigate, ROUTES, useHashParams } from '../app/router'
 import { Content, Shell, TabStrip } from '../ui/Shell'
 import { EditorButton, Tile } from '../ui/parts'
 import { accepted, BENCH, byFixture, FIXTURES, parsed, passed, PROMPT_NOTES, REFERENCE_BY_FIXTURE, REQUESTS, type BenchRow } from './team/boardData'
+import { CopyButton } from './team/CopyButton'
+import { FixturesView } from './team/FixturesView'
 import { TeamModeLine, TeamModeTabs } from './team/TeamInspector'
 import { boardStateView } from './team/S14States'
 import './team/team.css'
@@ -30,6 +32,16 @@ export function S14Leaderboard() {
 function BoardScreen({ state }: { state: string | null }) {
   const view = state ? boardStateView(state) : null
   const [sort, setSort] = useState<SortKey>('vir')
+  // Clicking the active column again flips its direction.
+  const [flipped, setFlipped] = useState(false)
+  const [page, setPage] = useState<'board' | 'fixtures'>('board')
+  const onSort = (k: SortKey) => {
+    if (k === sort) setFlipped((f) => !f)
+    else {
+      setSort(k)
+      setFlipped(false)
+    }
+  }
   const [filter, setFilter] = useState<Filter>(view?.filter ?? 'all')
   const [selectedId, setSelectedId] = useState(view?.selectedId ?? 'granite-v3')
   const tabLabels = view?.tabs ?? ['All · 6', 'Local · 5', 'Platform · 1']
@@ -39,6 +51,7 @@ function BoardScreen({ state }: { state: string | null }) {
     if (e.key.toLowerCase() === 's') {
       const i = COLUMNS.findIndex((c) => c.key === sort)
       setSort(COLUMNS[(i + 1) % COLUMNS.length].key)
+      setFlipped(false)
     }
     if (e.key.toLowerCase() === 'c') {
       const r = BENCH.find((x) => x.id === selectedId)
@@ -49,6 +62,7 @@ function BoardScreen({ state }: { state: string | null }) {
   const rows = sortRows(
     BENCH.filter((r) => filter === 'all' || r.where === filter),
     sort,
+    flipped,
   )
   const selected = BENCH.find((r) => r.id === selectedId) ?? BENCH[2]
 
@@ -58,13 +72,19 @@ function BoardScreen({ state }: { state: string | null }) {
       tabs={
         <TabStrip
           tabs={[
-            { id: 'board', label: 'Leaderboard', active: true },
-            { id: 'fixtures', label: 'Conformance fixtures' },
+            { id: 'board', label: 'Leaderboard', active: page === 'board', onClick: () => setPage('board') },
+            { id: 'fixtures', label: 'Conformance fixtures', active: page === 'fixtures', onClick: () => setPage('fixtures') },
           ]}
         />
       }
       inspector={view?.inspector ?? <BoardInspector row={selected} />}
     >
+      {page === 'fixtures' ? (
+        <Content>
+          <FixturesView onBack={() => setPage('board')} />
+          <RatesTile />
+        </Content>
+      ) : (
       <Content>
         <Tile
           className="s14-board"
@@ -78,26 +98,29 @@ function BoardScreen({ state }: { state: string | null }) {
         >
           <div onKeyDown={onKeys}>
             {view?.board ?? (
-              <BoardTable rows={rows} sort={sort} onSort={setSort} selectedId={selected.id} onSelect={setSelectedId} />
+              <BoardTable rows={rows} sort={sort} flipped={flipped} onSort={onSort} selectedId={selected.id} onSelect={setSelectedId} />
             )}
           </div>
         </Tile>
         {view?.fixtures !== undefined ? view.fixtures : <FixtureTile row={selected} />}
         <RatesTile />
       </Content>
+      )}
     </Shell>
   )
 }
 
-export function sortRows(rows: BenchRow[], key: SortKey) {
+export function sortRows(rows: BenchRow[], key: SortKey, flipped = false) {
   const col = COLUMNS.find((c) => c.key === key)!
-  return [...rows].sort((a, b) => (col.asc ? a[key] - b[key] : b[key] - a[key]))
+  const asc = !!col.asc !== flipped
+  return [...rows].sort((a, b) => (asc ? a[key] - b[key] : b[key] - a[key]))
 }
 
 /* ── Leaderboard table ───────────────────────────────────────────────── */
 export function BoardTable({
   rows,
   sort,
+  flipped = false,
   onSort,
   selectedId,
   onSelect,
@@ -107,6 +130,7 @@ export function BoardTable({
 }: {
   rows: BenchRow[]
   sort: SortKey
+  flipped?: boolean
   onSort?: (k: SortKey) => void
   selectedId: string | null
   onSelect?: (id: string) => void
@@ -145,14 +169,14 @@ export function BoardTable({
             key={c.key}
             className={`team-th s14-sort${sort === c.key ? ' is-active' : ''}`}
             style={{ width: c.width }}
-            aria-sort={sort === c.key ? (c.asc ? 'ascending' : 'descending') : 'none'}
+            aria-sort={sort === c.key ? (!!c.asc !== flipped ? 'ascending' : 'descending') : 'none'}
             onClick={() => onSort?.(c.key)}
           >
             {c.label}
             {sort === c.key && (
               <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
                 <path
-                  d={c.asc ? 'M5 8.5v-7M2.5 4L5 1.5 7.5 4' : 'M5 1.5v7M2.5 6L5 8.5 7.5 6'}
+                  d={!!c.asc !== flipped ? 'M5 8.5v-7M2.5 4L5 1.5 7.5 4' : 'M5 1.5v7M2.5 6L5 8.5 7.5 6'}
                   fill="none"
                   stroke="#FFFFFF"
                   strokeWidth="1.3"
@@ -460,8 +484,9 @@ export function BoardInspector({ row }: { row: BenchRow }) {
             <span className="mono">{row.conform} · 12 of 12</span>
           </div>
           <div className="s12-actions s14-actions">
-            <EditorButton onClick={() => navigate(ROUTES.runs)}>Open conform run</EditorButton>
-            <EditorButton onClick={() => navigator.clipboard?.writeText(toCsv()).catch(() => {})}>Copy as CSV</EditorButton>
+            <EditorButton onClick={() => navigate(ROUTES.bench, { transition: 'forward' })}>Open bench</EditorButton>
+            <EditorButton onClick={() => (window.location.hash = `#/runs?select=${row.conform}`)}>Open conform run</EditorButton>
+            <CopyButton text={() => toCsv()} label="Copy as CSV" />
           </div>
         </section>
         <section className="team-sec">

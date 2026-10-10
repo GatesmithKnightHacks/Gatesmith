@@ -4,7 +4,7 @@
  */
 import type { ReactNode } from 'react'
 import { navigate, ROUTES } from '../../app/router'
-import { EditorButton, PrimaryButton } from '../../ui/parts'
+import { EditorButton } from '../../ui/parts'
 import { RunInspector, RunsHead, RunsTable } from '../S13Runs'
 import { JOBS, type Job } from './runsData'
 import { TeamModeLine, TeamModeTabs } from './TeamInspector'
@@ -122,15 +122,7 @@ export function runsStateView(state: string): RunsStateView | null {
           </div>
         ),
         inspector: (
-          <RunInspector
-            job={FIRST}
-            workers={[{ name: 'laptop-cpu', job: 'running 7f01·a1c4' }]}
-            primary={
-              <div className="team-mode-line" style={{ paddingTop: 0 }}>
-                <PrimaryButton progress={0.6}>Scoring (60%)</PrimaryButton>
-              </div>
-            }
-          />
+          <RunInspector job={FIRST} workers={[{ name: 'laptop-cpu', job: 'running 7f01·a1c4' }]} />
         ),
       }
 

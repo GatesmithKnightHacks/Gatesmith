@@ -1,30 +1,51 @@
 /* S-13 · Runs: every job on this machine and the platform queue, newest first. */
-import { Fragment, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { navigate, ROUTES, useHashParams } from '../app/router'
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { navigate, ROUTES, useHashParams, type RoutePath } from '../app/router'
 import { Content, Shell, TabStrip } from '../ui/Shell'
 import { EditorButton, Tile } from '../ui/parts'
-import { eventsFor, isActive, isFailed, JOBS, type Job, type JobState } from './team/runsData'
+import { EARLIER, eventsFor, isActive, isFailed, JOBS, type Job, type JobKind, type JobState } from './team/runsData'
+import { CopyButton } from './team/CopyButton'
 import { TeamKV, TeamModeLine, TeamModeTabs } from './team/TeamInspector'
 import { runsStateView } from './team/S13States'
 import './team/team.css'
 import './team/S13Runs.css'
 
+/** The open action follows the run's kind: each kind has the screen that shows its result. */
+const OPEN: Record<JobKind, { label: string; to: RoutePath }> = {
+  improve: { label: 'Open loop', to: ROUTES.loop },
+  bench: { label: 'Open bench', to: ROUTES.bench },
+  score: { label: 'Open workspace', to: ROUTES.workspace },
+  profile: { label: 'Open estimate', to: ROUTES.estimate },
+  conform: { label: 'Open leaderboard', to: ROUTES.leaderboard },
+  validate: { label: 'Open pre-flight', to: ROUTES.preflight },
+}
+
 type Filter = 'all' | 'active' | 'failed'
 
 export function S13Runs() {
-  const state = useHashParams().get('state')
+  const params = useHashParams()
+  const state = params.get('state')
+  // ?select=<run id> opens the runs list on that run (other screens link here).
+  const select = params.get('select')
   // Remount per state so its starting selection and filter apply.
-  return <RunsScreen key={state ?? 'main'} state={state} />
+  return <RunsScreen key={`${state ?? 'main'}-${select ?? ''}`} state={state} select={select} />
 }
 
-function RunsScreen({ state }: { state: string | null }) {
+function RunsScreen({ state, select }: { state: string | null; select: string | null }) {
   const view = state ? runsStateView(state) : null
   const [filter, setFilter] = useState<Filter>(view?.filter ?? 'all')
-  const [selectedId, setSelectedId] = useState(view?.selectedId ?? '7f3a·0412')
+  const [selectedId, setSelectedId] = useState(view?.selectedId ?? select ?? '7f3a·0412')
   const [cancelled, setCancelled] = useState<string[]>([])
   const [confirming, setConfirming] = useState<string | null>(view?.confirming ?? null)
+  const [earlier, setEarlier] = useState(false)
+  const scroller = useRef<HTMLDivElement>(null)
 
-  const all = JOBS.map((j) => (cancelled.includes(j.id) ? { ...j, state: 'cancelled' as const, result: 'cancelled while queued', duration: 'not started' } : j))
+  // Older runs land at the bottom of the list; bring them into view.
+  useEffect(() => {
+    if (earlier) scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' })
+  }, [earlier])
+
+  const all = [...JOBS, ...(earlier ? EARLIER : [])].map((j) => (cancelled.includes(j.id) ? { ...j, state: 'cancelled' as const, result: 'cancelled while queued', duration: 'not started' } : j))
   const jobs = all.filter((j) => (filter === 'active' ? isActive(j) : filter === 'failed' ? isFailed(j) : true))
   const selected = all.find((j) => j.id === selectedId) ?? all[1]
 
@@ -72,9 +93,17 @@ function RunsScreen({ state }: { state: string | null }) {
           ]}
           meta={<span className="mono">{view?.meta ?? 'since yesterday · newest first · times local'}</span>}
         >
-          <div className="s13-keys" onKeyDown={onKeys}>
+          <div className="s13-keys" onKeyDown={onKeys} ref={scroller}>
             {view?.body ?? (
-              <RunsTable key={filter} jobs={jobs} selectedId={selected.id} onSelect={setSelectedId} filter={filter} />
+              <RunsTable
+                key={filter}
+                jobs={jobs}
+                selectedId={selected.id}
+                onSelect={setSelectedId}
+                filter={filter}
+                earlierLoaded={earlier}
+                onLoadEarlier={() => setEarlier(true)}
+              />
             )}
           </div>
         </Tile>
@@ -105,6 +134,8 @@ export function RunsTable({
   filter = 'all',
   focusId,
   footer = true,
+  earlierLoaded = false,
+  onLoadEarlier,
 }: {
   jobs: Job[]
   selectedId: string | null
@@ -112,9 +143,12 @@ export function RunsTable({
   filter?: Filter
   focusId?: string
   footer?: boolean
+  earlierLoaded?: boolean
+  onLoadEarlier?: () => void
 }) {
   const today = jobs.filter((j) => j.day === 'today')
   const yesterday = jobs.filter((j) => j.day === 'yesterday')
+  const older = jobs.filter((j) => j.day === 'earlier')
   let k = 0
   const onKey = (e: KeyboardEvent<HTMLDivElement>, j: Job) => {
     const rows = Array.from(e.currentTarget.closest('.s13-table')?.querySelectorAll<HTMLElement>('.s13-row') ?? [])
@@ -132,7 +166,8 @@ export function RunsTable({
         </div>
         {list.map((j, i) => {
           const isSel = j.id === selectedId
-          const delay = k++ * 40
+          // rows arriving later (Load earlier runs) stagger from their own first row
+          const delay = label === 'Oct 8' ? i * 40 : k++ * 40
           return (
             <div
               key={j.id}
@@ -144,7 +179,9 @@ export function RunsTable({
                 'team-row',
                 'team-arrive',
                 isSel ? 'is-selected' : '',
-                i === list.length - 1 && label === 'Today' && yesterday.length > 0 ? 'is-group-end' : '',
+                i === list.length - 1 && ((label === 'Today' && yesterday.length > 0) || (label === 'Yesterday' && older.length > 0))
+                  ? 'is-group-end'
+                  : '',
                 j.id === focusId ? 'is-focus' : '',
               ].join(' ')}
               style={{ animationDelay: `${delay}ms` }}
@@ -170,6 +207,7 @@ export function RunsTable({
       <RunsHead />
       {group('Today', today)}
       {group('Yesterday', yesterday)}
+      {group('Oct 8', older)}
       {jobs.length === 0 && (
         <div className="s13-none">{filter === 'failed' ? 'No failed runs since yesterday.' : 'Nothing is running or queued.'}</div>
       )}
@@ -177,10 +215,14 @@ export function RunsTable({
         <div className="s13-footer">
           <span className="s13-footer-note">
             {filter === 'all'
-              ? '17 runs since yesterday. 197 more this week on this machine and the platform queue.'
-              : `${jobs.length} of 17 runs since yesterday match this filter.`}
+              ? earlierLoaded
+                ? '22 runs since Oct 8. 192 more this week on this machine and the platform queue.'
+                : '17 runs since yesterday. 197 more this week on this machine and the platform queue.'
+              : `${jobs.length} of ${earlierLoaded ? 22 : 17} runs ${earlierLoaded ? 'since Oct 8' : 'since yesterday'} match this filter.`}
           </span>
-          <EditorButton>Load earlier runs</EditorButton>
+          <EditorButton disabled={earlierLoaded} onClick={onLoadEarlier}>
+            {earlierLoaded ? 'Loaded to Oct 8' : 'Load earlier runs'}
+          </EditorButton>
         </div>
       )}
     </div>
@@ -351,8 +393,11 @@ export function RunInspector({
         </section>
         <section className="s13-actions-sec">
           <div className="s12-actions">
-            <EditorButton onClick={() => navigate(ROUTES.loop)}>Open loop</EditorButton>
-            <EditorButton onClick={() => navigator.clipboard?.writeText(job.id).catch(() => {})}>Copy job id</EditorButton>
+            <EditorButton onClick={() => navigate(OPEN[job.kind].to, { transition: 'forward' })}>{OPEN[job.kind].label}</EditorButton>
+            {job.kind === 'improve' && (
+              <EditorButton onClick={() => navigate(ROUTES.screening, { transition: 'forward' })}>Open screening</EditorButton>
+            )}
+            <CopyButton text={job.id} label="Copy job id" />
             <EditorButton disabled={job.state !== 'queued'} onClick={onCancel}>
               Cancel
             </EditorButton>
