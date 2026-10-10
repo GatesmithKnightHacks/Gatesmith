@@ -1,7 +1,7 @@
-import { Component, Suspense, useEffect, useLayoutEffect, type ReactNode } from 'react'
+import { Component, useEffect, useLayoutEffect, useReducer, type ReactNode } from 'react'
 import { ensureSnapshot } from '../data/run'
 import { setPreloader, useRoute } from './router'
-import { preloadAll, preloadScreen, SCREENS } from './screens'
+import { loadedScreen, preloadAll, preloadScreen } from './screens'
 import './transitions.css'
 
 setPreloader(preloadScreen)
@@ -29,12 +29,11 @@ export function App() {
   const route = useRoute()
   useLayoutEffect(() => ensureSnapshot(route), [route])
   useEffect(() => preloadAll(), [])
-  const Screen = SCREENS[route]
-  return (
-    <ScreenBoundary route={route}>
-      <Suspense fallback={null}>
-        <Screen />
-      </Suspense>
-    </ScreenBoundary>
-  )
+  const [, rerender] = useReducer((n: number) => n + 1, 0)
+  const Screen = loadedScreen(route)
+  // First visit to a screen that was not preloaded (a cold deep link): load it, then render.
+  useEffect(() => {
+    if (!Screen) void preloadScreen(route).then(rerender)
+  }, [route, Screen])
+  return <ScreenBoundary route={route}>{Screen ? <Screen /> : null}</ScreenBoundary>
 }

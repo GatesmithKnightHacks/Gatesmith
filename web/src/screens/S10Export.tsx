@@ -462,7 +462,11 @@ function ExportInspector({
           ) : packing != null ? (
             <PrimaryButton progress={packing}>Packing files ({Math.round(packing * 100)}%)</PrimaryButton>
           ) : (
-            <PrimaryButton onClick={onDownloadFinal} style={state === 'focus' ? { outline: '2px solid var(--color-action-primary)', outlineOffset: 2 } : undefined}>
+            <PrimaryButton
+              name="primary-action"
+              onClick={onDownloadFinal}
+              style={state === 'focus' ? { outline: '2px solid var(--color-action-primary)', outlineOffset: 2 } : undefined}
+            >
               {finalSaved === 'saved' ? 'Saved to ~/Downloads' : 'Download final .qasm'}
             </PrimaryButton>
           )}

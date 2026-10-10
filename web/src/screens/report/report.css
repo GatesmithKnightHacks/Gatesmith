@@ -535,20 +535,24 @@
 }
 
 /* ── Motion · M5 report lands ────────────────────────────────────────── */
+/* The split starts once the workbench has left and the report is visible (the screen change takes ~160 ms). */
+.rp-content.is-arriving {
+  --rp-lead: 160ms;
+}
 .rp-content.is-arriving .rp-panel-original {
-  animation: rp-split-left var(--motion-slow) var(--ease-standard) both;
+  animation: rp-split-left var(--motion-slow) var(--ease-standard) var(--rp-lead) both;
 }
 .rp-content.is-arriving .rp-panel-final {
-  animation: rp-split-right var(--motion-slow) var(--ease-standard) both;
+  animation: rp-split-right var(--motion-slow) var(--ease-standard) var(--rp-lead) both;
 }
 .rp-content.is-arriving .circuit-region,
 .rp-content.is-arriving .circuit-region-tag {
   animation: rp-region var(--motion-base) var(--ease-enter) both;
-  animation-delay: var(--motion-fast);
+  animation-delay: calc(var(--rp-lead) + var(--motion-fast));
 }
 .rp-content.is-arriving .rp-arrive {
   animation: rp-rise var(--motion-base) var(--ease-enter) both;
-  animation-delay: calc(var(--motion-slow) + var(--i, 0) * var(--stagger));
+  animation-delay: calc(var(--rp-lead) + var(--motion-slow) + var(--i, 0) * var(--stagger));
 }
 
 /* Both start where one circuit sat, centered, then part to their columns (247.5 = half of 483 + 12). */

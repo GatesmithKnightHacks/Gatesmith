@@ -1,4 +1,4 @@
-import { lazy, type ComponentType } from 'react'
+import { type ComponentType } from 'react'
 import { ROUTES, type RoutePath } from './router'
 
 type Loader = () => Promise<{ default: ComponentType }>
@@ -23,11 +23,28 @@ const LOADERS: Record<RoutePath, Loader> = {
 }
 
 const loaded = new Map<RoutePath, Promise<unknown>>()
+const ready = new Map<RoutePath, ComponentType>()
 
-/** Load a screen's code once; navigation awaits this so a view transition never captures a blank frame. */
+/**
+ * Load a screen's code once. Navigation awaits this inside the view transition, and once loaded the
+ * screen renders synchronously (no Suspense), so the transition captures the real next screen
+ * instead of an empty fallback.
+ */
 export function preloadScreen(path: RoutePath) {
-  if (!loaded.has(path)) loaded.set(path, LOADERS[path]())
+  if (!loaded.has(path))
+    loaded.set(
+      path,
+      LOADERS[path]().then((m) => {
+        ready.set(path, m.default)
+        return m
+      }),
+    )
   return loaded.get(path)!
+}
+
+/** The screen component if its code is already here; otherwise undefined (load it first). */
+export function loadedScreen(path: RoutePath): ComponentType | undefined {
+  return ready.get(path)
 }
 
 /** After first paint, fetch every screen in the background. */
@@ -35,7 +52,3 @@ export function preloadAll() {
   const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200))
   idle(() => (Object.keys(LOADERS) as RoutePath[]).forEach(preloadScreen))
 }
-
-export const SCREENS = Object.fromEntries(
-  (Object.keys(LOADERS) as RoutePath[]).map((p) => [p, lazy(() => preloadScreen(p) as Promise<{ default: ComponentType }>)]),
-) as unknown as Record<RoutePath, ComponentType>

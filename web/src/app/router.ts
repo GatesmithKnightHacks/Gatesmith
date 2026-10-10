@@ -57,8 +57,6 @@ export function setPreloader(fn: (path: RoutePath) => Promise<unknown>) {
   preload = fn
 }
 
-const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
 /**
  * Navigate inside one document. When the browser supports view transitions, shared elements
  * (anything with a matching view-transition-name) carry across screens, as in M1, M3 and M5.
@@ -73,7 +71,8 @@ export function navigate(path: RoutePath, opts: NavigateOptions = {}) {
   const doc = document as Document & {
     startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> }
   }
-  if (!doc.startViewTransition || reduceMotion()) {
+  // Reduced motion still uses the transition: transitions.css turns it into one 80 ms crossfade.
+  if (!doc.startViewTransition) {
     void preload(path).then(apply)
     return
   }

@@ -1,16 +1,145 @@
 /*
- * Screen-to-screen motion (DS-07, M1–M6). The browser cross-fades the root; shared elements with a
- * view-transition-name morph from where they were. Arrive soft (enter curve), leave quick (exit curve).
+ * Screen-to-screen motion (DS-07, M1–M6), built on view transitions.
+ *
+ * Layers:
+ *   chrome   top bar, rail, tab strip and the inspector frame stay still ("the shell is already there").
+ *   main     the work area fades through: the old screen leaves quick on the exit curve, the new one
+ *            arrives soft on the enter curve and rises 8 px (opacity never travels alone).
+ *   shared   circuit-canvas, primary-action, finding-card and rail-marker carry across screens on the
+ *            standard curve, above the chrome.
+ * Per-transition choreography reads :root[data-transition], set by navigate().
  */
-::view-transition-old(root) {
-  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+
+/* ── Layer names ─────────────────────────────────────────────────────── */
+.topbar {
+  view-transition-name: topbar;
 }
-::view-transition-new(root) {
-  animation: vt-fade-in var(--motion-base) var(--ease-enter) both;
+.rail {
+  view-transition-name: rail;
 }
+.tabstrip {
+  view-transition-name: tabstrip;
+}
+.shell-inspector {
+  view-transition-name: inspector;
+}
+.shell-content {
+  view-transition-name: main;
+}
+
+/* ── Defaults ────────────────────────────────────────────────────────── */
 ::view-transition-group(*) {
   animation-duration: var(--motion-slow);
   animation-timing-function: var(--ease-standard);
+}
+
+/* Nothing outside the shell should show through: the root only carries the ground. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-fast);
+}
+
+/* Chrome: identical pixels stay put; changed words (Workbench → Report) cross-fade in place. */
+::view-transition-group(topbar),
+::view-transition-group(rail),
+::view-transition-group(tabstrip),
+::view-transition-group(inspector) {
+  animation-duration: var(--motion-fast);
+}
+
+/* Main: fade through with a short overlap, so dense text never double-exposes. */
+::view-transition-old(main) {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+}
+::view-transition-new(main) {
+  animation: vt-rise-in var(--motion-base) var(--ease-enter) 60ms both;
+}
+/* Inspector contents swap in place: no travel inside a panel that stays. */
+::view-transition-old(inspector) {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+}
+::view-transition-new(inspector) {
+  animation: vt-fade-in var(--motion-base) var(--ease-enter) 60ms both;
+}
+
+/* Shared elements ride above the chrome so a growing card is never hidden under a panel. */
+::view-transition-group(circuit-canvas),
+::view-transition-group(primary-action),
+::view-transition-group(finding-card),
+::view-transition-group(rail-marker) {
+  z-index: 10;
+}
+
+/* The primary glides to its new place; its label swaps quickly so the two never read together. */
+::view-transition-old(primary-action) {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+}
+::view-transition-new(primary-action) {
+  animation: vt-fade-in var(--motion-fast) var(--ease-enter) both;
+}
+
+/* M1: the circuit carries from pre-flight into the workspace canvas without distorting. */
+::view-transition-old(circuit-canvas),
+::view-transition-new(circuit-canvas) {
+  height: 100%;
+  object-fit: contain;
+  object-position: top left;
+}
+::view-transition-old(circuit-canvas) {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+}
+::view-transition-new(circuit-canvas) {
+  animation: vt-fade-in var(--motion-base) var(--ease-enter) both;
+}
+
+/*
+ * M3: the finding card grows into the fix review (a container transform). The box grows on the
+ * standard curve and clips what is inside it; the card's words leave at their own size, and
+ * Original and Candidate are revealed inside as the box opens. No fill on the box: a group with no
+ * partner lives for the whole transition and must never cover the next screen.
+ */
+::view-transition-group(finding-card) {
+  overflow: clip;
+  border-radius: var(--radius-base);
+}
+::view-transition-old(finding-card),
+::view-transition-new(finding-card) {
+  width: auto;
+  height: auto;
+}
+::view-transition-old(finding-card) {
+  animation: vt-fade-out 100ms var(--ease-exit) both;
+}
+::view-transition-new(finding-card) {
+  animation: vt-fade-in var(--motion-base) var(--ease-enter) 80ms both;
+}
+
+/* A shared element with no partner on the other screen moves with the screen it belongs to. */
+::view-transition-old(circuit-canvas):only-child,
+::view-transition-old(primary-action):only-child,
+::view-transition-old(finding-card):only-child {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+}
+::view-transition-new(circuit-canvas):only-child,
+::view-transition-new(primary-action):only-child,
+::view-transition-new(finding-card):only-child {
+  animation: vt-rise-in var(--motion-base) var(--ease-enter) 60ms both;
+}
+
+/* M3: the other tiles leave first, then the review's tiles arrive once the card has grown. */
+:root[data-transition='request-fix']::view-transition-new(main),
+:root[data-transition='request-fix']::view-transition-new(circuit-canvas):only-child {
+  animation-delay: 200ms;
+}
+/* M5: the workbench tiles leave together, then the report lands and splits on its own. */
+:root[data-transition='export-final']::view-transition-new(main),
+:root[data-transition='export-final']::view-transition-new(circuit-canvas):only-child {
+  animation-delay: 120ms;
+}
+/* Going back arrives from above. */
+:root[data-transition='back']::view-transition-new(main),
+:root[data-transition='back']::view-transition-new(circuit-canvas):only-child {
+  animation-name: vt-drop-in;
 }
 
 @keyframes vt-fade-out {
@@ -23,11 +152,32 @@
     opacity: 0;
   }
 }
+@keyframes vt-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes vt-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
 
+/* Reduced motion: every move becomes one 80 ms crossfade; nothing travels or grows. */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
   ::view-transition-old(*),
   ::view-transition-new(*) {
+    animation-name: vt-fade-out !important;
     animation-duration: 80ms !important;
+    animation-delay: 0ms !important;
+    animation-timing-function: linear !important;
+  }
+  ::view-transition-new(*) {
+    animation-name: vt-fade-in !important;
   }
 }

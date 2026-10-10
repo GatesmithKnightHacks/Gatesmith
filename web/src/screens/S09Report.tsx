@@ -60,7 +60,7 @@ export function S09Report() {
   const [arriving, setArriving] = useState(() => run.live && run.phase === 'report')
   useEffect(() => {
     if (!arriving) return
-    const t = window.setTimeout(() => setArriving(false), 900)
+    const t = window.setTimeout(() => setArriving(false), 1200)
     return () => clearTimeout(t)
   }, [arriving])
 
@@ -377,7 +377,7 @@ function ReportInspector({ state }: { state: ReportState }) {
             <PrimaryButton
               onClick={() => !loading && actions.openExport()}
               progress={loading ? 0.75 : undefined}
-              name="report-primary"
+              name="primary-action"
             >
               {loading ? 'Building report (75%)' : 'Export'}
             </PrimaryButton>

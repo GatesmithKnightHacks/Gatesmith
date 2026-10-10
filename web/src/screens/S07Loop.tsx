@@ -136,7 +136,7 @@ export function S07Loop() {
       inspector={<Inspector mode={mode} state={state} live={live} attempts={status} />}
     >
       <Content>
-        <section className="tile lp-rounds" style={{ viewTransitionName: 'circuit-canvas' }}>
+        <section className="tile lp-rounds">
           <div className="tile-header">
             <div className="tile-tabs">
               <button className="tile-tab is-active" role="tab" aria-selected>
