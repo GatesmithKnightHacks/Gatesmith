@@ -164,21 +164,20 @@ export const SectionIcons = {
   ),
   numbered: (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <path d="M7 4.5h8M7 9h8M7 13.5h8" {...sec} strokeLinecap="round" />
-      <path d="M3 4.5h.01M3 9h.01M3 13.5h.01" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+      <path d="M7.5 4.5H15M7.5 9H15M7.5 13.5H15M3 4.5h1.5M3 9h1.5M3 13.5h1.5" {...sec} strokeLinecap="round" />
     </svg>
   ),
   chip: (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
       <rect x="3" y="3" width="12" height="12" rx="1.5" {...sec} />
-      <rect x="6.5" y="6.5" width="5" height="5" rx="0.5" {...sec} />
+      <rect x="6.5" y="6.5" width="5" height="5" {...sec} />
     </svg>
   ),
   history: (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <path d="M3.2 9a5.8 5.8 0 101.7-4.1" {...sec} strokeLinecap="round" />
-      <path d="M3 3.2v2.6h2.6" {...sec} strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 6v3.2l2 1.3" {...sec} strokeLinecap="round" />
+      <path d="M3.6 9a5.4 5.4 0 1 0 1.6-3.8" {...sec} strokeLinecap="round" />
+      <path d="M3.4 3.4v2.4h2.4" {...sec} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 6.2V9l2 1.2" {...sec} strokeLinecap="round" />
     </svg>
   ),
   shield: (
@@ -211,11 +210,12 @@ export const SectionIcons = {
   ),
 } as const
 
+/** Points up when open; turns 180° when closed. */
 export function Chevron({ open = true }: { open?: boolean }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden className={`chevron${open ? '' : ' is-closed'}`}>
       <path
-        d={open ? 'M3.5 8.5L7 5l3.5 3.5' : 'M3.5 5.5L7 9l3.5-3.5'}
+        d="M3.5 8.5L7 5l3.5 3.5"
         fill="none"
         stroke="#C2DADF"
         strokeWidth="1.4"

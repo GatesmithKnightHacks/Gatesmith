@@ -203,6 +203,28 @@
   line-height: 14px;
   white-space: nowrap;
 }
+.insp-section-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows var(--motion-base) var(--ease-standard), opacity var(--motion-base) var(--ease-standard);
+}
+.insp-section-collapse.is-closed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-exit);
+}
+.insp-section-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.chevron {
+  transition: transform var(--motion-base) var(--ease-standard);
+}
+.chevron.is-closed {
+  transform: rotate(180deg);
+}
 .insp-section-body {
   display: flex;
   flex-direction: column;

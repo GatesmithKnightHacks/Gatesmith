@@ -1,7 +1,7 @@
 /*
  * Shared components (DS-04 · Core components). Screens compose these; values are the measured ones.
  */
-import type { CSSProperties, MouseEvent, ReactNode } from 'react'
+import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import { Chevron, SelectCaret } from './icons'
 import { Status, type Severity } from './status'
 import './parts.css'
@@ -156,6 +156,10 @@ export function SecondaryPair({ children }: { children: ReactNode }) {
   return <div className="secondary-pair">{children}</div>
 }
 
+/**
+ * Inspector section: 40px header (18 icon, gap 10, 14/500 title, meta, chevron), body below.
+ * Uncontrolled unless `onToggle` is passed. Collapsing animates the height and fades the body.
+ */
 export function Section({
   icon,
   title,
@@ -175,17 +179,23 @@ export function Section({
   bodyClassName?: string
   onToggle?: () => void
 }) {
+  const [inner, setInner] = useState(open)
+  const isOpen = onToggle ? open : inner
   return (
     <section className="insp-section">
-      <button className="insp-section-header" aria-expanded={open} onClick={onToggle}>
+      <button className="insp-section-header" aria-expanded={isOpen} onClick={onToggle ?? (() => setInner((v) => !v))}>
         {icon}
         <span className="insp-section-title">{title}</span>
         {meta != null && <span className="insp-section-meta">{meta}</span>}
-        <Chevron open={open} />
+        <Chevron open={isOpen} />
       </button>
-      {open && children != null && (
-        <div className={`insp-section-body ${bodyClassName}`} style={bodyStyle}>
-          {children}
+      {children != null && (
+        <div className={`insp-section-collapse${isOpen ? '' : ' is-closed'}`} aria-hidden={!isOpen}>
+          <div className="insp-section-clip">
+            <div className={`insp-section-body ${bodyClassName}`} style={bodyStyle}>
+              {children}
+            </div>
+          </div>
         </div>
       )}
     </section>
