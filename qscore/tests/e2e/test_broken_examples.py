@@ -1,5 +1,5 @@
 """`examples/broken/`: one fixture per MVP issue code, exact codes and locations (specs/14 §3.3,
-05 §12; MVP code list from 15 §3a M1)."""
+05 §12; MVP code list from 15 §3a M1, builder codes from M3, Q208 from ChP-0009)."""
 
 from __future__ import annotations
 
@@ -17,9 +17,8 @@ BROKEN = Path(__file__).parents[2] / "examples" / "broken"
 FIXTURES = sorted(d for d in BROKEN.iterdir() if d.is_dir())
 MVP_CODES = (
     *(f"Q10{i}" for i in range(8)),
-    "Q200",
-    "Q206",
-    "Q304",
+    *(f"Q20{i}" for i in range(9)),
+    *(f"Q30{i}" for i in range(6)),
     *(f"Q40{i}" for i in range(9)),
 )
 
@@ -32,7 +31,7 @@ def test_every_mvp_code_has_one_fixture() -> None:
 def test_fixture_reports_exact_codes_and_locations(fixture: Path, tmp_path: Path) -> None:
     expected = json.loads((fixture / "expected.json").read_text())
     with pytest.raises(InvalidInput) as exc:
-        services.score_project(fixture / "qscore.yaml", tmp_path)
+        services.score_project(fixture / "qscore.yaml", tmp_path, confirm="yes")
     assert exc.value.report is not None, "every issue needs a located report"
     got = [
         {"code": i.code, "item": i.item, **i.location.model_dump(mode="json")}

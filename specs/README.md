@@ -38,7 +38,7 @@ If two specs disagree, stop and raise it with the user (R1.4); do not pick one s
 | `18-risks-and-watchlist.md` | Risks, pitfalls by area, open questions | Session start (skim); before working in an area |
 | `decisions.md` | Decisions D-001… with alternatives and change class | When tempted to change a default |
 | `CHANGELOG.md` | Approved spec changes | After applying an approved proposal |
-| `proposals/` | Change proposals CP-NNNN | When anything must deviate |
+| `proposals/` | Change proposals ChP-NNNN | When anything must deviate |
 | `templates/` | handoff, change proposal, task brief, task report schema, experiment notes, repo AGENTS/CLAUDE | When producing those documents |
 
 ## Identifier conventions
@@ -52,7 +52,7 @@ If two specs disagree, stop and raise it with the user (R1.4); do not pick one s
 | Q100–Q503 | Issue codes | `05` §12 |
 | FB-01… | Fallbacks | `17` §2 |
 | D-001… | Decisions | `decisions.md` |
-| CP-0001… | Change proposals | `proposals/` |
+| ChP-0001… | Change proposals | `proposals/` |
 | S1–S3 | GPU sessions | `13` §2 |
 
 ## Glossary

@@ -1,4 +1,4 @@
-"""`scalability` (specs/06-metrics.md §2.4; zero/degenerate cases per CP-0007 item 5).
+"""`scalability` (specs/06-metrics.md §2.4; zero/degenerate cases per ChP-0007 item 5).
 
 For each `size_sweep` value the item is rebuilt (`ScoringContext.rebuild`, supplied by the builder
 path through the sandbox, M3), compiled with the first 3 transpiler seeds, and the logical
@@ -24,7 +24,7 @@ MIN_FIT_SIZES = 3
 
 def fit_power_law(points: list[tuple[int, int]]) -> dict[str, Any]:
     """OLS fit of log y on log n. Sizes with y = 0 are excluded (listed); fewer than 3 distinct n
-    with positive y → `b` and `r2` are None (CP-0007). `r2` is 1.0 when every log y is equal
+    with positive y → `b` and `r2` are None (ChP-0007). `r2` is 1.0 when every log y is equal
     (the zero-slope fit is exact)."""
     excluded = sorted({n for n, y in points if y <= 0})
     used = [(math.log(n), math.log(y)) for n, y in points if y > 0]
@@ -43,6 +43,17 @@ def fit_power_law(points: list[tuple[int, int]]) -> dict[str, Any]:
 
 @dataclass(frozen=True)
 class Scalability:
+    """How the gate count grows as the problem gets bigger.
+
+    For each `size_sweep` value: rebuild the circuit in the sandbox, compile with the first
+    3 seeds, record logical (raw translation) and compiled two-qubit counts and
+    `routing_overhead`. Fit `y = a * n^b` by least squares on `log y` against `log n`, where
+    `n` is the qubit count of the built circuit. Value `{b_logical, b_compiled, r2_logical,
+    r2_compiled}`; evidence: the per-size table. No `size_sweep` gives `unavailable`.
+
+    Unit: dict. Reference: Log-log ordinary least squares power-law fit (06 §2.4).
+    """
+
     id: str = "scalability"
     group: MetricGroup = MetricGroup.RESEARCH
     version: str = "1"
@@ -86,7 +97,7 @@ class Scalability:
         if fl["b"] is None and fc["b"] is None:
             return Outcome(
                 status=Status.UNAVAILABLE,
-                reason="fewer than 3 sizes with two-qubit operations (CP-0007)",
+                reason="fewer than 3 sizes with two-qubit operations (ChP-0007)",
                 evidence=evidence,
             )
         value = {

@@ -1,4 +1,4 @@
-"""parse_qasm reports QASM3 syntax errors as Q304 (05 §4.1, CP-0027)."""
+"""parse_qasm reports QASM3 syntax errors as Q304 (05 §4.1, ChP-0027)."""
 
 from pathlib import Path
 

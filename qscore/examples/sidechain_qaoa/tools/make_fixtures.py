@@ -1,8 +1,8 @@
-"""Write the sidechain_qaoa fixtures from src/packing/qaoa.py (specs/14 §3.1, CP-0015):
+"""Write the sidechain_qaoa fixtures from src/packing/qaoa.py (specs/14 §3.1, ChP-0015):
 
 - hamiltonians/packing_4.json  the Ising Hamiltonian (04 §2.4 observable format) for n_residues=4
 - circuits/packing_qaoa_p2.qasm the p=2 circuit with params/qaoa_p2.json bound (MVP QASM input,
-  CP-0023; the builder path arrives with M3)
+  ChP-0023; the builder path arrives with M3)
 
 Run: uv run python examples/sidechain_qaoa/tools/make_fixtures.py
 """

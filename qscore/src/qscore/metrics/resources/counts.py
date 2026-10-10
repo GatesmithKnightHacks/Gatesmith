@@ -26,7 +26,14 @@ class _Count:
 
 
 class Width(_Count):
-    """Active qubits (touched by ≥1 non-directive operation) of the compiled circuit."""
+    """How many physical qubits the compiled circuit actually uses.
+
+    Number of active qubits (touched by at least one non-directive operation) in the
+    representative compiled circuit; physical qubits after layout. Evidence: `logical` (the
+    same count on the logical circuit).
+
+    Unit: qubits. Reference: Qiskit `QuantumCircuit`; qscore definition (06 §2.1).
+    """
 
     def __init__(self) -> None:
         super().__init__("width", "qubits", "compiled", _LC)
@@ -39,7 +46,13 @@ class Width(_Count):
 
 
 class Size(_Count):
-    """Operations of the compiled circuit (directives excluded; measurements/resets included)."""
+    """Total number of operations after compilation.
+
+    `circuit.size()` of the compiled circuit, directives excluded, measurements and resets
+    included. Evidence: `logical`.
+
+    Unit: ops. Reference: Qiskit `QuantumCircuit.size`.
+    """
 
     def __init__(self) -> None:
         super().__init__("size", "ops", "compiled", _LC)
@@ -51,7 +64,12 @@ class Size(_Count):
 
 
 class Depth(_Count):
-    """Depth of the compiled circuit."""
+    """Number of time steps (layers) of the compiled circuit.
+
+    `circuit.depth()` of the compiled circuit. Evidence: `logical`.
+
+    Unit: layers. Reference: Qiskit `QuantumCircuit.depth`.
+    """
 
     def __init__(self) -> None:
         super().__init__("depth", "layers", "compiled", _LC)
@@ -61,7 +79,14 @@ class Depth(_Count):
 
 
 class TwoQubitCount(_Count):
-    """Two-qubit instructions of the compiled circuit (the default primary objective)."""
+    """Number of two-qubit gates after compilation, usually the main cost driver; the default
+    objective.
+
+    Number of instructions with `operation.num_qubits == 2` in the compiled circuit.
+    Evidence: `logical` and `logical_multi_qubit_ops` (operations on three or more qubits).
+
+    Unit: gates. Reference: qscore definition (06 §2.1).
+    """
 
     def __init__(self) -> None:
         super().__init__("two_qubit_count", "gates", "compiled", _LC)
@@ -75,7 +100,13 @@ class TwoQubitCount(_Count):
 
 
 class TwoQubitDepth(_Count):
-    """Depth counting only two-qubit instructions, on the compiled circuit."""
+    """Number of layers of two-qubit gates after compilation.
+
+    `circuit.depth(filter_function=...)` counting only two-qubit, non-directive instructions
+    of the compiled circuit. Evidence: `logical`.
+
+    Unit: layers. Reference: Qiskit `QuantumCircuit.depth` with a filter.
+    """
 
     def __init__(self) -> None:
         super().__init__("two_qubit_depth", "layers", "compiled", _LC)
@@ -86,7 +117,12 @@ class TwoQubitDepth(_Count):
 
 
 class MeasurementCount(_Count):
-    """`measure` instructions of the logical circuit."""
+    """How many measurements the circuit makes.
+
+    Number of `measure` instructions in the logical circuit.
+
+    Unit: ops. Reference: qscore definition (06 §2.1).
+    """
 
     def __init__(self) -> None:
         super().__init__("measurement_count", "ops", "logical", _L)
@@ -96,7 +132,13 @@ class MeasurementCount(_Count):
 
 
 class ToffoliCount(_Count):
-    """`ccx` (and 2-control `mcx`) instructions of the logical circuit."""
+    """How many Toffoli gates the logical circuit uses; the objective for reversible circuits.
+
+    Number of `ccx` instructions (and `mcx` with exactly two controls) in the logical
+    circuit.
+
+    Unit: gates. Reference: qscore definition (06 §2.1).
+    """
 
     def __init__(self) -> None:
         super().__init__("toffoli_count", "gates", "logical", _L)

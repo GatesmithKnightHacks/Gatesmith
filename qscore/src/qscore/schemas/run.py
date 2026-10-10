@@ -1,7 +1,7 @@
 """Plan, event, issue report, hardware profile and bench result (specs/04-contracts.md §8-§11).
 
-`RunRecord` and `ItemSummary` (specs/03 §3.2) have no contract in 04 yet; they are defined with
-CP-0004.
+`RunRecord` is `qscore.run/v0.2` (04 §13: ChP-0004 fields plus ChP-0028 `interpretation` and
+scorecard hashes). `ItemSummary` (specs/03 §3.2) is not built in the MVP.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ EVENT_SCHEMA = "qscore.event/v0.2"
 ISSUES_SCHEMA = "qscore.issues/v0.2"
 PROFILE_SCHEMA = "qscore.profile/v0.2"
 BENCH_SCHEMA = "qscore.bench/v0.2"
+RUN_SCHEMA = "qscore.run/v0.2"
 
 EventKind = Literal[
     "run_started",
@@ -173,3 +174,55 @@ class BenchResult(QDocument):
     rows: list[BenchRow]
     crossover: dict[str, Any] = Field(default_factory=dict)
     provenance: Provenance
+
+
+class Confirmation(QModel):
+    """How the run was confirmed before compute (05 §5); modes match Neon `confirmed_mode`."""
+
+    mode: Literal["interactive", "yes_flag", "stored"]
+    at: AwareDatetime
+    manifest_sha256: str
+
+
+class RunScorecardRef(QModel):
+    item_id: str
+    item_sha256: str
+    path: str  # relative to the run's output directory
+    sha256: str  # of the scorecard file bytes
+
+
+class RunProvenance(QModel):
+    """Run-wide versions; per-item seeds and settings stay in each scorecard's provenance."""
+
+    qscore: str
+    score_version: str
+    git_commit: str | None
+    git_dirty: bool
+    lock_sha256: str | None
+    python: str
+    qiskit: str
+
+
+class RunRecord(QDocument):
+    """One scoring run, written last as `<out>/run.json` (04 §13)."""
+
+    SCHEMA_ID = RUN_SCHEMA
+    schema_: Literal["qscore.run/v0.2"] = Field(alias="schema")
+    run_id: str
+    job_id: UUID | None = None
+    command: str
+    manifest_sha256: str
+    items: list[str]
+    confirmation: Confirmation
+    interpretation: str
+    settings_profile: str
+    fallbacks_enabled: list[str]
+    fallbacks_used: list[str]
+    started_at: AwareDatetime
+    finished_at: AwareDatetime
+    status: Literal["complete", "partial", "failed"]
+    # The CLI applies --allow-partial/--fail-on after the record is written (05 §11), so the
+    # record carries no exit code in the MVP; the worker sets it for queued jobs.
+    exit_code: int | None = None
+    scorecards: list[RunScorecardRef]
+    provenance: RunProvenance

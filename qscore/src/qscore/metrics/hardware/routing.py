@@ -27,7 +27,18 @@ def _pair_key(pair: tuple[int, int]) -> str:
 
 
 class RoutingOverhead(_Hw):
-    """(R - A) / R: R = representative 2q count, A = min over all-to-all compiles."""
+    """Share of two-qubit gates that exist only because the hardware's connectivity forced extra
+    routing.
+
+    `(R - A) / R`, where `R` is the two-qubit count of the representative compile and `A`
+    the minimum two-qubit count over the all-to-all reference compiles (same basis, same
+    seeds). `R = 0` gives 0.0. May be slightly negative because compiles are stochastic;
+    reported as is. Evidence: `R`, `A`, `swaps_inserted`, the five qubit pairs with the most
+    SWAPs.
+
+    Unit: ratio. Reference: qscore definition (06 §2.2); routing via Qiskit's preset pass
+    managers.
+    """
 
     def __init__(self) -> None:
         super().__init__(
@@ -51,7 +62,14 @@ class RoutingOverhead(_Hw):
 
 
 class SwapsInserted(_Hw):
-    """SWAPs in the route-only output for the representative seed."""
+    """How many SWAPs the router added to fit the circuit onto the hardware.
+
+    Number of `swap` instructions in the route-only output (init, layout and routing stages)
+    for the representative seed, counted before SWAPs are decomposed. Evidence: per-pair
+    counts.
+
+    Unit: gates. Reference: Qiskit preset pass manager stages.
+    """
 
     def __init__(self) -> None:
         super().__init__("swaps_inserted", "gates", frozenset({Requirement.ROUTING_STAGE}))
@@ -66,7 +84,14 @@ class SwapsInserted(_Hw):
 
 
 class CompileRatio(_Hw):
-    """R / L0 with L0 the two-qubit count of the raw translation."""
+    """How compilation changed the two-qubit gate count compared with a plain translation.
+
+    `R / L0`, where `R` is the representative compile's two-qubit count and `L0` the two-
+    qubit count of the raw translation to the target basis. `L0 = 0` gives `unavailable`
+    ("no two-qubit operations").
+
+    Unit: ratio. Reference: qscore definition (06 §2.2).
+    """
 
     def __init__(self) -> None:
         super().__init__(

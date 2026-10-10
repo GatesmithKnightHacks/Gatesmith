@@ -16,6 +16,6 @@
 
 ## Consequence
 - [ ] No spec change needed — the spec's assumption holds.
-- [ ] Spec change needed → proposal `specs/proposals/CP-<NNNN>-…` (link).
+- [ ] Spec change needed → proposal `specs/proposals/ChP-<NNNN>-…` (link).
 - [ ] Watchlist entry to add to `specs/18-risks-and-watchlist.md` (via the user).
 - Code that should move to the repo (through a normal task with tests): <files or "none">

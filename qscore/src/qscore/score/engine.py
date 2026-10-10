@@ -23,6 +23,7 @@ from qscore.metrics.registry import all_metrics
 from qscore.record.provenance import collect
 from qscore.schemas.common import Status
 from qscore.schemas.scorecard import (
+    SCORECARD_SCHEMA,
     CompileInfo,
     ErrorInfo,
     ItemRef,
@@ -105,8 +106,10 @@ def score_item(
     budget = item.budget.wall_time_s if item.budget is not None else None
     for metric in all_metrics().values():
         reason = "not selected" if groups and metric.group not in groups else None
-        if reason is None and budget is not None and time.perf_counter() - t0 >= budget:
-            reason = "budget"
+        elapsed = time.perf_counter() - t0
+        if reason is None and budget is not None and elapsed >= budget:
+            # Wall time is not reproducible, so the reason records what tripped it.
+            reason = f"budget: {elapsed:.1f} s >= wall_time_s {budget:g}"
         if reason is not None:
             metrics.append(
                 MetricResult(
@@ -131,11 +134,13 @@ def score_item(
     findings = rank(apply(policy, diagnosis.findings))
     # Artifact assembly must not start/retry dependencies or lose failed metric results.
     rep = ctx.__dict__.get("representative")
+    compiled = ctx.__dict__.get("compile_set")
     target = ctx.target
     all_to_all = ctx.__dict__.get("all_to_all")
     route = ctx.__dict__.get("routing_stage")
     compile_info = None
-    if rep is not None:
+    if compiled is not None:
+        # Per-seed results are kept even when no representative could be chosen (ChP-0028).
         policy_text = (
             SELECTION_POLICY
             if ctx.objective.direction == "minimize"
@@ -143,7 +148,7 @@ def score_item(
         )
         compile_info = CompileInfo(
             seeds=ctx.seeds,
-            representative_seed=rep.seed,
+            representative_seed=None if rep is None else rep.seed,
             selection_policy=policy_text,
             per_seed=[
                 SeedResult(
@@ -153,7 +158,7 @@ def score_item(
                     depth=r.depth,
                     time_s=r.time_s,
                 )
-                for r in ctx.compile_set.results
+                for r in compiled.results
             ],
             all_to_all=None
             if all_to_all is None
@@ -161,13 +166,13 @@ def score_item(
             route_only=None if route is None else {"swaps_inserted": route.swaps_inserted},
         )
     failed = any(m.status is Status.FAILED for m in metrics)
-    assert item.execution is not None  # resolved items always carry execution (CP-0021)
+    assert item.execution is not None  # resolved items always carry execution (ChP-0021)
     seed_sim = item.execution.seed_simulator
     if seed_sim is None:
         raise InvalidInput(f"[Q104] item {item.id}: execution.seed_simulator is null", report=None)
     return Scorecard.model_validate(
         {
-            "schema": "qscore.scorecard/v0.2",
+            "schema": SCORECARD_SCHEMA,
             "item": ItemRef(
                 id=item.id,
                 item_sha256=resolved.item_sha256,

@@ -32,5 +32,5 @@
 | D-026 | `reference-qiskit` includes a pass-based `reversible_rewrite` so the S-box example has an MVP strategy | No reversible strategy in the MVP | B | 10 §4 |
 | D-027 | `sbox_oracle` example = four PRESENT S-boxes on 16 bits + 4 ancillas (20 qubits), X/CX/CCX only | Small 4-bit S-box; ripple-carry adder | B | 14 §3.2 |
 | D-028 | Codex runs via `codex exec` in manual git worktrees by default; plugin/MCP optional | Plugin only | B | 16 §4 |
-| D-029 | Handoffs are hook-enforced: checkpoint every 50 main-session tool calls; final at ≥ 90 % context | Instructions only | A (user's requirement) | 00 R9 |
+| D-029 | Handoffs are hook-enforced: checkpoint every 100 main-session tool calls (raised from 50 by the user, 2026-10-10); final at ≥ 90 % context | Instructions only | A (user's requirement) | 00 R9 |
 | D-030 | Exit codes 0 clean, 1 findings ≥ `--fail-on`, 2 invalid input, 3 runtime failure, 4 configuration error | 0–3 only | A | 05 §11 |

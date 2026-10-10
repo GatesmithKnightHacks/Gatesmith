@@ -1,16 +1,16 @@
 # Handoff — <YYYY-MM-DD HH:MM UTC> — session <first 8 chars of session id>
 
-> Written because: <50-call checkpoint | context ≥ 90 % (FINAL) | end of session | before GPU teardown | gate passed | user asked>
+> Written because: <100-call checkpoint | context ≥ 90 % (FINAL) | end of session | before GPU teardown | gate passed | user asked>
 > Previous handoff archived as: `handoffs/<file>` (or "none")
 
 ## 1. TL;DR (3 lines max)
 <Where the project stands, what was just finished, what comes next.>
 
 ## 1b. MVP progress and ETA (relay this to the user at the start of the next session)
-- **MVP done: <N> %** (MVP = CP-0023: circuit in → diagnostics and scores out; gate G-MVP) — weighted by the MVP task list in `15-build-plan.md` §3a (S1–S6, M1–M4, equal weight unless noted); a task counts fully only when its acceptance passes (half if built but unreviewed).
+- **MVP done: <N> %** (MVP = ChP-0023: circuit in → diagnostics and scores out; gate G-MVP) — weighted by the MVP task list in `15-build-plan.md` §3a (S1–S6, M1–M4, equal weight unless noted); a task counts fully only when its acceptance passes (half if built but unreviewed).
 - **Final product done: <N> %** — weighted by the planned phase hours of `15-build-plan.md` §1 (36 h).
-- **Current milestone:** <e.g. CP-0022 slice S1–S6> — <done/total>.
-- **ETA (agent work sessions; 1 session ≈ 50 tool calls ≈ 45–75 min):** next milestone <n> sessions · G1 <n> · G2 <n> · full MVP (G5) <n> serial / <n> with parallel delegates.
+- **Current milestone:** <e.g. ChP-0022 slice S1–S6> — <done/total>.
+- **ETA (agent work sessions; 1 session ≈ 100 tool calls ≈ 90–150 min):** next milestone <n> sessions · G1 <n> · G2 <n> · full MVP (G5) <n> serial / <n> with parallel delegates.
 - **What moves the ETA:** <pending user decisions, credentials, GPU sessions, commits for worktrees>.
 - **Change since last handoff:** <+x % / ETA shifted by … because …>.
 
@@ -35,7 +35,7 @@
 - <what · repro command · since · suspected cause> (or none)
 
 ## 7. Decisions
-- Pending for the user: <CP-NNNN title · class · what is blocked> (or none)
+- Pending for the user: <ChP-NNNN title · class · what is blocked> (or none)
 - Made by the lead since last handoff (class B): <…> (or none)
 
 ## 8. Environment

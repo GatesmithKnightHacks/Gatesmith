@@ -23,7 +23,7 @@ from ruamel.yaml import YAML
 from qscore.schemas.improvement import ImprovementRequest, Proposal
 from qscore.schemas.manifest import ProjectManifest
 from qscore.schemas.records import AttemptRecord, JobSpec
-from qscore.schemas.run import Event, IssueReportModel
+from qscore.schemas.run import Event, IssueReportModel, RunRecord
 from qscore.schemas.scorecard import Scorecard
 
 SPEC = Path(__file__).resolve().parents[3] / "specs" / "04-contracts.md"
@@ -36,13 +36,14 @@ TIMESTAMP = "2026-10-10T15:02:59Z"
 
 MODELS: dict[str, type[BaseModel]] = {
     "qscore.project/v0.2": ProjectManifest,
-    "qscore.scorecard/v0.2": Scorecard,
+    "qscore.scorecard/v0.3": Scorecard,
     "qscore.request/v0.2": ImprovementRequest,
     "qscore.proposal/v0.2": Proposal,
     "qscore.attempt/v0.2": AttemptRecord,
     "qscore.job/v0.2": JobSpec,
     "qscore.event/v0.2": Event,
     "qscore.issues/v0.2": IssueReportModel,
+    "qscore.run/v0.2": RunRecord,
 }
 
 
@@ -58,7 +59,7 @@ def spec_examples() -> dict[str, dict[str, Any]]:
 
 
 EXAMPLES = spec_examples()
-PROVENANCE = EXAMPLES["qscore.scorecard/v0.2"]["provenance"]
+PROVENANCE = EXAMPLES["qscore.scorecard/v0.3"]["provenance"]
 
 
 def fill_placeholders(node: Any, key: str = "") -> Any:
@@ -171,7 +172,7 @@ def test_manifest_invalid_variants(mutate: Any, code: str) -> None:
 
 
 def scorecard() -> dict[str, Any]:
-    return example("qscore.scorecard/v0.2")
+    return example("qscore.scorecard/v0.3")
 
 
 @pytest.mark.parametrize(

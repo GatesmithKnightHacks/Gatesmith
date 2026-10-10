@@ -1,0 +1,8 @@
+schema: qscore.project/v0.2
+project: {name: broken, root: .}
+circuits:
+  - id: bell
+    source: {qasm: bell.qasm}
+    invariants:
+      intent: expectation
+      task: {observable: obs.json, tolerance: 0.02, shots: 1000}

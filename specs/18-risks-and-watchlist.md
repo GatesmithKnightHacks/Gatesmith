@@ -16,7 +16,7 @@
 | Scope creep | High | High | Tiers, gates, the cut list; R2 | Apply the cut list at G2; ask the user for more cuts |
 | Host RAM too small for 15-qubit unitary checks | Medium | Low | Check in S1 | Class A proposal to cap the GPU rung at 14 qubits |
 | Determinism breaks (seeds, ordering) | Medium | Medium | Determinism tests from G2 on | Treat as a blocker (snapshots depend on it) |
-| Session context runs out mid-task | High | Medium | Hooks: checkpoint every 50 calls, final handoff at 90 % | New session resumes from `handoff.md` |
+| Session context runs out mid-task | High | Medium | Hooks: checkpoint every 100 calls, final handoff at 90 % | New session resumes from `handoff.md` |
 
 ## 2. Watchlist by area
 

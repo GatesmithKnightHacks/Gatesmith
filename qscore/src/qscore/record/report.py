@@ -31,11 +31,16 @@ def render(cards: list[Scorecard]) -> str:
     for card in cards:
         lines += [f"## {card.item.id} — {card.status}", ""]
         if card.target and card.compile:
+            rep = card.compile.representative_seed
+            chosen = (
+                f"representative seed {rep} of {card.compile.seeds} "
+                f"({card.compile.selection_policy})"
+                if rep is not None
+                else f"no representative seed could be chosen among {card.compile.seeds}"
+            )
             lines += [
                 f"Target **{card.target.name}** ({card.target.num_qubits} qubits, basis "
-                f"{', '.join(card.target.basis)}); representative seed "
-                f"{card.compile.representative_seed} of {card.compile.seeds} "
-                f"({card.compile.selection_policy}).",
+                f"{', '.join(card.target.basis)}); {chosen}.",
                 "",
             ]
         for group in GROUPS:

@@ -13,17 +13,22 @@ def test_score_version() -> None:
     assert SCORE_VERSION == "qscore-2026.1"
 
 
-def test_all_twelve_schema_ids_listed() -> None:
-    assert len(SCHEMA_VERSIONS) == 12 and set(SCHEMA_VERSIONS.values()) == {"v0.2"}
+def test_all_schema_ids_listed() -> None:
+    # 04 §1: twelve ids plus `qscore.run` (ChP-0004/ChP-0028); scorecard is v0.3 (ChP-0028).
+    assert len(SCHEMA_VERSIONS) == 13
+    assert SCHEMA_VERSIONS["qscore.scorecard"] == "v0.3"
+    assert {v for k, v in SCHEMA_VERSIONS.items() if k != "qscore.scorecard"} == {"v0.2"}
 
 
-@pytest.mark.parametrize("schema_id", ["qscore.scorecard/v0.2", "qscore.scorecard/v0.1"])
+@pytest.mark.parametrize(
+    "schema_id", ["qscore.scorecard/v0.3", "qscore.scorecard/v0.2", "qscore.scorecard/v0.1"]
+)
 def test_same_major_lower_or_equal_minor_accepted(schema_id: str) -> None:
     assert check_compatible({"schema": schema_id}) == schema_id
 
 
 @pytest.mark.parametrize(
-    "schema_id", ["qscore.scorecard/v0.3", "qscore.scorecard/v1.0", "qscore.nope/v0.2", None]
+    "schema_id", ["qscore.scorecard/v0.4", "qscore.scorecard/v1.0", "qscore.nope/v0.2", None]
 )
 def test_incompatible_rejected_with_version(schema_id: object) -> None:
     with pytest.raises(InvalidInput):
@@ -35,6 +40,11 @@ def test_migrate_identity_and_missing_step() -> None:
     assert migrate(doc, "v0.2") is doc
     with pytest.raises(InvalidInput, match="no migration"):
         migrate({"schema": "qscore.job/v0.1"}, "v0.2")
+
+
+def test_scorecard_v02_migrates_to_v03_unchanged() -> None:
+    doc = {"schema": "qscore.scorecard/v0.2", "status": "complete"}
+    assert migrate(doc, "v0.3") == {"schema": "qscore.scorecard/v0.3", "status": "complete"}
 
 
 def test_canonical_json_sorted_compact_unicode() -> None:

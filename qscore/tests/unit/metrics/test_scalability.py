@@ -1,4 +1,4 @@
-"""scalability (specs/06-metrics.md §2.4; CP-0007 item 5 for zero/degenerate cases)."""
+"""scalability (specs/06-metrics.md §2.4; ChP-0007 item 5 for zero/degenerate cases)."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Scorecard `qscore.scorecard/v0.2` (specs/04-contracts.md §3)."""
+"""Scorecard `qscore.scorecard/v0.3` (specs/04-contracts.md §3)."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from qscore.schemas.common import (
     issue_error,
 )
 
-SCORECARD_SCHEMA = "qscore.scorecard/v0.2"
+SCORECARD_SCHEMA = "qscore.scorecard/v0.3"
 
 
 class ErrorInfo(QModel):
@@ -135,7 +135,9 @@ class RouteOnlyInfo(QModel):
 
 class CompileInfo(QModel):
     seeds: list[int] = Field(min_length=1)
-    representative_seed: int
+    # null when no representative could be chosen (the objective metric failed); per_seed is
+    # still recorded (ChP-0028 item 3).
+    representative_seed: int | None
     selection_policy: str
     per_seed: list[SeedResult]
     all_to_all: AllToAllInfo | None = None
@@ -143,7 +145,7 @@ class CompileInfo(QModel):
 
     @model_validator(mode="after")
     def _representative_in_seeds(self) -> CompileInfo:
-        if self.representative_seed not in self.seeds:
+        if self.representative_seed is not None and self.representative_seed not in self.seeds:
             raise issue_error("Q103", "representative_seed must be one of the compile seeds")
         return self
 
@@ -158,7 +160,7 @@ class ResourceUse(QModel):
 class Scorecard(QDocument):
     SCHEMA_ID = SCORECARD_SCHEMA
 
-    schema_: Literal["qscore.scorecard/v0.2"] = Field(alias="schema")
+    schema_: Literal["qscore.scorecard/v0.3"] = Field(alias="schema")
     item: ItemRef
     status: Literal["complete", "partial", "failed"]
     error: ErrorInfo | None = None

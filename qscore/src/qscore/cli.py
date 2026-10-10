@@ -1,6 +1,6 @@
-"""Command-line interface (specs/05-pipeline.md §11; exit codes per CP-0017).
+"""Command-line interface (specs/05-pipeline.md §11; exit codes per ChP-0017).
 
-MVP (CP-0023): `qscore score` for a manifest or a single OpenQASM file. Other commands arrive
+MVP (ChP-0023): `qscore score` for a manifest or a single OpenQASM file. Other commands arrive
 with their tasks.
 """
 
@@ -87,12 +87,12 @@ def score(
         if pasted:
             if sys.stdin.isatty():
                 err.print("Paste OpenQASM 2 or 3, then press Ctrl-D on an empty line:")
-            result = services.score_qasm_text(sys.stdin.read(), out, target)
+            result = services.score_qasm_text(sys.stdin.read(), out, target, confirm="yes")
         elif path is not None:
-            result = services.score_circuit(path, out, target, confirm=None if yes else confirm)
+            result = services.score_circuit(path, out, target, confirm="yes" if yes else confirm)
         else:
             assert manifest is not None  # exactly one was given (checked above)
-            result = services.score_project(manifest, out, confirm=None if yes else confirm)
+            result = services.score_project(manifest, out, confirm="yes" if yes else confirm)
     except InvalidInput as exc:
         err.print(f"[red]invalid input:[/red] {exc}")
         if exc.report is not None and hasattr(exc.report, "issues"):
@@ -108,10 +108,11 @@ def score(
     except QscoreError as exc:
         err.print(f"[red]runtime failure:[/red] {type(exc).__name__}: {exc}")
         raise typer.Exit(3) from exc
-    except Exception as exc:  # CP-0017: anything that is not a QscoreError is a bug → exit 3
+    except Exception as exc:  # ChP-0017: anything that is not a QscoreError is a bug → exit 3
         err.print(f"[red]unexpected error (a bug):[/red]\n{traceback.format_exc()}")
         raise typer.Exit(3) from exc
     if not result.scorecards:
+        err.print("not confirmed; nothing scored")
         return
     if as_json:
         sys.stdout.write(

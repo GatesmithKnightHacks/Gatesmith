@@ -1,5 +1,5 @@
 """Seeded level-3 compiles, the all-to-all reference and the raw translation
-(specs/05-pipeline.md §6; slice S2 of CP-0022). Results are always sorted by seed.
+(specs/05-pipeline.md §6; slice S2 of ChP-0022). Results are always sorted by seed.
 """
 
 from __future__ import annotations

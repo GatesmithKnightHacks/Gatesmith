@@ -1,4 +1,4 @@
-"""Calibration files and snapshot identity (approved CP-0009; units are seconds)."""
+"""Calibration files and snapshot identity (approved ChP-0009; units are seconds)."""
 
 from __future__ import annotations
 
@@ -33,7 +33,9 @@ def apply_file(target: Target, path: Path) -> tuple[bool, bool]:
         doc = json.loads(path.read_text(encoding="utf-8"))
         _apply(target, doc)
     except (OSError, UnicodeError, ValueError, TypeError, KeyError) as exc:
-        raise InvalidInput(f"[Q208] calibration {path.name}: {exc}", report=None) from exc
+        raise InvalidInput(
+            f"[Q208] calibration {path.name}: {exc}", report=None, code="Q208"
+        ) from exc
     props = [p for name in target.operation_names for p in target[name].values() if p is not None]
     return any(p.error is not None for p in props), any(p.duration is not None for p in props)
 
@@ -101,6 +103,8 @@ def _apply(target: Target, doc: Any) -> None:
                 duration=_number(row.get("duration_s"), "duration_s"),
             ),
         )
+    # `Target.qubit_properties` returns a copy: build the list, then assign it once.
+    qubit_props = [QubitProperties() for _ in range(target.num_qubits)]
     seen_qubits: set[int] = set()
     for row in doc.get("qubits", []):
         if not isinstance(row, dict) or set(row) - {"qubit", "t1_s", "t2_s"}:
@@ -109,6 +113,7 @@ def _apply(target: Target, doc: Any) -> None:
         if q in seen_qubits:
             raise ValueError(f"duplicate qubit {q}")
         seen_qubits.add(q)
-        target.qubit_properties[q] = QubitProperties(
+        qubit_props[q] = QubitProperties(
             t1=_number(row.get("t1_s"), "t1_s"), t2=_number(row.get("t2_s"), "t2_s")
         )
+    target.qubit_properties = qubit_props

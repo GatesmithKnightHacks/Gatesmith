@@ -16,11 +16,13 @@ class QscoreError(Exception):
 class InvalidInput(QscoreError):
     """The user's input is invalid; carries the full issue report (exit code 2)."""
 
-    def __init__(self, message: str, report: Any) -> None:
+    def __init__(self, message: str, report: Any, code: str | None = None) -> None:
         # `report` is a validate.issues.IssueReport; typed as Any here because foundations
-        # import nothing from higher layers.
+        # import nothing from higher layers. `code` is the issue code (05 §12) when the raiser
+        # knows it, so callers never parse it back out of the message.
         super().__init__(message)
         self.report = report
+        self.code = code
 
 
 class ConfigError(QscoreError):

@@ -65,7 +65,7 @@ A **change** is anything that makes the code differ from the specs, or makes the
 
 | Class | Examples | Who approves | May you implement before approval? |
 |---|---|---|---|
-| **A** | Schemas/contracts, CLI/API surface, module boundaries, metric definitions, diagnostic thresholds (score version), verification or acceptance rules, MVP scope, architecture (hosts, data flow), new runtime dependency, any fallback, security posture, golden values, skipping or deleting tests | **The user** | No. You MAY prototype in `lab/` or on a branch named `cp/<NNNN>-<slug>`, never on `main` |
+| **A** | Schemas/contracts, CLI/API surface, module boundaries, metric definitions, diagnostic thresholds (score version), verification or acceptance rules, MVP scope, architecture (hosts, data flow), new runtime dependency, any fallback, security posture, golden values, skipping or deleting tests | **The user** | No. You MAY prototype in `lab/` or on a branch named `chp/<NNNN>-<slug>`, never on `main` |
 | **B** | Internal module structure, private function signatures, choosing between options a spec marks "agent's choice", dev-only dependencies, extra tests, refactors with no behaviour change | The lead session (record it) | Yes, after recording the proposal and listing it in `progress.md` → *Decisions made by the lead* |
 | none | Implementation details inside a module that keep its public behaviour exactly as specified; typo fixes; comments | — | Yes |
 
@@ -73,7 +73,7 @@ Subagents and Codex runs cannot approve anything. They report deviations in thei
 
 ### How to write one
 
-1. Copy `specs/templates/change-proposal.md` to `specs/proposals/CP-<NNNN>-<slug>.md` (next free number, four digits).
+1. Copy `specs/templates/change-proposal.md` to `specs/proposals/ChP-<NNNN>-<slug>.md` (next free number, four digits).
 2. Fill in every section. The three that must never be thin:
    - **Proposed change:** the exact spec text to change (quote before → after) and the implementation sketch.
    - **Justification:** the evidence (a `lab/` experiment, an error log, a doc link, a measurement). "Seems better" is not evidence.
@@ -110,7 +110,7 @@ Subagents and Codex runs cannot approve anything. They report deviations in thei
 ## R9 · Handoffs (so a new session can carry on)
 
 1. A hook in `.claude/` counts the lead session's tool calls and watches context use:
-   - every **50 tool calls** since the last handoff, it tells you to update `handoff.md` (a checkpoint; then continue);
+   - every **100 tool calls** since the last handoff, it tells you to update `handoff.md` (a checkpoint; then continue);
    - at **≥ 90 % context**, it tells you to write the **final** handoff and stop.
 2. When told, finish the current atomic step (never leave a file half-edited or a test run unread), then write `handoff.md` from `specs/templates/handoff.md` (the `handoff` skill does this). Move the previous `handoff.md` into `handoffs/` first, named `YYYYMMDD-HHMM-<first 8 chars of session id>.md`.
 3. Also write a handoff before you stop for any reason, before tearing down the GPU machine, after a gate passes, and when the user asks.

@@ -11,13 +11,20 @@ from pydantic import BaseModel
 from qscore.schemas.improvement import ImprovementRequest, Proposal
 from qscore.schemas.manifest import ProjectManifest
 from qscore.schemas.records import AttemptRecord, JobSpec
-from qscore.schemas.run import BenchResult, Event, HardwareProfile, IssueReportModel, Plan
+from qscore.schemas.run import (
+    BenchResult,
+    Event,
+    HardwareProfile,
+    IssueReportModel,
+    Plan,
+    RunRecord,
+)
 from qscore.schemas.scorecard import Scorecard
 
-# Schema id → model. `qscore.conformance/v0.2` is exported once CP-0004 defines it.
+# Schema id → model. `qscore.conformance/v0.2` is exported once ChP-0004 defines it.
 EXPORTED: dict[str, type[BaseModel]] = {
     "qscore.project/v0.2": ProjectManifest,
-    "qscore.scorecard/v0.2": Scorecard,
+    "qscore.scorecard/v0.3": Scorecard,
     "qscore.request/v0.2": ImprovementRequest,
     "qscore.proposal/v0.2": Proposal,
     "qscore.attempt/v0.2": AttemptRecord,
@@ -27,6 +34,7 @@ EXPORTED: dict[str, type[BaseModel]] = {
     "qscore.issues/v0.2": IssueReportModel,
     "qscore.profile/v0.2": HardwareProfile,
     "qscore.bench/v0.2": BenchResult,
+    "qscore.run/v0.2": RunRecord,
 }
 
 

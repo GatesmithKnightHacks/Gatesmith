@@ -1,6 +1,6 @@
-"""Built-in metrics (specs/06-metrics.md §1). Slice S3 (CP-0022) registers the CPU subset,
+"""Built-in metrics (specs/06-metrics.md §1). Slice S3 (ChP-0022) registers the CPU subset,
 plus `scheduled_duration` and `supermarq_profile` (M2); `simulated_task_score` and `mirror_score`
-are listed with MVP-build statuses (CP-0026) until T20; `scalability` (M2). Entry-point
+are listed with MVP-build statuses (ChP-0026) until T20; `scalability` (M2). Entry-point
 plugins (`qscore.metrics`) arrive with T13."""
 
 from __future__ import annotations
