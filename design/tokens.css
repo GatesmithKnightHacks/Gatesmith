@@ -80,7 +80,6 @@
   /* ── Type ───────────────────────────────────────────────────────── */
   --font-ui: "Hanken Grotesk", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", Consolas, Monaco, monospace;
-  --font-brand: "Sora", sans-serif; /* wordmark only, weight 300 */
 
   --font-weight-regular: 400;
   --font-weight-medium: 500;
@@ -119,7 +118,7 @@
   --radius-sm: 6px; /* max; popovers only */
 
   /* ── Layout ─────────────────────────────────────────────────────── */
-  --container-rail: 42px;
-  --container-topbar: 42px;
+  --container-rail: 50px; /* six 20px icons on a 78px pitch */
+  --container-topbar: 52px; /* plus a 2px ground-colored bottom border */
   --container-inspector: 304px;
 }
