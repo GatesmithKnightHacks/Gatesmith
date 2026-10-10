@@ -1,8 +1,8 @@
-"""Diagnostic rules (specs/07-diagnostics.md §1-2; severity per CP-0008, regions per CP-0013).
+"""Diagnostic rules (specs/07-diagnostics.md §1-2; severity per ChP-0008, regions per ChP-0013).
 
 Each rule reads computed metric results and returns findings. A rule whose metric is not
 `computed` returns no finding and is recorded in `skipped` with the reason (never silent).
-Evaluates D01-D09; D10 is final product (CP-0023).
+Evaluates D01-D09; D10 is final product (ChP-0023).
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ TITLES = {
     "D10": "Low task score",
 }
 NOT_IN_SLICE = {
-    "D10": "simulation metrics are final product (CP-0023)",
+    "D10": "simulation metrics are final product (ChP-0023)",
 }
 
 
@@ -93,7 +93,7 @@ def _finding(
 
 def _full_layers(metrics: dict[str, MetricResult], logical: bool) -> tuple[int, int]:
     """Layer hull of the whole circuit in the region's scope. D01, D04, D06 and D08 regions
-    localize qubits only: CP-0013 forbids mapping gate positions across scopes, and the metrics
+    localize qubits only: ChP-0013 forbids mapping gate positions across scopes, and the metrics
     record no per-block layer range yet, so the range covers every layer (never a guess)."""
     d = metrics["depth"]
     depth = int(d.evidence["logical"]) if logical and d.evidence else int(_num(d))
@@ -103,7 +103,7 @@ def _full_layers(metrics: dict[str, MetricResult], logical: bool) -> tuple[int, 
 def _d05(structure: dict[str, Any], p: dict[str, Any]) -> list[Finding]:
     """One finding per Clifford or linear-function block of min_qubits..max_qubits qubits.
     A linear block inside a reported Clifford block is the same opportunity (cx/swap are
-    Clifford) and is not reported twice. Severity is always `warning` (CP-0008)."""
+    Clifford) and is not reported twice. Severity is always `warning` (ChP-0008)."""
     lo, hi = p["min_qubits"], p["max_qubits"]
     found: list[Finding] = []
     covered: set[int] = set()
@@ -140,8 +140,8 @@ def _d05(structure: dict[str, Any], p: dict[str, Any]) -> list[Finding]:
 
 def _d09(fit: dict[str, Any], per_size: list[dict[str, Any]], p: dict[str, Any]) -> Finding | None:
     """Routing overhead strictly rising across >= min_sizes sizes (ordered by qubit count), or
-    b_compiled - b_logical >= exponent_gap_min (both fits present, CP-0007). Severity `high`
-    when both criteria hold, else `warning` (CP-0008). No region; no request (07 §1)."""
+    b_compiled - b_logical >= exponent_gap_min (both fits present, ChP-0007). Severity `high`
+    when both criteria hold, else `warning` (ChP-0008). No region; no request (07 §1)."""
     rows = sorted(per_size, key=lambda r: r["qubits"])
     overheads = [float(r["routing_overhead"]) for r in rows]
     rising = len(rows) >= p["min_sizes"] and all(a < b for a, b in pairwise(overheads))

@@ -27,9 +27,9 @@
 
 ### 4.1 Loading
 
-- **QASM:** `qiskit.qasm2.loads` (v2) or `qiskit.qasm3.loads` (v3; needs the `qiskit-qasm3-import` package; `openqasm3` is declared too, for its `QASM3ParsingError`, CP-0027). Parse errors → Q304 with the parser's line/column.
+- **QASM:** `qiskit.qasm2.loads` (v2) or `qiskit.qasm3.loads` (v3; needs the `qiskit-qasm3-import` package; `openqasm3` is declared too, for its `QASM3ParsingError`, ChP-0027). Parse errors → Q304 with the parser's line/column.
 - **Builders:** the sandbox runs `intake/runner.py`, which imports the file, calls the function with the manifest's arguments, checks it returned a `QuantumCircuit`, and writes QPY plus a status JSON. Failures → Q300 timeout, Q301 import error, Q302 user exception (traceback trimmed to user files), Q303 not a circuit.
-- **Then:** bind parameters by name from the manifest's parameter file; any left unbound → Q305. Hash the circuit's QPY bytes (`circuit_sha256`).
+- **Then:** bind parameters by name from the manifest's parameter file; any left unbound → Q305; names the circuit does not have → Q207 (ChP-0028). Hash the circuit's QPY bytes (`circuit_sha256`).
 
 ### 4.2 Sandbox (options; ★ default)
 
@@ -58,7 +58,7 @@ Intent vs circuit (`04-contracts.md` §2.2): reversible gate set (Q400); measure
 
 - **Does:** a plain-language summary per item: source, qubits, gate counts, parameters, measurements, the intent in one sentence, permitted changes, target, planned compute, what will **not** be checked, and each default marked "(default)".
 - **How:** fixed sentence templates, no generated prose, so the summary doubles as alt text for the circuit drawing.
-- **Confirm:** interactive prompt (CLI), the Confirm screen (UI), `--yes`, or the stored confirmation for a queued job. The confirmation (mode, time, manifest hash) is stored in the run record and in Neon (`manifests.confirmed_*`).
+- **Confirm:** interactive prompt (CLI), the Confirm screen (UI), `--yes`, or the stored confirmation for a queued job. The confirmation (mode, time, manifest hash) is stored in the run record (`<out>/run.json`, 04 §13) and in Neon (`manifests.confirmed_*`). `services` takes `confirm` as a required keyword: a callback (interactive) or the literal `"yes"` (`--yes`); there is no silent default (ChP-0028).
 - **Never:** starts compute before confirmation.
 
 ## 6. Compile (`compile/pipeline.py`, `stages.py`, `select.py`)
@@ -74,11 +74,11 @@ Intent vs circuit (`04-contracts.md` §2.2): reversible gate set (Q400); measure
 | Name | Built from | Basis | Calibration |
 |---|---|---|---|
 | `FakeTorino` | `qiskit_ibm_runtime.fake_provider.FakeTorino().target` | the backend's (`cz`, `rz`, `sx`, `x`, plus measure/reset/delay) | `from_backend` (error rates, durations, T1/T2) |
-| `all-to-all` | `Target` with full connectivity on the item's qubit count | same basis as the reference target it shadows | none |
+| `all-to-all` | `Target` with full connectivity on the item's qubit count | as the routing reference: same basis as the target it shadows; as a manifest target: `cx, rz, sx, x` (ChP-0028) | none |
 | `line-N` | `CouplingMap.from_line(N)` | `cx`, `rz`, `sx`, `x` | none, unless the manifest supplies a calibration file |
 | `grid-RxC` | `CouplingMap.from_grid(R, C)` | `cx`, `rz`, `sx`, `x` | none |
 | `heavy-hex-D` | `CouplingMap.from_heavy_hex(D)` | `cz`, `rz`, `sx`, `x` | none |
-| custom | `{coupling_map, basis_gates}` in the manifest → `Target.from_configuration` | as given | optional `{file}`; otherwise uniform default errors labelled `assumed` (shown as defaults in the summary) |
+| custom | `{coupling_map, basis_gates}` in the manifest → `Target.from_configuration` | as given (distinct standard gates; `measure`/`reset`/`delay` are added automatically, Q103) | optional `{file}`; otherwise `none`: reliability metrics are `unavailable` (ChP-0025, ChP-0028; the ChP-0009 assumed errors are withdrawn) |
 
 `calibration: none` makes `reliability_heuristic` and `scheduled_duration` `unavailable` (with that reason), never estimated.
 
@@ -147,7 +147,8 @@ Proves a returned candidate keeps the invariants before anything is scored as be
 | Q204 | error | Size-sweep argument not in the signature |
 | Q205 | error | Observable file invalid |
 | Q206 | error | Unknown target |
-| Q207 | error | Parameters file invalid |
+| Q207 | error | Parameters file invalid (unreadable, non-numeric values, or names the circuit does not have) |
+| Q208 | error | Calibration file invalid (`qscore.calibration/v0.1`, ChP-0009) |
 | Q300 | error | Builder timed out |
 | Q301 | error | Builder import failed |
 | Q302 | error | Builder raised an exception |

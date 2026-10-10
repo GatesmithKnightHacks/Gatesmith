@@ -7,7 +7,7 @@ source, including where it differs from the paper's prose: "measurement" counts 
 contain a `reset` after final measurements are removed, and "critical depth" sums the longest-path
 counts of the gate names that occur as two-qubit operations. Where the source divides by zero
 (fewer than 2 qubits for communication, no gates, depth 0) a feature function returns None and the
-metric reports 0.0, listing the case in `evidence.undefined_as_zero` (CP-0026) — the same value
+metric reports 0.0, listing the case in `evidence.undefined_as_zero` (ChP-0026) — the same value
 the source itself gives parallelism in the analogous case.
 """
 
@@ -103,6 +103,19 @@ def critical_depth(qc: QuantumCircuit) -> float:
 
 @dataclass(frozen=True)
 class SupermarqProfile:
+    """Six standard features describing the circuit's shape; shown for context, never scored.
+
+    SupermarQ's six features on the logical circuit: program communication, critical depth,
+    entanglement ratio, parallelism, liveness and measurement, each in [0, 1]. Where a
+    formula divides by zero (program communication with fewer than 2 qubits; entanglement
+    ratio with no gates; liveness or measurement with depth 0) the feature is 0.0 and the
+    case is listed in `evidence.undefined_as_zero` (ChP-0026).
+
+    Unit: dict of 6 values in [0, 1]. Reference: Tomesh et al., "SupermarQ: A Scalable
+    Quantum Benchmark Suite", HPCA 2022 (arXiv:2202.11045); formulas ported from the
+    published SupermarQ source.
+    """
+
     id: str = "supermarq_profile"
     group: MetricGroup = MetricGroup.OPPORTUNITIES
     version: str = "1"

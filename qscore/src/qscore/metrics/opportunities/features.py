@@ -25,6 +25,17 @@ def per_qubit_two_qubit_counts(qc: QuantumCircuit) -> dict[int, int]:
 
 @dataclass(frozen=True)
 class EntanglementVariance:
+    """How unevenly the two-qubit gates are spread over the qubits.
+
+    Population variance of `c_i`, the number of two-qubit operations touching logical qubit
+    `i`, over the active logical qubits. Evidence: per-qubit counts, mean, `cv = std / mean`
+    (0 when the mean is 0). Inspired by QASMBench's entanglement variance, but not identical
+    to it.
+
+    Unit: gates^2. Reference: Inspired by Li et al., "QASMBench", ACM TQC 2023
+    (arXiv:2005.13018); not the same formula.
+    """
+
     id: str = "entanglement_variance"
     group: MetricGroup = MetricGroup.OPPORTUNITIES
     version: str = "1"

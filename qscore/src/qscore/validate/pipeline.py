@@ -33,6 +33,8 @@ def run_validation(
     issues: list[IssueModel] = []
     work: list[tuple[ResolvedItem, LoadedCircuit]] = []
     registry = all_metrics()
+    if manifest.project.runner.env != "engine":  # before any builder runs (05 §3)
+        raise ConfigError("project.runner.env: uv is not supported yet; use env: engine")
     for index, (item, root, origins) in enumerate(merge_items(manifest, manifest_dir)):
         at = index if positions is not None else None
 
@@ -125,8 +127,8 @@ def run_validation(
         try:
             target = get_target(item.target, root, loaded.circuit.num_qubits)
         except InvalidInput as exc:
-            code = "Q208" if str(exc).startswith("[Q208]") else "Q103"
-            add(code, ("target",), str(exc))
+            assert exc.code is not None  # get_target always names its issue code
+            add(exc.code, ("target",), str(exc))
             continue
         issues.extend(
             semantic_issues(

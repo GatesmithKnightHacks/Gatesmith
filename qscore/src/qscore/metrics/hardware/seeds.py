@@ -13,7 +13,13 @@ from qscore.schemas.common import MetricGroup, MetricKind
 
 @dataclass(frozen=True)
 class SeedSpreadMetric:
-    """(max - min) / median of the two-qubit count across seeds."""
+    """How much the result depends on the compiler's random seed.
+
+    `(max - min) / median` of the two-qubit count across the transpiler seeds. Evidence:
+    min, median, max and the per-seed table.
+
+    Unit: ratio. Reference: qscore definition (06 §2.2).
+    """
 
     id: str = "seed_spread"
     group: MetricGroup = MetricGroup.HARDWARE
@@ -34,6 +40,6 @@ class SeedSpreadMetric:
         if s.median == 0:
             if s.maximum == 0:
                 return computed(0.0, "ratio", ev)
-            # Spec defines no value for a zero median (CP-0007 item 4); fail loudly.
+            # Spec defines no value for a zero median (ChP-0007 item 4); fail loudly.
             raise MetricError("seed_spread: median two-qubit count is 0 but not all seeds are 0")
         return computed((s.maximum - s.minimum) / s.median, "ratio", ev)

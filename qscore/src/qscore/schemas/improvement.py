@@ -1,7 +1,7 @@
 """Improvement request `qscore.request/v0.2` and proposal `qscore.proposal/v0.2`
 (specs/04-contracts.md §4-§5).
 
-`ConformanceReport` (specs/03 §3.2) has no contract in 04 yet; it is defined with CP-0004.
+`ConformanceReport` (specs/03 §3.2) has no contract in 04 yet; it is defined with ChP-0004.
 """
 
 from __future__ import annotations

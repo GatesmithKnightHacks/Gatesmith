@@ -22,6 +22,19 @@ def reliability_from_ops(ops: Iterable[tuple[str, tuple[int, ...], float | None]
 
 @dataclass(frozen=True)
 class ReliabilityHeuristic:
+    """Rough calibration-based estimate of how error-prone the compiled circuit is; a heuristic,
+    not a success probability.
+
+    `exp(sum(log(1 - e_op)))` over the compiled circuit's gates and measurements that have
+    error data (`target[op][qargs].error`; `None` or 0, e.g. virtual `rz`, contributes
+    nothing). Evidence: per-qubit and per-edge contributions of `-log(1 - e)`, the five
+    largest contributors, `ops_without_error`. Labelled everywhere "calibration-based
+    reliability heuristic, not a success probability".
+
+    Unit: probability-like, in (0, 1]. Reference: Expected-fidelity style of mapomatic
+    (Nation & Treinish, PRX Quantum 4, 010327, 2023) and MQT Predictor.
+    """
+
     id: str = "reliability_heuristic"
     group: MetricGroup = MetricGroup.HARDWARE
     version: str = "1"

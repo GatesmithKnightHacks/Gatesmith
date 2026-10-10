@@ -1,0 +1,1 @@
+{"schema": "qscore.calibration/v0.1", "gates": [{"name": "cx", "qubits": [0, 1], "error": 1.5}]}

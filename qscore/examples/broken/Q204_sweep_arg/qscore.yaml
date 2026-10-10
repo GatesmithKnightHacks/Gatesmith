@@ -1,0 +1,6 @@
+schema: qscore.project/v0.2
+project: {name: broken, root: .}
+circuits:
+  - id: chain
+    source: {builder: src/chain.py::build, args: {n: 2}}
+    size_sweep: {arg: depth, values: [2, 3]}

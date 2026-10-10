@@ -26,9 +26,9 @@
 
 Legend — **Tier** (0/1/2) · **WS** workstream · **Dep** dependencies · **Delegable**: `lead` (keep in the main session), `sub` (Claude subagent in a worktree), `codex` (Codex in a worktree), `any`. Delegation rules: `16-agents-and-codex.md`.
 
-### 3a · The MVP (CP-0023): fast-track scoring slice S1–S6 (CP-0022), then M1–M4 — built first
+### 3a · The MVP (ChP-0023): fast-track scoring slice S1–S6 (ChP-0022), then M1–M4 — built first
 
-`qscore score --manifest qscore.yaml` → scorecards + Markdown report for both examples on the QASM path, CPU only. Tasks S1–S6 are subsets of T03/T07/T10–T15 (table in CP-0022 §2.1); their remaining scope stays with the original task. MVP tasks after the slice: **M1** single-file mode `qscore score PATH.qasm [--target]` with the manual-upload defaults, plus MVP-relevant validation codes (Q100–Q107, Q200, Q206, Q304, Q400–Q408) · **M2** remaining CPU metrics (`scheduled_duration`, `supermarq_profile`, Clifford/linear blocks, `scalability`) and D07, D09, regions, suppression · **M3** builder path via the sandbox (preferred input) · **M4** review, docs (`docs/metrics.md`), golden record+approve values. **G-MVP** = both examples and a single QASM file score end to end. Acceptance of the slice: both example manifests score end to end; golden rows of `06` §4 that the spec approves pass; ruff/mypy/pytest pass; one spec-auditor pass over the slice.
+`qscore score --manifest qscore.yaml` → scorecards + Markdown report for both examples on the QASM path, CPU only. Tasks S1–S6 are subsets of T03/T07/T10–T15 (table in ChP-0022 §2.1); their remaining scope stays with the original task. MVP tasks after the slice: **M1** single-file mode `qscore score PATH.qasm [--target]` with the manual-upload defaults, plus MVP-relevant validation codes (Q100–Q107, Q200, Q206, Q304, Q400–Q408) · **M2** remaining CPU metrics (`scheduled_duration`, `supermarq_profile`, Clifford/linear blocks, `scalability`) and D07, D09, regions, suppression · **M3** builder path via the sandbox (preferred input) · **M4** review, docs (`docs/metrics.md`), golden record+approve values. **G-MVP** = both examples and a single QASM file score end to end. Acceptance of the slice: both example manifests score end to end; golden rows of `06` §4 that the spec approves pass; ruff/mypy/pytest pass; one spec-auditor pass over the slice.
 
 ### P0 · Workspace
 

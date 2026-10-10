@@ -13,6 +13,7 @@ import json
 import math
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -70,8 +71,10 @@ def _limits(timeout_s: float, mem_mb: int) -> Callable[[], None] | None:
     def apply() -> None:
         mem = mem_mb * 1024 * 1024
         resource.setrlimit(resource.RLIMIT_AS, (mem, mem))
+        # Soft < hard: the kernel sends SIGXCPU at the soft limit, so a CPU-time kill is
+        # recognisable as a timeout (Q300) rather than an unexplained SIGKILL.
         cpu = math.ceil(timeout_s) + 1
-        resource.setrlimit(resource.RLIMIT_CPU, (cpu, cpu))
+        resource.setrlimit(resource.RLIMIT_CPU, (cpu, cpu + 1))
 
     return apply
 
@@ -105,8 +108,13 @@ def run_builder(request: BuilderRequest, timeout_s: float, mem_mb: int) -> Sandb
             )
         except subprocess.TimeoutExpired as exc:
             raise SandboxError(f"{where} timed out after {timeout_s:g} s", "timeout") from exc
+        cpu_killed = sys.platform != "win32" and proc.returncode == -signal.SIGXCPU
+        if not status_path.is_file() and cpu_killed:
+            raise SandboxError(
+                f"{where} exceeded the CPU-time limit for {timeout_s:g} s", "timeout"
+            )
         if not status_path.is_file():
-            # Killed before reporting (signal, RLIMIT_CPU/AS): the builder's own process failed.
+            # Killed before reporting (signal, RLIMIT_AS): the builder's own process failed.
             stderr = proc.stderr.strip().splitlines()[-1:] or ["no output"]
             raise SandboxError(
                 f"{where} exited with code {proc.returncode} without a status: {stderr[0]}",

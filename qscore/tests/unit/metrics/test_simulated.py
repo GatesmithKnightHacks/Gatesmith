@@ -1,4 +1,4 @@
-"""Simulation metrics in the MVP build: listed with a status and reason (CP-0023, CP-0026)."""
+"""Simulation metrics in the MVP build: listed with a status and reason (ChP-0023, ChP-0026)."""
 
 from __future__ import annotations
 

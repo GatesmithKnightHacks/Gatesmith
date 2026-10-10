@@ -29,6 +29,7 @@ class ScoringContext:
         self._logical = logical
         self._rebuild = rebuild
         self.failures: dict[Requirement, Exception] = {}
+        self._parent: ScoringContext | None = None  # set by `for_seed`
         item = resolved.item
         assert item.target is not None and item.objective is not None and item.execution is not None
         self.target_spec: TargetSpec = item.target
@@ -74,26 +75,32 @@ class ScoringContext:
         metric = all_metrics()[primary]
         values: dict[int, float] = {}
         for result in self.compile_set.results:
-            candidate = ScoringContext(self.resolved, self.logical, self.rebuild)
-            candidate.__dict__.update(
-                target=self.target, compile_set=self.compile_set, representative=result
-            )
-            if Requirement.ALL_TO_ALL in metric.requires:
-                candidate.__dict__["all_to_all"] = self.all_to_all
-            if Requirement.RAW_TRANSLATION in metric.requires:
-                candidate.__dict__["raw_translation"] = self.raw_translation
-            outcome = metric.compute(candidate)
+            outcome = metric.compute(self.for_seed(result))
             if not isinstance(outcome.value, (int, float)):
                 raise MetricError(f"objective {primary} did not compute a scalar: {outcome.reason}")
             values[result.seed] = float(outcome.value)
         sign = 1 if self.objective.direction == "minimize" else -1
+        order = {r.seed: i for i, r in enumerate(self.compile_set.results)}  # seed-list order
         return min(
             self.compile_set.results,
-            key=lambda r: (sign * values[r.seed], r.two_qubit_depth, r.seed),
+            key=lambda r: (sign * values[r.seed], r.two_qubit_depth, order[r.seed]),
         )
+
+    def for_seed(self, result: CompiledResult) -> ScoringContext:
+        """A context whose representative is `result`; it reuses this context's target and
+        compiles (assigning a `cached_property` stores the value; seed-independent stages are
+        delegated to the parent), so only seed-specific stages such as `routing_stage` run again."""
+        ctx = ScoringContext(self.resolved, self.logical, self.rebuild)
+        ctx._parent = self
+        ctx.target = self.target
+        ctx.compile_set = self.compile_set
+        ctx.representative = result
+        return ctx
 
     @cached_property
     def all_to_all(self) -> CompileSet:
+        if self._parent is not None:
+            return self._parent.all_to_all
         return pipeline.compile_all_to_all(self.logical, self.target, self.seeds)
 
     @cached_property
@@ -102,4 +109,6 @@ class ScoringContext:
 
     @cached_property
     def raw_translation(self) -> QuantumCircuit:
+        if self._parent is not None:
+            return self._parent.raw_translation
         return pipeline.raw_translation(self.logical, self.target)

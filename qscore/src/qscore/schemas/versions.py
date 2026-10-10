@@ -13,7 +13,7 @@ SCORE_VERSION = "qscore-2026.1"
 # Every schema id in specs/04 §1, with its current version.
 SCHEMA_VERSIONS: dict[str, str] = {
     "qscore.project": "v0.2",
-    "qscore.scorecard": "v0.2",
+    "qscore.scorecard": "v0.3",
     "qscore.request": "v0.2",
     "qscore.proposal": "v0.2",
     "qscore.attempt": "v0.2",
@@ -24,13 +24,22 @@ SCHEMA_VERSIONS: dict[str, str] = {
     "qscore.profile": "v0.2",
     "qscore.bench": "v0.2",
     "qscore.conformance": "v0.2",
+    "qscore.run": "v0.2",
 }
 
 _SCHEMA_ID = re.compile(r"^(?P<name>qscore\.[a-z]+)/v(?P<major>\d+)\.(?P<minor>\d+)$")
 
+
+def _scorecard_v02_to_v03(doc: dict[str, Any]) -> dict[str, Any]:
+    """v0.3 only allows `compile.representative_seed: null` (ChP-0028 item 3); identity."""
+    return {**doc, "schema": "qscore.scorecard/v0.3"}
+
+
 # One function per version step: (name, from_version) -> function returning the next version's
-# document. Empty while every schema is at its first version.
-MIGRATIONS: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, Any]]] = {}
+# document.
+MIGRATIONS: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, Any]]] = {
+    ("qscore.scorecard", "v0.2"): _scorecard_v02_to_v03,
+}
 
 
 def _parse(schema_id: object) -> tuple[str, int, int]:

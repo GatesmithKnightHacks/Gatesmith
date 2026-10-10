@@ -1,5 +1,5 @@
 """Circuit loading (specs/05-pipeline.md §4.1). Slice S5: OpenQASM 2/3 files.
-Builders via the sandbox arrive with M3 (CP-0023)."""
+Builders via the sandbox arrive with M3 (ChP-0023)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from pathlib import Path
 from openqasm3.parser import QASM3ParsingError
 from qiskit import QuantumCircuit, qasm2, qasm3, qpy
 
-from qscore.errors import ConfigError, InvalidInput, SandboxError
+from qscore.errors import InvalidInput, SandboxError
 from qscore.intake.sandbox import BuilderRequest, run_builder
 from qscore.schemas.common import sha256_hex
 from qscore.schemas.manifest import BuilderSource, CircuitItem, Runner
@@ -77,7 +77,7 @@ def parse_qasm(path: Path) -> LoadedCircuit | QasmProblem:
             qc = qasm2.loads(text, custom_instructions=qasm2.LEGACY_CUSTOM_INSTRUCTIONS)
         else:
             qc = qasm3.loads(text)
-    # QASM3ParsingError (syntax) escapes qasm3.loads unwrapped and carries no message (CP-0027).
+    # QASM3ParsingError (syntax) escapes qasm3.loads unwrapped and carries no message (ChP-0027).
     except (qasm2.QASM2ParseError, qasm3.QASM3ImporterError, QASM3ParsingError) as exc:
         return _parse_problem(path.name, exc)
     qc.name = path.stem
@@ -97,10 +97,14 @@ def bind_parameters(circuit: QuantumCircuit, values: dict[str, float]) -> Quantu
     parameters = {p.name: p for p in circuit.parameters}
     missing = parameters.keys() - values.keys()
     if missing:
-        raise InvalidInput(f"[Q305] unbound parameters: {', '.join(sorted(missing))}", report=None)
+        raise InvalidInput(
+            f"[Q305] unbound parameters: {', '.join(sorted(missing))}", report=None, code="Q305"
+        )
     unknown = values.keys() - parameters.keys()
     if unknown:
-        raise InvalidInput(f"[Q207] unknown parameters: {', '.join(sorted(unknown))}", report=None)
+        raise InvalidInput(
+            f"[Q207] unknown parameters: {', '.join(sorted(unknown))}", report=None, code="Q207"
+        )
     return circuit.assign_parameters({parameters[k]: v for k, v in values.items()})
 
 
@@ -110,8 +114,7 @@ def load_builder(
     """Run a curated builder in the sandbox, bind angles, and expose a sandboxed size rebuild."""
     source = item.source
     assert isinstance(source, BuilderSource)
-    if runner.env != "engine":
-        raise ConfigError("project.runner.env: uv is not supported; use the engine environment")
+    assert runner.env == "engine"  # `uv` is refused in validate/pipeline.py before any build
     rel, function = source.builder.split("::")
     args = dict(source.args)
     if size is not None:
@@ -144,12 +147,8 @@ def load_builder(
     try:
         circuit = bind_parameters(built.circuit, values)
     except InvalidInput as exc:
-        code = (
-            "Q305"
-            if built.circuit.parameters - {p for p in built.circuit.parameters if p.name in values}
-            else "Q207"
-        )
-        return QasmProblem(code, str(exc))
+        assert exc.code is not None  # bind_parameters always names Q305 or Q207
+        return QasmProblem(exc.code, str(exc))
 
     def rebuild(value: int) -> QuantumCircuit:
         loaded = load_builder(item, root, runner, value)

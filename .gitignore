@@ -14,6 +14,7 @@ dist/
 .qscore/
 qscore/runs/
 qscore/scorecards/
+qscore/qscore-out/
 
 # Secrets and large artifacts (R8.3, R10)
 .env

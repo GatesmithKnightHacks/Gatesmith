@@ -1,0 +1,13 @@
+{
+  "exit_code": 2,
+  "issues": [
+    {
+      "code": "Q203",
+      "item": "chain",
+      "file": "qscore.yaml",
+      "line": 5,
+      "column": 44,
+      "field": "circuits[0].source.args"
+    }
+  ]
+}

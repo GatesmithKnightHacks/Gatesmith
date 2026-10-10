@@ -1,4 +1,4 @@
-"""Rule boundaries and severity (specs/07-diagnostics.md §1-2, §6; CP-0008 severity)."""
+"""Rule boundaries and severity (specs/07-diagnostics.md §1-2, §6; ChP-0008 severity)."""
 
 from __future__ import annotations
 
@@ -241,7 +241,7 @@ def _structure(cliff: list[Any], lin: list[Any]) -> dict[str, Any]:
     ("n_qubits", "expected"), [(2, None), (3, "warning"), (9, "warning"), (10, None)]
 )
 def test_d05_block_size_range_and_fixed_severity(n_qubits: int, expected: str | None) -> None:
-    """07 §1-2: 3-9 qubits fire; CP-0008: always warning."""
+    """07 §1-2: 3-9 qubits fire; ChP-0008: always warning."""
     assert fired(metrics(structure=_structure([_block(n_qubits)], []))).get("D05") == expected
     assert fired(metrics(structure=_structure([], [_block(n_qubits)]))).get("D05") == expected
 
@@ -254,6 +254,23 @@ def test_d05_region_and_linear_block_inside_clifford_block_not_repeated() -> Non
     r = d05[0].region
     assert r is not None and r.scope == "logical" and r.qubits == [0, 1, 2, 3]
     assert r.gate_indices == [0, 1, 2, 3] and d05[0].strategies == ["block_resynthesis"]
+
+
+def test_d05_skipped_when_structure_unavailable() -> None:
+    ms = metrics()
+    ms["structure"] = MetricResult.model_validate(
+        {
+            "id": "structure",
+            "group": "opportunities",
+            "status": "failed",
+            "reason": "boom",
+            "error": {"type": "MetricError", "message": "boom"},
+        }
+    )
+    diagnosis = evaluate(ms, effective_policy(None))
+    skipped = {s["rule"]: s["reason"] for s in diagnosis.skipped}
+    assert "structure" in skipped["D05"] and "failed" in skipped["D05"]
+    assert not any(f.rule == "D05" for f in diagnosis.findings)
 
 
 def test_d05_off_in_qaoa_profile() -> None:
@@ -310,8 +327,8 @@ def _scal(b_compiled: float | None, overheads: list[float]) -> dict[str, Any]:
         (1.30, [0.1, 0.2, 0.2], "warning"),  # gap at the threshold
         (1.0, [0.1, 0.2, 0.3], "warning"),  # rising across 3 sizes
         (1.0, [0.1, 0.2], None),  # rising, but only 2 sizes
-        (1.5, [0.1, 0.2, 0.3], "high"),  # both criteria (CP-0008)
-        (None, [0.3, 0.2, 0.1], None),  # compiled fit absent (CP-0007), falling overhead
+        (1.5, [0.1, 0.2, 0.3], "high"),  # both criteria (ChP-0008)
+        (None, [0.3, 0.2, 0.1], None),  # compiled fit absent (ChP-0007), falling overhead
         (None, [0.1, 0.2, 0.3], "warning"),
     ],
 )

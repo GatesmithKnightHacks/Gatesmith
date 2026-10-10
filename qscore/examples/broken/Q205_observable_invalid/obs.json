@@ -1,0 +1,1 @@
+{"schema": "qscore.observable/v0.1", "num_qubits": 2, "terms": [{"pauli": "ZQ", "coeff": 1.0}]}

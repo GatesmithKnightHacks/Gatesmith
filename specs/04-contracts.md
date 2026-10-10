@@ -8,7 +8,7 @@
 | Schema id | Model | Public standard? |
 |---|---|---|
 | `qscore.project/v0.2` | `ProjectManifest` | Yes |
-| `qscore.scorecard/v0.2` | `Scorecard` | Yes |
+| `qscore.scorecard/v0.3` | `Scorecard` | Yes |
 | `qscore.request/v0.2` | `ImprovementRequest` | Yes |
 | `qscore.proposal/v0.2` | `Proposal` | Yes |
 | `qscore.attempt/v0.2` | `AttemptRecord` | Internal (published in the dataset) |
@@ -19,6 +19,7 @@
 | `qscore.profile/v0.2` | `HardwareProfile` | Internal |
 | `qscore.bench/v0.2` | `BenchResult` | Internal (published) |
 | `qscore.conformance/v0.2` | `ConformanceReport` | Internal (published) |
+| `qscore.run/v0.2` | `RunRecord` (§13) | Internal |
 
 - Every document carries `schema: "<id>"` as its first field.
 - **Semantic versioning:** new optional fields bump the minor version; any change of meaning bumps the major; each step ships a `migrate()` function and `qscore migrate`.
@@ -105,7 +106,7 @@ Bitstrings use **Qiskit's order: qubit 0 is the rightmost bit.** Say so in every
 | `invariants.intent` | `reversible_function` only when every gate is `x`/`cx`/`ccx`/`swap` (Q400). `known_output`/`distribution`/`expectation` require `task` (Q104) and, for the first two, measurements (Q401). `exact_unitary` forbids mid-circuit measurement (Q402). |
 | `invariants.final_permutation` | Must be `allowed` whenever `layout` or `routing` is permitted (Q408). |
 | `invariants.task.observable` | JSON file of Pauli terms (§2.4); width must equal circuit width (Q403). |
-| `target` | Named backend, or `{coupling_map, basis_gates}`; circuit qubits ≤ target qubits (Q404). Reliability needs calibration (else the metric is `unavailable`, not an error). `calibration` default: `from_backend` for named backends (e.g. `FakeTorino`), `none` for synthetic targets (`line-N`, `grid-RxC`, `heavy-hex-D`, custom); shown as "(default)" in the summary. It is not inherited from the built-in defaults when the item or the manifest sets the target; it then takes this kind-based default (CP-0025). |
+| `target` | Named backend, or `{coupling_map, basis_gates}`; circuit qubits ≤ target qubits (Q404). Reliability needs calibration (else the metric is `unavailable`, not an error). `calibration` default: `from_backend` for named backends (e.g. `FakeTorino`), `none` for synthetic targets (`line-N`, `grid-RxC`, `heavy-hex-D`, custom); shown as "(default)" in the summary. It is not inherited from the built-in defaults when the item or the manifest sets the target; it then takes this kind-based default (ChP-0025). `backend` and `{coupling_map, basis_gates}` are alternatives when merging: a layer that sets one removes the other inherited from earlier layers (ChP-0028). A custom `basis_gates` names distinct standard Qiskit gates and must not list `measure`, `reset` or `delay`, which are always added (Q103). |
 | `objective.primary` | Must be a registered metric id with `kind` deterministic or statistical (Q103). |
 | `objective.constraints[]` | Each names a registered metric and exactly one bound: `max_vs_baseline`, `min_vs_baseline`, `max`, `min` (Q103). |
 | `permitted.approximation` | Anything other than `none` under `exact_unitary` or `reversible_function` is a contradiction (Q405). |
@@ -142,13 +143,13 @@ Pauli strings use Qiskit's `SparsePauliOp` label order (qubit 0 is the rightmost
 
 ### 2.5 Item identity
 
-`item_sha256 = sha256(canonical_json(resolved_item_without_source_contents) + sha256(source file bytes) + sha256(parameters/observable file bytes))`. Editing an item changes its hash, which marks only that scorecard stale. `circuit_sha256 = sha256(QPY bytes)` of the resolved circuit (the QPY version is recorded in provenance).
+`item_sha256 = sha256(canonical_json(resolved_item_without_source_contents) + sha256(source file bytes) + sha256(parameters/observable/calibration file bytes))` (the calibration file changes scores, ChP-0028). Editing an item changes its hash, which marks only that scorecard stale. `circuit_sha256 = sha256(QPY bytes)` of the resolved circuit (the QPY version is recorded in provenance).
 
-## 3. Scorecard `qscore.scorecard/v0.2`
+## 3. Scorecard `qscore.scorecard/v0.3`
 
 ```json
 {
-  "schema": "qscore.scorecard/v0.2",
+  "schema": "qscore.scorecard/v0.3",
   "item": {"id": "packing_qaoa_p2", "item_sha256": "…", "circuit_sha256": "…",
            "manifest_sha256": "…", "score_version": "qscore-2026.1"},
   "status": "complete",
@@ -194,12 +195,14 @@ Pauli strings use Qiskit's `SparsePauliOp` label order (qubit 0 is the rightmost
 | Field | Rules |
 |---|---|
 | `status` | `complete` (every selected metric computed/skipped/unavailable with reasons), `partial` (≥1 metric `failed`), `failed` (scoring could not produce metrics; `error` field set). |
-| `metrics[]` | One entry per **selected** metric; excluded metrics appear with `status: skipped` and `reason` (`not selected`, `skipped by flag`, `unaffordable`, `budget`). |
+| `metrics[]` | One entry per **selected** metric; excluded metrics appear with `status: skipped` and `reason` (`not selected`, `skipped by flag`, `unaffordable`, or `budget: <elapsed> s >= wall_time_s <limit>`; wall time is not reproducible, so the budget reason records what tripped it, ChP-0028). |
 | `MetricResult.status` | `computed` (value set) · `skipped` (reason) · `unavailable` (a declared requirement is absent; reason) · `failed` (exception; `error: {type, message}`). Never blank. |
 | `MetricResult.kind` | `deterministic`, `heuristic`, `statistical` (must carry `uncertainty`), `context` (shown, never scored). |
 | `findings[].confidence` | `rule_fired` or `measured` (after a counterfactual probe; T2). |
 | `findings[].suppressed` | `{by: profile|manifest|cli, reason}`; suppressed findings stay in the list. |
 | `fallbacks_used[]` | `{id: "FB-04", reason, at, scope: "metric:simulated_task_score"}`; must be empty in `dev`/`ci`. |
+| `compile.representative_seed` | `null` when no representative could be chosen (the objective metric failed); `per_seed` is still recorded (v0.3, ChP-0028; v0.2 → v0.3 migration is the identity). |
+| `x-run`, `x-interpretation` | Written by qscore: `x-run: {run_id, manifest_sha256, confirmation_mode}` links the card to its run record (§13); `x-interpretation` is this item's interpretation text (05 §5), so a card shared alone describes itself. |
 
 ## 4. Improvement request `qscore.request/v0.2`
 
@@ -316,3 +319,40 @@ Per item and metric: `{metric, device: cpu|gpu, method, precision, est_bytes, es
 - `check_compatible(document)` accepts same major, any minor ≤ current; refuses newer minor with a clear error naming the version.
 - Stored JSON (Neon `jsonb`, Hub files) always includes `schema`; readers dispatch on it.
 - Exported JSON Schemas are committed under `qscore/schemas/<id with / replaced by _>.json`; `tests/contract/test_schema_drift.py` fails if they differ from `export_json_schemas()`.
+
+## 13. Run record `qscore.run/v0.2` (`<out>/run.json`; ChP-0004, ChP-0028)
+
+Written last by every confirmed scoring run.
+
+```json
+{
+  "schema": "qscore.run/v0.2",
+  "run_id": "run-20261010T150211",
+  "job_id": null,
+  "command": "score",
+  "manifest_sha256": "…",
+  "items": ["sbox_oracle"],
+  "confirmation": {"mode": "yes_flag", "at": "2026-10-10T15:02:11Z", "manifest_sha256": "…"},
+  "interpretation": "Interpretation (CPU scoring and diagnostics): …",
+  "settings_profile": "dev",
+  "fallbacks_enabled": [],
+  "fallbacks_used": [],
+  "started_at": "2026-10-10T15:02:10Z",
+  "finished_at": "2026-10-10T15:02:59Z",
+  "status": "complete",
+  "exit_code": null,
+  "scorecards": [{"item_id": "sbox_oracle", "item_sha256": "…", "path": "scorecards/sbox_oracle.json", "sha256": "…"}],
+  "provenance": {"qscore": "0.1.0", "score_version": "qscore-2026.1", "git_commit": "…", "git_dirty": false,
+                 "lock_sha256": "…", "python": "3.12.3", "qiskit": "2.x"}
+}
+```
+
+| Field | Rules |
+|---|---|
+| `confirmation.mode` | `interactive` (prompt or Confirm screen), `yes_flag` (`--yes`), `stored` (queued job); the same values as Neon `manifests.confirmed_mode` (11 §1). |
+| `interpretation` | The full summary shown before confirmation (05 §5). |
+| `status` | `complete` if every scorecard is complete, `failed` if every one failed, else `partial`. |
+| `exit_code` | `null` from the CLI/services (the CLI applies `--allow-partial`/`--fail-on` afterwards, 05 §11); the worker sets it for queued jobs. |
+| `scorecards[]` | `path` is relative to the output directory; `sha256` hashes the scorecard file bytes. |
+| `provenance` | Run-wide versions; per-item seeds and settings stay in each scorecard's provenance. |
+

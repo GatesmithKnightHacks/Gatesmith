@@ -1,13 +1,14 @@
 """Failure artifacts, selection and budget behavior (06 §1; 05 §7)."""
 
+import re
 from pathlib import Path
 
 import pytest
 from qiskit import QuantumCircuit
 
-from qscore.compile import pipeline
+from qscore.compile import pipeline, select
 from qscore.config import Settings
-from qscore.errors import CompileError
+from qscore.errors import CompileError, MetricError
 from qscore.intake.loaders import LoadedCircuit, qpy_sha256
 from qscore.manifest.resolve import ResolvedItem, merge_items
 from qscore.schemas.manifest import ProjectManifest
@@ -72,7 +73,11 @@ def test_resources_only_does_not_compile_routing_reference(tmp_path, monkeypatch
 def test_budget_records_skipped_metrics(tmp_path):
     card = score(tmp_path, budget={"wall_time_s": 1e-12})
     assert card.status == "complete"
-    assert all(m.status == "skipped" and m.reason == "budget" for m in card.metrics)
+    assert all(m.status == "skipped" for m in card.metrics)
+    # Wall time is not reproducible, so the reason names the elapsed time and the limit.
+    assert all(
+        re.fullmatch(r"budget: \d+\.\d s >= wall_time_s 1e-12", m.reason) for m in card.metrics
+    )
     assert card.compile is None
 
 
@@ -97,3 +102,27 @@ def test_scalar_cpu_objectives_are_supported(tmp_path, objective):
 def test_maximize_metadata(tmp_path):
     card = score(tmp_path, objective={"primary": "size", "direction": "maximize"})
     assert card.compile.selection_policy.startswith("max primary")
+
+
+def test_per_seed_and_metric_objectives_break_ties_the_same_way(tmp_path):
+    # Bell on line-3: every seed ties on two_qubit_count (1), swaps_inserted (0) and two-qubit
+    # depth (1), so both selection paths must fall through to seed order (05 §6; results are
+    # sorted by seed, compile/pipeline.py).
+    def rep(primary):
+        objective = {"primary": primary, "direction": "minimize"}
+        execution = {"transpiler_seeds": [97, 11, 42]}
+        return score(tmp_path, objective=objective, execution=execution).compile
+
+    per_seed, metric = rep("two_qubit_count"), rep("swaps_inserted")
+    assert per_seed.representative_seed == metric.representative_seed == 11
+
+
+def test_per_seed_compiles_kept_without_representative(tmp_path, monkeypatch):
+    def no_pick(*args):
+        raise MetricError("deliberate: no representative")
+
+    monkeypatch.setattr(select, "pick_representative", no_pick)
+    card = score(tmp_path)
+    assert card.status == "partial"
+    assert card.compile is not None and card.compile.representative_seed is None
+    assert [s.seed for s in card.compile.per_seed] == [11]

@@ -16,8 +16,16 @@ from qscore.schemas.common import MetricGroup, MetricKind
 
 @dataclass(frozen=True)
 class ScheduledDuration:
-    """Critical-path duration of the compiled circuit from ALAP scheduling with the target's
-    durations; evidence `ratio_to_median_t2` = duration / median T2 of the active qubits."""
+    """How long the compiled circuit takes to run, compared with how long the qubits keep their
+    state.
+
+    Critical-path duration of the compiled circuit from ALAP scheduling with the target's
+    gate durations. Evidence: `ratio_to_median_t2` (duration / median T2 of the active
+    physical qubits), `median_t2_s`. `unavailable` when the target has no durations or no T2
+    data for the active qubits.
+
+    Unit: s. Reference: Qiskit `ALAPScheduleAnalysis`.
+    """
 
     id: str = "scheduled_duration"
     group: MetricGroup = MetricGroup.HARDWARE
@@ -50,7 +58,6 @@ class ScheduledDuration:
         pm = PassManager([ALAPScheduleAnalysis(target=target)])
         pm.run(circuit)
         starts = pm.property_set["node_start_time"]
-        durations = target.durations()
         end_dt = 0
         for node, start in starts.items():
             if getattr(node.op, "_directive", False):
@@ -63,7 +70,7 @@ class ScheduledDuration:
             duration_s,
             "s",
             {
-                "duration_dt": end_dt,
+                "duration_dt": end_dt if target.dt is not None else None,
                 "dt_s": target.dt,
                 "median_t2_s": median_t2,
                 "ratio_to_median_t2": duration_s / median_t2,

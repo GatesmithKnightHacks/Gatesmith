@@ -110,7 +110,7 @@ An `improve` job adds one step between Run and Finish: proposers answer the requ
 | GPU out of memory | The metric fails with status `failed` and an error naming the planner estimate vs the real limit (a planner bug to fix) | FB-04: retry with half the batch, then CPU; recorded on the metric and in `fallbacks_used` |
 | A proposer times out or returns invalid JSON | Counted against that layer's parse rate; the loop continues with the other layers (this is the design) | same |
 | The worker loses Neon mid-job | Worker logs the error and exits non-zero; the job is requeued by heartbeat timeout | FB-05: buffer results to a local spool and replay on reconnect (idempotent keys) |
-| A budget runs out | The job stops; unfinished metrics are `skipped` with reason `budget` | same |
+| A budget runs out | The job stops; unfinished metrics are `skipped` with reason `budget: <elapsed> s >= wall_time_s <limit>` (ChP-0028) | same |
 | Aer's ROCm build unusable | GPU metrics are `unavailable` with reason "no working GPU simulator"; the GPU gate (G3) is failing → raise it | FB-01 only if the user approves (torch statevector backend) |
 | vLLM unusable on the image | The `local` layer is `unavailable`; raise it | FB-02 (llama.cpp server) if approved |
 | Port 5432 blocked from Radeon Cloud | Worker cannot start; raise it in GPU session 1 | FB-03 (Data API or platform relay), decided by the user |

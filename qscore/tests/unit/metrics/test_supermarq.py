@@ -63,7 +63,7 @@ def test_measurement_counts_reset_layers() -> None:
 
 
 def test_undefined_features_are_zero_and_listed() -> None:
-    # CP-0026: where SupermarQ's formula divides by zero, the feature is 0.0 and recorded.
+    # ChP-0026: where SupermarQ's formula divides by zero, the feature is 0.0 and recorded.
     one = QuantumCircuit(1)
     one.h(0)
     out = smq.SupermarqProfile().compute(Ctx(one))  # type: ignore[arg-type]

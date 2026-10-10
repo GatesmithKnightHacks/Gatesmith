@@ -147,6 +147,18 @@ def linear_function_blocks(qc: QuantumCircuit) -> list[dict[str, Any]]:
 
 @dataclass(frozen=True)
 class Structure:
+    """Regions of the circuit that special-purpose techniques could rewrite; shown for context.
+
+    On the logical circuit: (a) commuting runs, maximal connected DAG runs of two-qubit
+    gates diagonal in the computational basis (`cz`, `cp`, `crz`, `rzz`), where one-qubit
+    diagonal gates do not break a run; (b) Clifford blocks via `CollectCliffords`; (c)
+    linear-function blocks via `CollectLinearFunctions`. Each block lists its qubits, layer
+    range and gate indices.
+
+    Unit: dict of lists. Reference: Qiskit `CollectCliffords`, `CollectLinearFunctions`;
+    qscore commuting-run detection (06 §2.3).
+    """
+
     id: str = "structure"
     group: MetricGroup = MetricGroup.OPPORTUNITIES
     version: str = "1"
@@ -206,6 +218,18 @@ def potential(qc: QuantumCircuit, two_qubit_gate: str) -> tuple[int, list[dict[s
 
 @dataclass(frozen=True)
 class ResynthesisPotential:
+    """How many two-qubit gates could be saved by re-synthesizing small two-qubit blocks optimally.
+
+    Sum over two-qubit blocks of the compiled circuit (`Collect2qBlocks` +
+    `ConsolidateBlocks`) of the block's current two-qubit gates minus
+    `TwoQubitBasisDecomposer(<target's two-qubit gate>).num_basis_gates(block unitary)`.
+    Evidence: the top blocks with locations, and the same sum on the raw translation
+    (`raw_potential`, informational).
+
+    Unit: gates. Reference: KAK decomposition: Vidal & Dawson, PRA 69, 010301 (2004); Qiskit
+    `TwoQubitBasisDecomposer`.
+    """
+
     id: str = "resynthesis_potential"
     group: MetricGroup = MetricGroup.OPPORTUNITIES
     version: str = "1"

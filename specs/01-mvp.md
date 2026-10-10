@@ -2,7 +2,7 @@
 
 > **Status:** binding · **Read:** at the start of every session; before starting any task, check its tier here.
 
-## 0. The MVP (CP-0023, approved 2026-10-10) — read this first
+## 0. The MVP (ChP-0023, approved 2026-10-10) — read this first
 
 **The MVP is the scoring and diagnostics engine: qscore takes a simple circuit — one OpenQASM file, or (preferred, not required) a repo with Qiskit builder functions — runs diagnostics on it, and returns the scores.** Concretely: validation that fails loudly, compile across seeds, every CPU metric of `06` (not the simulation metrics), diagnostics D01–D09, a scorecard JSON and a Markdown report. Gate **G-MVP**: both examples and a single QASM file score end to end on the CPU; golden and contract tests pass; reviewed.
 

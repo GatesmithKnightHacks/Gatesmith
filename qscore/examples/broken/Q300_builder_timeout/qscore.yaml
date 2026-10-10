@@ -1,0 +1,5 @@
+schema: qscore.project/v0.2
+project: {name: broken, root: ., runner: {timeout_s: 1}}
+circuits:
+  - id: chain
+    source: {builder: src/slow.py::build, args: {n: 2}}

@@ -1,4 +1,4 @@
-"""Item resolution (CP-0014 merge rules, CP-0025 calibration default by target kind)."""
+"""Item resolution (ChP-0014 merge rules, ChP-0025 calibration default by target kind)."""
 
 from __future__ import annotations
 

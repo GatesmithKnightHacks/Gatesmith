@@ -1,6 +1,6 @@
-# CP-<NNNN>: <short title>
+# ChP-<NNNN>: <short title>
 
-- **Status:** proposed  <!-- proposed | approved | rejected | superseded by CP-… -->
+- **Status:** proposed  <!-- proposed | approved | rejected | superseded by ChP-… -->
 - **Class:** <A | B>  (see 00-operating-rules.md R5)
 - **Author:** <lead | subagent name | codex (via lead)> · **Date:** <YYYY-MM-DD HH:MM UTC>
 - **Related tasks:** <T-ids> · **Blocks:** <T-ids or "nothing">

@@ -1,4 +1,4 @@
-"""Side-chain packing QAOA (specs/14 §3.1, recipe pinned by CP-0015).
+"""Side-chain packing QAOA (specs/14 §3.1, recipe pinned by ChP-0015).
 
 One-hot encoding: qubit q(i, r) = i*R + r is 1 when residue i takes rotamer r. Energies come from
 numpy.random.default_rng(20261009): self energies E_i(r) ~ U(-1, 1) in order (i, r), then pair

@@ -74,11 +74,11 @@ Gatesmith/qscore/                the engine's contents:
 | Services | `services.py` | One function per user action; returns schema objects; reports progress through an `on_event` callback; never prints. |
 | Pipeline | `manifest/`, `intake/`, `validate/`, `interpret/`, `score/`, `record/`, `bench/` | The stages from manifest to scorecard and records. |
 | Engines | `targets/`, `compile/`, `metrics/`, `sim/`, `diagnose/`, `verify/`, `improve/` | The science and the compute. Receive resolved, validated objects; never read the manifest file. |
-| Foundations | `schemas/`, `hardware/`, `config.py`, `errors.py`, `logging.py` | Import nothing from higher layers (siblings such as `errors`/`logging` are fine; CP-0011). |
+| Foundations | `schemas/`, `hardware/`, `config.py`, `errors.py`, `logging.py` | Import nothing from higher layers (siblings such as `errors`/`logging` are fine; ChP-0011). |
 
 Imports point **down only**. Within a layer, modules may import siblings only if no cycle results. The improvement loop needs both scoring (pipeline layer) and verification (engine layer), so its orchestration lives in `services.improve_item()`, which calls `score/`, `improve/` and `verify/`. `improve/loop.py` holds only the pure decision logic (acceptance, stopping) and imports nothing from the pipeline layer.
 
-`.importlinter` (contract type `layers`; `:` = siblings may import each other without cycles, `|` = independent — CP-0011):
+`.importlinter` (contract type `layers`; `:` = siblings may import each other without cycles, `|` = independent — ChP-0011):
 
 ```ini
 [importlinter]

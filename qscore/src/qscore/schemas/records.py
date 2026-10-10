@@ -1,7 +1,7 @@
 """Attempt record `qscore.attempt/v0.2` and job spec `qscore.job/v0.2` (specs/04 §6-§7).
 
 `JobResultSummary` has only a column comment in specs/11 §3, not a contract; it is defined with
-CP-0004.
+ChP-0004.
 """
 
 from __future__ import annotations

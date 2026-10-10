@@ -1,4 +1,4 @@
-"""Resolve items: built-in defaults → manifest defaults → item (CP-0014, CP-0021 item 5)."""
+"""Resolve items: built-in defaults → manifest defaults → item (ChP-0014, ChP-0021 item 5)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from qscore.schemas.common import canonical_json, sha256_hex
 from qscore.schemas.manifest import CalibrationFile, CircuitItem, ProjectManifest
 from qscore.targets.registry import NAMED_BACKENDS
 
-# CP-0021 item 5: the built-in defaults are the specs/04 §2 example's `defaults` block.
+# ChP-0021 item 5: the built-in defaults are the specs/04 §2 example's `defaults` block.
 BUILTIN_DEFAULTS: dict[str, Any] = {
     "target": {"backend": "FakeTorino", "calibration": "from_backend"},
     "objective": {
@@ -51,7 +51,7 @@ TARGET_KEYS = ("backend", "coupling_map", "basis_gates")
 
 
 def _calibration_by_kind(target: dict[str, Any], *layers: dict[str, Any]) -> None:
-    """CP-0025: when the manifest or item names the target but no layer sets `calibration`, it
+    """ChP-0025: when the manifest or item names the target but no layer sets `calibration`, it
     is not inherited from the built-in defaults: `from_backend` for named backends, else `none`."""
     if any("calibration" in layer for layer in layers):
         return
@@ -63,7 +63,7 @@ def _calibration_by_kind(target: dict[str, Any], *layers: dict[str, Any]) -> Non
 
 def merge(base: dict[str, Any], over: dict[str, Any], path: str = "") -> dict[str, Any]:
     """Mappings merge per key; lists/scalars replace; `objective` is atomic and
-    `diagnose.ignore` concatenates (CP-0014)."""
+    `diagnose.ignore` concatenates (ChP-0014)."""
     out = copy.deepcopy(base)
     for key, value in over.items():
         here = f"{path}.{key}" if path else key

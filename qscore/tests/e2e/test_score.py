@@ -1,4 +1,4 @@
-"""`qscore score` end to end on the CPU (specs/14 §1 e2e, §3; CP-0022 S6, CP-0024 paste input)."""
+"""`qscore score` end to end on the CPU (specs/14 §1 e2e, §3; ChP-0022 S6, ChP-0024 paste input)."""
 
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def test_odd_file_name_gets_a_valid_item_id(tmp_path: Path) -> None:
 
 
 def test_manifest_with_synthetic_target_needs_no_calibration(tmp_path: Path) -> None:
-    # CP-0025: `defaults.target: {backend: line-5}` alone resolves to `calibration: none`.
+    # ChP-0025: `defaults.target: {backend: line-5}` alone resolves to `calibration: none`.
     (tmp_path / "bell.qasm").write_text(BELL)
     (tmp_path / "qscore.yaml").write_text(
         "schema: qscore.project/v0.2\nproject: {name: p}\n"
@@ -160,7 +160,7 @@ def test_semantic_issues_of_every_item_come_back_at_once(tmp_path: Path) -> None
         "  - id: mid\n    source: {qasm: mid.qasm}\n"
     )
     with pytest.raises(InvalidInput) as info:
-        services.score_project(tmp_path / "qscore.yaml", tmp_path / "o")
+        services.score_project(tmp_path / "qscore.yaml", tmp_path / "o", confirm="yes")
     issues = info.value.report.issues
     assert [(i.code, i.item) for i in issues] == [("Q400", "bell"), ("Q402", "mid")]
     assert (issues[0].location.line, issues[0].location.field) == (
