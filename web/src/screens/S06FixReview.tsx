@@ -3,7 +3,7 @@
  * Live: the candidate pane goes writing → verifying → verified (M3), then Accept plays M4.
  * States (?state=): verifying, rejected, inconclusive, invalid, worse-than-before, keyboard-focus, offline.
  */
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useHashParams } from '../app/router'
 import { actions, useRun } from '../data/run'
 import { REGRESSION_MESSAGE } from '../data/demo'
@@ -124,7 +124,7 @@ export function S06FixReview() {
 
         <div className="fr-lower">
           <Verification outcome={outcome} ladderStep={ladderStep} />
-          <BeforeAfter outcome={outcome} live={live} twoQubit={run.twoQubit} userAccepted={userAccepted} />
+          <BeforeAfter outcome={outcome} live={live} userAccepted={userAccepted} />
         </div>
       </Content>
     </Shell>
@@ -355,10 +355,34 @@ function Verification({ outcome, ladderStep }: { outcome: Outcome; ladderStep: n
 
 /* ── Before and after ─────────────────────────────────────────────────── */
 
-function BeforeAfter({ outcome, live, twoQubit, userAccepted }: { outcome: Outcome; live: boolean; twoQubit: number; userAccepted: boolean }) {
-  // Snapshot: 36 → 33. Live: the committed count, stepping 36 → 33 when Accept is pressed (M4).
-  const after = live ? twoQubit : 33
-  const chip = after === 33 && (live ? userAccepted : outcome === 'accepted')
+/**
+ * The count steps 36 → 35 → 34 → 33 when the engine's verdict lands, each step a little longer
+ * (motion follows the data). Accept is the celebration: the chip settles with the one overshoot.
+ */
+function useVerdictCount(stepping: boolean) {
+  const [n, setN] = useState(stepping ? 36 : 33)
+  useEffect(() => {
+    if (!stepping) {
+      setN(33)
+      return
+    }
+    setN(36)
+    const ids = [
+      window.setTimeout(() => setN(35), 140),
+      window.setTimeout(() => setN(34), 320),
+      window.setTimeout(() => setN(33), 560),
+    ]
+    return () => ids.forEach(clearTimeout)
+  }, [stepping])
+  return n
+}
+
+function BeforeAfter({ outcome, live, userAccepted }: { outcome: Outcome; live: boolean; userAccepted: boolean }) {
+  const verified = outcome === 'accepted'
+  const [stepping] = useState(() => live && !verified)
+  const counted = useVerdictCount(stepping && verified)
+  const after = live && !verified ? 36 : counted
+  const chip = verified && after === 33
   const pending = outcome === 'writing' || outcome === 'verifying' || outcome === 'invalid' || outcome === 'inconclusive'
   const broken = outcome === 'rejected'
   const holds = <Word kind="check-muted">holds</Word>
@@ -378,7 +402,7 @@ function BeforeAfter({ outcome, live, twoQubit, userAccepted }: { outcome: Outco
             </span>
             <span className="fr-hero-unit">two-qubit gates</span>
             {chip && (
-              <span className="fr-hero-chip mono" key="chip">
+              <span className={`fr-hero-chip mono${userAccepted ? ' is-settle' : ''}`} key={userAccepted ? 'settled' : 'landed'}>
                 −8%
               </span>
             )}

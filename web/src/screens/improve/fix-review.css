@@ -191,7 +191,16 @@
   color: var(--color-signal-good);
   font-size: var(--text-label);
   line-height: 14px;
+  animation: fr-land var(--motion-base) var(--ease-enter) both;
+}
+/* Accept: the only overshoot in the product. */
+.fr-hero-chip.is-settle {
   animation: fr-settle var(--motion-base) var(--ease-settle) both;
+}
+@keyframes fr-land {
+  from {
+    opacity: 0;
+  }
 }
 @keyframes fr-settle {
   from {
