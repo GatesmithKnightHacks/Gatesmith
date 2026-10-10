@@ -27,7 +27,7 @@
 
 ### 4.1 Loading
 
-- **QASM:** `qiskit.qasm2.loads` (v2) or `qiskit.qasm3.loads` (v3; needs the `qiskit-qasm3-import` package). Parse errors → Q304 with the parser's line/column.
+- **QASM:** `qiskit.qasm2.loads` (v2) or `qiskit.qasm3.loads` (v3; needs the `qiskit-qasm3-import` package; `openqasm3` is declared too, for its `QASM3ParsingError`, CP-0027). Parse errors → Q304 with the parser's line/column.
 - **Builders:** the sandbox runs `intake/runner.py`, which imports the file, calls the function with the manifest's arguments, checks it returned a `QuantumCircuit`, and writes QPY plus a status JSON. Failures → Q300 timeout, Q301 import error, Q302 user exception (traceback trimmed to user files), Q303 not a circuit.
 - **Then:** bind parameters by name from the manifest's parameter file; any left unbound → Q305. Hash the circuit's QPY bytes (`circuit_sha256`).
 

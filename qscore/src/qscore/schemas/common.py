@@ -9,6 +9,7 @@ mapped by the validation stage (T08): `missing` → Q104, type errors → Q102, 
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 from enum import StrEnum
@@ -26,14 +27,26 @@ from pydantic import (
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
 
-def issue_error(code: str, message: str) -> PydanticCustomError:
-    """A validation error whose type is the catalog issue code (specs/05-pipeline.md §12)."""
-    return PydanticCustomError(code, message)
+def issue_error(
+    code: str, message: str, field: tuple[int | str, ...] | None = None
+) -> PydanticCustomError:
+    """A validation error whose type is the catalog issue code (specs/05-pipeline.md §12).
+    `field` locates errors raised by a document-level validator, whose own pydantic location is
+    the document root (read back by `validate.schema_checks`)."""
+    if field is None:
+        return PydanticCustomError(code, message)
+    return PydanticCustomError(code, message, {"qscore_field": field})
 
 
 def _x_keys_schema(schema: dict[str, Any]) -> None:
     schema["additionalProperties"] = False
     schema["patternProperties"] = {"^x-": {}}
+
+
+def _unknown(key: str, known: set[str]) -> str:
+    """Q101 message with a "did you mean" suggestion when a known field is close (05 §3)."""
+    close = difflib.get_close_matches(key, sorted(known), n=1)
+    return f"unknown field {key!r}" + (f"; did you mean {close[0]!r}?" if close else "")
 
 
 class QModel(BaseModel):
@@ -62,7 +75,7 @@ class QModel(BaseModel):
         if not unknown:
             return handler(data)
         details: list[InitErrorDetails] = [
-            {"type": issue_error("Q101", f"unknown field {k!r}"), "loc": (k,), "input": data[k]}
+            {"type": issue_error("Q101", _unknown(k, known)), "loc": (k,), "input": data[k]}
             for k in unknown
         ]
         try:
@@ -91,7 +104,9 @@ class QDocument(QModel):
     def _schema_id(cls, data: Any) -> Any:
         if isinstance(data, dict) and "schema" in data and data["schema"] != cls.SCHEMA_ID:
             raise issue_error(
-                "Q106", f"unsupported schema {data['schema']!r}; this qscore reads {cls.SCHEMA_ID}"
+                "Q106",
+                f"unsupported schema {data['schema']!r}; this qscore reads {cls.SCHEMA_ID}",
+                ("schema",),
             )
         return data
 

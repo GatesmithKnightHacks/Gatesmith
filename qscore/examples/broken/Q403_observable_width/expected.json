@@ -1,0 +1,13 @@
+{
+  "exit_code": 2,
+  "issues": [
+    {
+      "code": "Q403",
+      "item": "bell",
+      "file": "qscore.yaml",
+      "line": 8,
+      "column": 14,
+      "field": "circuits[0].invariants.task.observable"
+    }
+  ]
+}

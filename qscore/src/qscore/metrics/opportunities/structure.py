@@ -1,7 +1,8 @@
 """Structure and resynthesis potential (specs/06-metrics.md §2.3).
 
-Slice S3 (CP-0022): `structure` reports commuting runs; Clifford and linear-function blocks are
-recorded as not computed yet (`evidence.not_computed`).
+`structure` reports commuting runs, Clifford blocks and linear-function blocks. The blocks are
+collected exactly as `CollectCliffords` / `CollectLinearFunctions` collect them (same filter
+functions, default options), without collapsing, so each block keeps its gate indices and layers.
 """
 
 from __future__ import annotations
@@ -12,9 +13,15 @@ from typing import Any, Literal
 from qiskit.circuit import QuantumCircuit
 from qiskit.circuit.library import CXGate, CZGate, ECRGate
 from qiskit.converters import circuit_to_dag
+from qiskit.dagcircuit import DAGCircuit
 from qiskit.quantum_info import Operator
 from qiskit.synthesis import TwoQubitBasisDecomposer
 from qiskit.transpiler.passes import Collect2qBlocks
+from qiskit.transpiler.passes.optimization.collect_and_collapse import (
+    collect_using_filter_function,
+)
+from qiskit.transpiler.passes.optimization.collect_cliffords import _is_clifford_gate
+from qiskit.transpiler.passes.optimization.collect_linear_functions import _is_linear_gate
 
 from qscore.compile import counts as c
 from qscore.metrics.base import Outcome, Requirement, ScoringContext, computed
@@ -86,12 +93,56 @@ def commuting_runs(qc: QuantumCircuit) -> list[dict[str, Any]]:
         runs.append(
             {
                 "qubits": qubits,
-                "layers": [layers[idxs[0]], layers[idxs[-1]]],
+                "layers": [min(layers[i] for i in idxs), max(layers[i] for i in idxs)],
                 "gate_indices": idxs,
                 "num_ops": len(idxs),
             }
         )
     return sorted(runs, key=lambda r: (-r["num_ops"], r["gate_indices"][0]))
+
+
+def _collected_blocks(qc: QuantumCircuit, filter_function: Any) -> list[dict[str, Any]]:
+    """Blocks of matching gates (min 2 gates, split over disjoint qubits: the passes' defaults)."""
+    dag = DAGCircuit()
+    dag.add_qubits(qc.qubits)
+    dag.add_clbits(qc.clbits)
+    for creg in qc.cregs:
+        dag.add_creg(creg)
+    index_of: dict[int, int] = {}
+    for idx, inst in enumerate(qc.data):
+        node = dag.apply_operation_back(inst.operation, inst.qubits, inst.clbits, check=False)
+        index_of[node._node_id] = idx
+    blocks = collect_using_filter_function(
+        dag,
+        filter_function,
+        split_blocks=True,
+        min_block_size=2,
+        split_layers=False,
+        collect_from_back=False,
+        max_block_width=None,
+    )
+    layers = layers_of(qc)
+    out = []
+    for nodes in blocks:
+        idxs = sorted(index_of[n._node_id] for n in nodes)
+        qubits = sorted({qc.find_bit(q).index for i in idxs for q in qc.data[i].qubits})
+        out.append(
+            {
+                "qubits": qubits,
+                "layers": [min(layers[i] for i in idxs), max(layers[i] for i in idxs)],
+                "gate_indices": idxs,
+                "num_ops": len(idxs),
+            }
+        )
+    return sorted(out, key=lambda b: (-len(b["qubits"]), -b["num_ops"], b["gate_indices"][0]))
+
+
+def clifford_blocks(qc: QuantumCircuit) -> list[dict[str, Any]]:
+    return _collected_blocks(qc, _is_clifford_gate)
+
+
+def linear_function_blocks(qc: QuantumCircuit) -> list[dict[str, Any]]:
+    return _collected_blocks(qc, _is_linear_gate)
 
 
 @dataclass(frozen=True)
@@ -105,11 +156,14 @@ class Structure:
     cost_tier: Literal["trivial", "cheap", "moderate", "expensive"] = "cheap"
 
     def compute(self, ctx: ScoringContext) -> Outcome:
-        runs = commuting_runs(ctx.logical)
+        qc = ctx.logical
         return computed(
-            {"commuting_runs": runs},
+            {
+                "commuting_runs": commuting_runs(qc),
+                "clifford_blocks": clifford_blocks(qc),
+                "linear_function_blocks": linear_function_blocks(qc),
+            },
             "dict",
-            {"not_computed": ["clifford_blocks", "linear_function_blocks"]},
         )
 
 

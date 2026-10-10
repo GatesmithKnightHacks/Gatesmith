@@ -2,12 +2,13 @@ schema: qscore.project/v0.2
 project:
   name: sidechain-packing
   root: .
-# MVP (CP-0023): the circuit is read from QASM exported by tools/make_fixtures.py from the builder
-# src/packing/qaoa.py::build_qaoa(n_residues=4, rotamers=3, p=2) with params/qaoa_p2.json bound.
-# The builder source and size_sweep {arg: n_residues, values: [2, 3, 4, 5, 6]} return with M3.
 circuits:
   - id: packing_qaoa_p2
-    source: {qasm: circuits/packing_qaoa_p2.qasm}
+    source:
+      builder: src/packing/qaoa.py::build_qaoa
+      args: {n_residues: 4, rotamers: 3, p: 2}
+      parameters: {file: params/qaoa_p2.json}
+    size_sweep: {arg: n_residues, values: [2, 3, 4, 5, 6]}
     invariants:
       intent: expectation
       global_phase: ignore

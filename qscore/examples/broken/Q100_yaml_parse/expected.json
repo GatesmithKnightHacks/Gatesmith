@@ -1,0 +1,13 @@
+{
+  "exit_code": 2,
+  "issues": [
+    {
+      "code": "Q100",
+      "item": null,
+      "file": "qscore.yaml",
+      "line": 6,
+      "column": 1,
+      "field": null
+    }
+  ]
+}

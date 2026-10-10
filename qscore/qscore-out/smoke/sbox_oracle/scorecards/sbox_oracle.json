@@ -1,0 +1,1335 @@
+{
+  "schema": "qscore.scorecard/v0.2",
+  "item": {
+    "id": "sbox_oracle",
+    "item_sha256": "e7df188e5dd5b7cee0bee888a6cd43ce53d264b9227aa40765f4ba025cf5325f",
+    "circuit_sha256": "e761ed32108b7581da16d11eaa5d1a0470609c8a7de0544d0bf6f0a9c5f58eb0",
+    "manifest_sha256": "8f9affaa239dac04c2a85fe1d9693d49c5c106d7911735ac85e080bab8d2727b",
+    "score_version": "qscore-2026.1"
+  },
+  "status": "complete",
+  "error": null,
+  "target": {
+    "name": "FakeTorino",
+    "num_qubits": 133,
+    "basis": [
+      "cz",
+      "rz",
+      "sx",
+      "x"
+    ],
+    "calibration_id": "c90ddf6f1e59a62b4e80903561ac2af3b43693cbe6fabb063d638708fa2c0568",
+    "calibration_assumed": false
+  },
+  "compile": {
+    "seeds": [
+      11,
+      23,
+      37,
+      41,
+      53,
+      67,
+      79,
+      97
+    ],
+    "representative_seed": 23,
+    "selection_policy": "min primary; tie: two_qubit_depth, seed order",
+    "per_seed": [
+      {
+        "seed": 11,
+        "two_qubit_count": 1039,
+        "two_qubit_depth": 241,
+        "depth": 792,
+        "time_s": 3.2490010629999233
+      },
+      {
+        "seed": 23,
+        "two_qubit_count": 1041,
+        "two_qubit_depth": 239,
+        "depth": 793,
+        "time_s": 3.1262604260000444
+      },
+      {
+        "seed": 37,
+        "two_qubit_count": 1044,
+        "two_qubit_depth": 241,
+        "depth": 792,
+        "time_s": 3.403455610999117
+      },
+      {
+        "seed": 41,
+        "two_qubit_count": 1060,
+        "two_qubit_depth": 241,
+        "depth": 792,
+        "time_s": 5.151119909000045
+      },
+      {
+        "seed": 53,
+        "two_qubit_count": 1039,
+        "two_qubit_depth": 241,
+        "depth": 792,
+        "time_s": 3.241416165999908
+      },
+      {
+        "seed": 67,
+        "two_qubit_count": 1041,
+        "two_qubit_depth": 241,
+        "depth": 792,
+        "time_s": 3.4803088320004463
+      },
+      {
+        "seed": 79,
+        "two_qubit_count": 1039,
+        "two_qubit_depth": 241,
+        "depth": 792,
+        "time_s": 3.8323642249997647
+      },
+      {
+        "seed": 97,
+        "two_qubit_count": 1042,
+        "two_qubit_depth": 241,
+        "depth": 792,
+        "time_s": 3.5070821830004206
+      }
+    ],
+    "all_to_all": {
+      "two_qubit_count": 604
+    },
+    "route_only": {
+      "swaps_inserted": 199
+    }
+  },
+  "metrics": [
+    {
+      "id": "width",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 20,
+      "unit": "qubits",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 20
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "size",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 4544,
+      "unit": "ops",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 128
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "depth",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 793,
+      "unit": "layers",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 31
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "two_qubit_count",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 1041,
+      "unit": "gates",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 20,
+        "logical_multi_qubit_ops": 100
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "two_qubit_depth",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 239,
+      "unit": "layers",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 5
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "measurement_count",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "logical",
+      "value": 0,
+      "unit": "ops",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "toffoli_count",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "logical",
+      "value": 100,
+      "unit": "gates",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "routing_overhead",
+      "group": "hardware",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 0.4197886647454371,
+      "unit": "ratio",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "routed_two_qubit": 1041,
+        "all_to_all_two_qubit": 604,
+        "swaps_inserted": 199,
+        "top_swap_pairs": {
+          "92-99": 18,
+          "28-29": 17,
+          "32-33": 16,
+          "67-68": 16,
+          "29-36": 13
+        }
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "swaps_inserted",
+      "group": "hardware",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 199,
+      "unit": "gates",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "seed": 23,
+        "per_pair": {
+          "27-28": 6,
+          "28-29": 17,
+          "29-30": 11,
+          "29-36": 13,
+          "31-32": 10,
+          "32-33": 16,
+          "33-37": 13,
+          "37-52": 13,
+          "65-66": 13,
+          "66-67": 13,
+          "67-68": 16,
+          "68-69": 10,
+          "80-92": 7,
+          "92-99": 18,
+          "98-99": 12,
+          "99-100": 11
+        }
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "compile_ratio",
+      "group": "hardware",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 1.679032258064516,
+      "unit": "ratio",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "compiled_two_qubit": 1041,
+        "raw_two_qubit": 620
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "reliability_heuristic",
+      "group": "hardware",
+      "version": "1",
+      "kind": "heuristic",
+      "scope": "compiled",
+      "value": 0.01211481083000306,
+      "unit": "probability-like",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "label": "calibration-based reliability heuristic, not a success probability",
+        "per_qubit": {
+          "2": 0.007981513780450058,
+          "3": 0.02774715604949172,
+          "4": 0.06140917040049678,
+          "8": 0.18588294893238427,
+          "9": 0.06113855631667492,
+          "5": 0.012119812262792613,
+          "16": 0.010715417734764844,
+          "10": 0.0027155861496182343,
+          "7": 0.042500288025803336,
+          "17": 0.020637160905487877,
+          "18": 0.025794724807569846,
+          "32": 0.042667244356528904,
+          "31": 0.032842089815197976,
+          "12": 0.008647320370901407,
+          "33": 0.007307817345719474,
+          "64": 0.02108020246185022,
+          "63": 0.0315375635753909,
+          "65": 0.0396973803771065,
+          "66": 0.029159220515550525,
+          "67": 0.013799488126144784
+        },
+        "per_edge": {
+          "2-3": 0.16053741081776798,
+          "4-5": 0.21663182914875417,
+          "7-8": 0.2953980022213496,
+          "9-10": 0.1795287740298052,
+          "4-16": 0.1958608782420634,
+          "3-4": 0.371382732194541,
+          "8-17": 0.3266764969156567,
+          "8-9": 0.47184492559609387,
+          "12-18": 0.15627723707358496,
+          "32-33": 0.14351454066816363,
+          "31-32": 0.24833873177399557,
+          "18-31": 0.2034916757790642,
+          "63-64": 0.1918366141160923,
+          "64-65": 0.18881748581002333,
+          "66-67": 0.1587915059817812,
+          "65-66": 0.21901703668408593
+        },
+        "top_contributors": {
+          "8-9": 0.47184492559609387,
+          "3-4": 0.371382732194541,
+          "8-17": 0.3266764969156567,
+          "7-8": 0.2953980022213496,
+          "31-32": 0.24833873177399557
+        },
+        "total_neg_log": 4.413326539362748,
+        "ops_without_error": 0
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "scheduled_duration",
+      "group": "hardware",
+      "version": "1",
+      "kind": "heuristic",
+      "scope": "compiled",
+      "value": 2.8068000000000003e-05,
+      "unit": "s",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "duration_dt": 7017,
+        "dt_s": 4e-09,
+        "median_t2_s": 0.0001490870729004147,
+        "ratio_to_median_t2": 0.18826581979209228,
+        "active_qubits": 20,
+        "qubits_without_t2": [],
+        "method": "ALAPScheduleAnalysis(target) critical path"
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "seed_spread",
+      "group": "hardware",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 0.020172910662824207,
+      "unit": "ratio",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "min": 1039,
+        "median": 1041.0,
+        "max": 1060,
+        "per_seed": {
+          "11": 1039,
+          "23": 1041,
+          "37": 1044,
+          "41": 1060,
+          "53": 1039,
+          "67": 1041,
+          "79": 1039,
+          "97": 1042
+        }
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "supermarq_profile",
+      "group": "opportunities",
+      "version": "1",
+      "kind": "context",
+      "scope": "logical",
+      "value": {
+        "program_communication": 0.08421052631578947,
+        "critical_depth": 0.25,
+        "entanglement_ratio": 0.15625,
+        "parallelism": 0.16468590831918506,
+        "liveness": 0.5612903225806452,
+        "measurement": 0.0
+      },
+      "unit": "features in [0, 1]",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "source": "SupermarQ features.py @ Infleqtion/client-superstaq dcf8318 (Apache-2.0)",
+        "undefined_as_zero": []
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "entanglement_variance",
+      "group": "opportunities",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "logical",
+      "value": 2.0,
+      "unit": "gates^2",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "per_qubit": {
+          "0": 3,
+          "1": 1,
+          "2": 2,
+          "3": 4,
+          "4": 3,
+          "5": 1,
+          "6": 2,
+          "7": 4,
+          "8": 3,
+          "9": 1,
+          "10": 2,
+          "11": 4,
+          "12": 3,
+          "13": 1,
+          "14": 2,
+          "15": 4,
+          "16": 0,
+          "17": 0,
+          "18": 0,
+          "19": 0
+        },
+        "mean": 2.0,
+        "cv": 0.7071067811865476
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "structure",
+      "group": "opportunities",
+      "version": "1",
+      "kind": "context",
+      "scope": "logical",
+      "value": {
+        "commuting_runs": [],
+        "clifford_blocks": [
+          {
+            "qubits": [
+              0,
+              1,
+              3
+            ],
+            "layers": [
+              28,
+              30
+            ],
+            "gate_indices": [
+              28,
+              29,
+              30
+            ],
+            "num_ops": 3
+          },
+          {
+            "qubits": [
+              4,
+              5,
+              7
+            ],
+            "layers": [
+              28,
+              30
+            ],
+            "gate_indices": [
+              60,
+              61,
+              62
+            ],
+            "num_ops": 3
+          },
+          {
+            "qubits": [
+              8,
+              9,
+              11
+            ],
+            "layers": [
+              28,
+              30
+            ],
+            "gate_indices": [
+              92,
+              93,
+              94
+            ],
+            "num_ops": 3
+          },
+          {
+            "qubits": [
+              12,
+              13,
+              15
+            ],
+            "layers": [
+              28,
+              30
+            ],
+            "gate_indices": [
+              124,
+              125,
+              126
+            ],
+            "num_ops": 3
+          },
+          {
+            "qubits": [
+              0,
+              2,
+              3
+            ],
+            "layers": [
+              25,
+              26
+            ],
+            "gate_indices": [
+              25,
+              26
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              4,
+              6,
+              7
+            ],
+            "layers": [
+              25,
+              26
+            ],
+            "gate_indices": [
+              57,
+              58
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              8,
+              10,
+              11
+            ],
+            "layers": [
+              25,
+              26
+            ],
+            "gate_indices": [
+              89,
+              90
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              12,
+              14,
+              15
+            ],
+            "layers": [
+              25,
+              26
+            ],
+            "gate_indices": [
+              121,
+              122
+            ],
+            "num_ops": 2
+          }
+        ],
+        "linear_function_blocks": [
+          {
+            "qubits": [
+              0,
+              2,
+              3
+            ],
+            "layers": [
+              25,
+              26
+            ],
+            "gate_indices": [
+              25,
+              26
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              0,
+              1,
+              3
+            ],
+            "layers": [
+              28,
+              29
+            ],
+            "gate_indices": [
+              28,
+              29
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              4,
+              6,
+              7
+            ],
+            "layers": [
+              25,
+              26
+            ],
+            "gate_indices": [
+              57,
+              58
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              4,
+              5,
+              7
+            ],
+            "layers": [
+              28,
+              29
+            ],
+            "gate_indices": [
+              60,
+              61
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              8,
+              10,
+              11
+            ],
+            "layers": [
+              25,
+              26
+            ],
+            "gate_indices": [
+              89,
+              90
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              8,
+              9,
+              11
+            ],
+            "layers": [
+              28,
+              29
+            ],
+            "gate_indices": [
+              92,
+              93
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              12,
+              14,
+              15
+            ],
+            "layers": [
+              25,
+              26
+            ],
+            "gate_indices": [
+              121,
+              122
+            ],
+            "num_ops": 2
+          },
+          {
+            "qubits": [
+              12,
+              13,
+              15
+            ],
+            "layers": [
+              28,
+              29
+            ],
+            "gate_indices": [
+              124,
+              125
+            ],
+            "num_ops": 2
+          }
+        ]
+      },
+      "unit": "dict",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "resynthesis_potential",
+      "group": "opportunities",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 3,
+      "unit": "gates",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "top_blocks": [
+          {
+            "qubits": [
+              12,
+              18
+            ],
+            "current": 3,
+            "saving": 3
+          }
+        ],
+        "raw_potential": 16
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "scalability",
+      "group": "research",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "both",
+      "value": null,
+      "unit": null,
+      "status": "unavailable",
+      "reason": "no size_sweep",
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "simulated_task_score",
+      "group": "research",
+      "version": "1",
+      "kind": "statistical",
+      "scope": "compiled",
+      "value": null,
+      "unit": null,
+      "status": "unavailable",
+      "reason": "intent has no task",
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "mirror_score",
+      "group": "research",
+      "version": "1",
+      "kind": "statistical",
+      "scope": "compiled",
+      "value": null,
+      "unit": null,
+      "status": "unavailable",
+      "reason": "simulation is not in the MVP build (CP-0023)",
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    }
+  ],
+  "findings": [
+    {
+      "id": "D01#1",
+      "rule": "D01",
+      "title": "Routing-dominated",
+      "severity": "high",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "routing_overhead",
+        "value": 0.3,
+        "margin": 0.399295549151457
+      },
+      "evidence": {
+        "routing_overhead": 0.4197886647454371,
+        "routed_two_qubit": 1041,
+        "all_to_all_two_qubit": 604,
+        "swaps_inserted": 199,
+        "top_swap_pairs": {
+          "92-99": 18,
+          "28-29": 17,
+          "32-33": 16,
+          "67-68": 16,
+          "29-36": 13
+        }
+      },
+      "region": {
+        "scope": "compiled",
+        "qubits": [
+          28,
+          29,
+          32,
+          33,
+          36,
+          67,
+          68,
+          92,
+          99
+        ],
+        "layers": [
+          0,
+          792
+        ],
+        "gate_indices": []
+      },
+      "strategies": [
+        "layout_search",
+        "routing_search"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D04#1",
+      "rule": "D04",
+      "title": "Resynthesizable blocks",
+      "severity": "high",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "resynthesis_potential",
+        "value": 1.0,
+        "margin": 2.0
+      },
+      "evidence": {
+        "resynthesis_potential": 3.0,
+        "top_blocks": [
+          {
+            "qubits": [
+              12,
+              18
+            ],
+            "current": 3,
+            "saving": 3
+          }
+        ]
+      },
+      "region": {
+        "scope": "compiled",
+        "qubits": [
+          12,
+          18
+        ],
+        "layers": [
+          0,
+          792
+        ],
+        "gate_indices": []
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#5",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 3,
+        "num_ops": 2
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          0,
+          2,
+          3
+        ],
+        "layers": [
+          25,
+          26
+        ],
+        "gate_indices": [
+          25,
+          26
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#6",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 3,
+        "num_ops": 2
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          4,
+          6,
+          7
+        ],
+        "layers": [
+          25,
+          26
+        ],
+        "gate_indices": [
+          57,
+          58
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#7",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 3,
+        "num_ops": 2
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          8,
+          10,
+          11
+        ],
+        "layers": [
+          25,
+          26
+        ],
+        "gate_indices": [
+          89,
+          90
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#8",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 3,
+        "num_ops": 2
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          12,
+          14,
+          15
+        ],
+        "layers": [
+          25,
+          26
+        ],
+        "gate_indices": [
+          121,
+          122
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#1",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 3,
+        "num_ops": 3
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          0,
+          1,
+          3
+        ],
+        "layers": [
+          28,
+          30
+        ],
+        "gate_indices": [
+          28,
+          29,
+          30
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#2",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 3,
+        "num_ops": 3
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          4,
+          5,
+          7
+        ],
+        "layers": [
+          28,
+          30
+        ],
+        "gate_indices": [
+          60,
+          61,
+          62
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#3",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 3,
+        "num_ops": 3
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          8,
+          9,
+          11
+        ],
+        "layers": [
+          28,
+          30
+        ],
+        "gate_indices": [
+          92,
+          93,
+          94
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#4",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 3,
+        "num_ops": 3
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          12,
+          13,
+          15
+        ],
+        "layers": [
+          28,
+          30
+        ],
+        "gate_indices": [
+          124,
+          125,
+          126
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D08#1",
+      "rule": "D08",
+      "title": "Uneven entanglement",
+      "severity": "info",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "cv",
+        "value": 0.5,
+        "margin": 0.41421356237309515
+      },
+      "evidence": {
+        "cv": 0.7071067811865476,
+        "per_qubit": {
+          "0": 3,
+          "1": 1,
+          "2": 2,
+          "3": 4,
+          "4": 3,
+          "5": 1,
+          "6": 2,
+          "7": 4,
+          "8": 3,
+          "9": 1,
+          "10": 2,
+          "11": 4,
+          "12": 3,
+          "13": 1,
+          "14": 2,
+          "15": 4,
+          "16": 0,
+          "17": 0,
+          "18": 0,
+          "19": 0
+        }
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          3,
+          7,
+          11,
+          15
+        ],
+        "layers": [
+          0,
+          30
+        ],
+        "gate_indices": []
+      },
+      "strategies": [
+        "layout_search"
+      ],
+      "suppressed": null
+    }
+  ],
+  "requests": [],
+  "resources": {
+    "wall_s": 10.528242562999367,
+    "cpu_s": 2.653845135,
+    "gpu_s": 0.0,
+    "peak_vram_mib": null
+  },
+  "fallbacks_used": [],
+  "provenance": {
+    "qscore": "0.1.0",
+    "git_commit": "6eeb44066e4dc48a542ff985ddfffd0e16c5bed0",
+    "git_dirty": true,
+    "lock_sha256": "5da987feafd0c0c3a04fd4e775f4a16ac21aa72dc70680a755873e157b8d0c6c",
+    "python": "3.12.14",
+    "qiskit": "2.5.2",
+    "qiskit_aer": "0.17.2",
+    "aer_build": "cpu",
+    "mqt_qcec": "3.11.0",
+    "rocm": null,
+    "gpu": null,
+    "hardware_profile_id": null,
+    "profile": "dev",
+    "fallbacks_enabled": [],
+    "seeds": {
+      "transpiler": [
+        11,
+        23,
+        37,
+        41,
+        53,
+        67,
+        79,
+        97
+      ],
+      "simulator_base": 1234
+    },
+    "thresholds_sha256": "8626a513691a55c08ec51f36e8981b8bdec1ec4ea08ce742ea309e234e1568c1",
+    "started_at": "2026-10-10T16:33:13.817208Z",
+    "finished_at": "2026-10-10T16:33:24.353061Z"
+  },
+  "created_at": "2026-10-10T16:33:24.353112Z",
+  "x-diagnose": {
+    "skipped_rules": [
+      {
+        "rule": "D09",
+        "reason": "metric scalability not computed (unavailable)"
+      },
+      {
+        "rule": "D10",
+        "reason": "simulation metrics are final product (CP-0023)"
+      }
+    ]
+  }
+}

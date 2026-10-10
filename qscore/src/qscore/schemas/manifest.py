@@ -315,24 +315,29 @@ class ProjectManifest(QDocument):
     @model_validator(mode="before")
     @classmethod
     def _no_placeholders(cls, data: object) -> object:
-        def walk(node: object, path: str) -> None:
+        def walk(node: object, path: tuple[int | str, ...]) -> None:
             if node == REQUIRED_PLACEHOLDER:
-                raise issue_error("Q107", f"placeholder <required> not filled at {path or '.'}")
+                where = "".join(f"[{k}]" if isinstance(k, int) else f".{k}" for k in path)
+                raise issue_error(
+                    "Q107", f"placeholder <required> not filled at {where.lstrip('.') or '.'}", path
+                )
             if isinstance(node, dict):
                 for k, v in node.items():
-                    walk(v, f"{path}.{k}" if path else str(k))
+                    walk(v, (*path, str(k)))
             elif isinstance(node, list):
                 for i, v in enumerate(node):
-                    walk(v, f"{path}[{i}]")
+                    walk(v, (*path, i))
 
-        walk(data, "")
+        walk(data, ())
         return data
 
     @model_validator(mode="after")
     def _unique_ids(self) -> ProjectManifest:
         seen: set[str] = set()
-        for item in self.circuits:
+        for index, item in enumerate(self.circuits):
             if item.id in seen:
-                raise issue_error("Q105", f"duplicate item id {item.id!r}")
+                raise issue_error(
+                    "Q105", f"duplicate item id {item.id!r}", ("circuits", index, "id")
+                )
             seen.add(item.id)
         return self

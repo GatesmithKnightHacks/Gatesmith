@@ -75,18 +75,24 @@ def score(
     if pasted and not yes:
         err.print("reading QASM from stdin needs --yes (stdin cannot also answer the prompt)")
         raise typer.Exit(2)
-    if not yes and not typer.confirm(f"Score {path or manifest} (CPU; results in {out})?"):
-        raise typer.Exit(0)
+    if manifest is not None and target is not None:
+        err.print("--target applies to a single QASM input; set the target in your manifest")
+        raise typer.Exit(2)
+
+    def confirm(summary: str) -> bool:
+        err.print(summary, markup=False)
+        return typer.confirm(f"Score these circuits (CPU; results in {out})?", err=True)
+
     try:
         if pasted:
             if sys.stdin.isatty():
                 err.print("Paste OpenQASM 2 or 3, then press Ctrl-D on an empty line:")
             result = services.score_qasm_text(sys.stdin.read(), out, target)
         elif path is not None:
-            result = services.score_circuit(path, out, target)
+            result = services.score_circuit(path, out, target, confirm=None if yes else confirm)
         else:
             assert manifest is not None  # exactly one was given (checked above)
-            result = services.score_project(manifest, out)
+            result = services.score_project(manifest, out, confirm=None if yes else confirm)
     except InvalidInput as exc:
         err.print(f"[red]invalid input:[/red] {exc}")
         if exc.report is not None and hasattr(exc.report, "issues"):
@@ -105,6 +111,8 @@ def score(
     except Exception as exc:  # CP-0017: anything that is not a QscoreError is a bug → exit 3
         err.print(f"[red]unexpected error (a bug):[/red]\n{traceback.format_exc()}")
         raise typer.Exit(3) from exc
+    if not result.scorecards:
+        return
     if as_json:
         sys.stdout.write(
             json.dumps([c.model_dump(mode="json") for c in result.scorecards], indent=2) + "\n"

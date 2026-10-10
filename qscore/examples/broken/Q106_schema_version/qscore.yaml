@@ -1,0 +1,5 @@
+schema: qscore.project/v9.0
+project: {name: broken, root: .}
+circuits:
+  - id: bell
+    source: {qasm: bell.qasm}

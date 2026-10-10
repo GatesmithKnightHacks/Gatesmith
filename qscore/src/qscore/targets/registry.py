@@ -8,14 +8,14 @@ assumed errors are pending in CP-0009).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, replace
+from pathlib import Path
 
-from qiskit.transpiler import CouplingMap, Target
+from qiskit.transpiler import CouplingMap, Target, TranspilerError
 
 from qscore.errors import CompileError, InvalidInput
-from qscore.schemas.common import canonical_json, sha256_hex
-from qscore.schemas.manifest import TargetSpec
+from qscore.schemas.manifest import CalibrationFile, TargetSpec
+from qscore.targets.calibration import apply_file, snapshot_id
 
 # Operations that are not gates of the basis (scorecard `target.basis` lists gates only).
 NON_BASIS_OPS = frozenset({"measure", "reset", "delay", "id", "for_loop", "if_else", "switch_case"})
@@ -48,16 +48,6 @@ class TargetBundle:
         return names[0]
 
 
-def _snapshot_id(target: Target) -> str:
-    """Hash of the error/duration tables (the calibration snapshot id)."""
-    table: list[Any] = []
-    for name in sorted(target.operation_names):
-        for qargs, props in sorted((target[name] or {}).items(), key=lambda kv: kv[0] or ()):
-            if props is not None:
-                table.append([name, list(qargs or ()), props.error, props.duration])
-    return sha256_hex(canonical_json(table))
-
-
 def _basis_of(target: Target) -> tuple[str, ...]:
     return tuple(sorted(n for n in target.operation_names if n not in NON_BASIS_OPS))
 
@@ -67,13 +57,59 @@ def _from_coupling(name: str, cmap: CouplingMap, basis: tuple[str, ...]) -> Targ
     return TargetBundle(name, target, basis, target.num_qubits, None, False, False, False)
 
 
-def get_target(spec: TargetSpec) -> TargetBundle:
+_SYNTHETIC = (r"line-(\d+)", r"grid-(\d+)x(\d+)", r"heavy-hex-(\d+)")
+
+
+def target_problem(spec: TargetSpec) -> tuple[str, str] | None:
+    """`(code, message)` when a named target is unknown (Q206) or a synthetic target asks for
+    backend calibration (Q103); None otherwise. Builds nothing (reference pass, 05 §3)."""
+    name = spec.backend
+    if name in NAMED_BACKENDS:
+        return None
+    if name is None:
+        if spec.calibration == "from_backend":
+            return "Q103", "custom targets have no backend calibration"
+        return None
+    if name != "all-to-all" and not any(re.fullmatch(p, name) for p in _SYNTHETIC):
+        return "Q206", f"unknown target {name!r}"
+    if spec.calibration == "from_backend":
+        return (
+            "Q103",
+            f"target {name} is synthetic and has no backend calibration; "
+            "set target.calibration: none",
+        )
+    return None
+
+
+def get_target(
+    spec: TargetSpec, root: Path = Path("."), num_qubits: int | None = None
+) -> TargetBundle:
+    """Resolve a target; optional calibration paths are relative to the project root."""
+    if problem := target_problem(spec):
+        raise InvalidInput(f"[{problem[0]}] {problem[1]}", report=None)
+    try:
+        bundle = _build_target(spec, num_qubits)
+    except (TranspilerError, ValueError, IndexError) as exc:
+        raise InvalidInput(f"[Q103] invalid target: {exc}", report=None) from exc
+    if isinstance(spec.calibration, CalibrationFile):
+        has_cal, has_durations = apply_file(bundle.target, root / spec.calibration.file)
+        bundle = replace(
+            bundle,
+            calibration_id=snapshot_id(bundle.target),
+            has_calibration=has_cal,
+            has_durations=has_durations,
+        )
+    return bundle
+
+
+def _build_target(spec: TargetSpec, num_qubits: int | None) -> TargetBundle:
     """Build the target named by `spec` (raises `InvalidInput` for unknown names, Q206)."""
     if spec.backend is None:
-        raise CompileError("custom {coupling_map, basis_gates} targets arrive with T11 (CP-0009)")
+        assert spec.coupling_map is not None and spec.basis_gates is not None
+        if any(a < 0 or b < 0 or a == b for a, b in spec.coupling_map):
+            raise ValueError("coupling edges must join distinct nonnegative qubits")
+        return _from_coupling("custom", CouplingMap(spec.coupling_map), tuple(spec.basis_gates))
     name = spec.backend
-    if spec.calibration not in (None, "none", "from_backend"):
-        raise CompileError(f"target {name}: calibration files arrive with T11 (CP-0009)")
     if name == "FakeTorino":
         from qiskit_ibm_runtime.fake_provider import FakeTorino
 
@@ -84,24 +120,30 @@ def get_target(spec: TargetSpec) -> TargetBundle:
             target,
             _basis_of(target),
             target.num_qubits,
-            _snapshot_id(target) if with_cal else None,
+            snapshot_id(target) if with_cal else None,
             False,
             with_cal,
             with_cal,
         )
-    if spec.calibration == "from_backend":
-        raise InvalidInput(
-            f"[Q103] target {name} is synthetic and has no backend calibration; "
-            "set target.calibration: none",
-            report=None,
-        )
+    if problem := target_problem(spec):
+        raise InvalidInput(f"[{problem[0]}] {problem[1]}", report=None)
+    if name == "all-to-all":
+        if num_qubits is None or num_qubits < 1:
+            raise ValueError("all-to-all needs a circuit with at least one qubit")
+        return _from_coupling(name, CouplingMap.from_full(num_qubits), CX_BASIS)
     if m := re.fullmatch(r"line-(\d+)", name):
+        if int(m[1]) < 1:
+            raise ValueError("line size must be positive")
         return _from_coupling(name, CouplingMap.from_line(int(m[1])), CX_BASIS)
     if m := re.fullmatch(r"grid-(\d+)x(\d+)", name):
+        if min(int(m[1]), int(m[2])) < 1:
+            raise ValueError("grid dimensions must be positive")
         return _from_coupling(name, CouplingMap.from_grid(int(m[1]), int(m[2])), CX_BASIS)
     if m := re.fullmatch(r"heavy-hex-(\d+)", name):
+        if int(m[1]) < 1 or int(m[1]) % 2 == 0:
+            raise ValueError("heavy-hex distance must be a positive odd integer")
         return _from_coupling(name, CouplingMap.from_heavy_hex(int(m[1])), CZ_BASIS)
-    raise InvalidInput(f"[Q206] unknown target {name!r}", report=None)
+    raise AssertionError(f"target {name!r} passed target_problem but has no builder")
 
 
 def all_to_all_for(bundle: TargetBundle, num_qubits: int) -> TargetBundle:

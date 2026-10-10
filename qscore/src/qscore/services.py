@@ -13,18 +13,20 @@ from pathlib import Path
 
 from qscore.config import Settings, get_settings
 from qscore.errors import InvalidInput
-from qscore.intake.loaders import load_qasm
-from qscore.manifest.resolve import resolve_items
+from qscore.interpret.summary import render_text
+from qscore.manifest.yamlio import PositionMap
 from qscore.record.report import render
 from qscore.record.scorecard import write_scorecard
 from qscore.schemas.common import canonical_json, sha256_hex
-from qscore.schemas.manifest import ProjectManifest, QasmSource
+from qscore.schemas.manifest import ProjectManifest
 from qscore.schemas.run import Event
 from qscore.schemas.scorecard import Scorecard
 from qscore.score.engine import score_item
-from qscore.validate.schema_checks import load_manifest
+from qscore.validate.pipeline import run_validation
+from qscore.validate.schema_checks import load_manifest_with_positions
 
 OnEvent = Callable[[Event], None]
+Confirm = Callable[[str], bool]
 
 
 @dataclass(frozen=True)
@@ -65,18 +67,28 @@ def _score(
     out_dir: Path,
     settings: Settings,
     emit: _Events,
+    manifest_file: str,
+    positions: PositionMap | None = None,
+    confirm: Confirm | None = None,
 ) -> ScoreResult:
+    work = run_validation(manifest, manifest_dir, settings, manifest_file, positions)
+    summary = render_text(work, manifest)
+    if confirm is not None and not confirm(summary):
+        return ScoreResult([], [], out_dir / "report.md")
+    confirmation = {
+        "mode": "interactive" if confirm is not None else "yes",
+        "at": datetime.now(UTC).isoformat(),
+        "manifest_sha256": manifest_sha256,
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     cards, paths = [], []
     emit("run_started", f"scoring {len(manifest.circuits)} item(s)")
-    for resolved in resolve_items(manifest, manifest_dir):
+    for resolved, loaded in work:
         item = resolved.item
-        if not isinstance(item.source, QasmSource):
-            raise InvalidInput(
-                f"item {item.id}: builder sources arrive with M3 (CP-0023)", report=None
-            )
         emit("item_started", f"scoring {item.id}", item_id=item.id)
-        loaded = load_qasm(resolved.root / item.source.qasm)
         card = score_item(resolved, loaded, manifest_sha256, settings)
+        card = card.model_copy(update={"x-confirmation": confirmation, "x-interpretation": summary})
         cards.append(card)
         paths.append(write_scorecard(card, out_dir / "scorecards"))
         emit("item_finished", f"{item.id}: {card.status}", item_id=item.id)
@@ -87,15 +99,32 @@ def _score(
 
 
 def score_project(
-    manifest_path: Path, out_dir: Path, on_event: OnEvent | None = None
+    manifest_path: Path,
+    out_dir: Path,
+    on_event: OnEvent | None = None,
+    confirm: Confirm | None = None,
 ) -> ScoreResult:
-    manifest = load_manifest(manifest_path)
+    manifest, positions = load_manifest_with_positions(manifest_path)
     sha = sha256_hex(manifest_path.read_bytes())
-    return _score(manifest, manifest_path.parent, sha, out_dir, get_settings(), _Events(on_event))
+    return _score(
+        manifest,
+        manifest_path.parent,
+        sha,
+        out_dir,
+        get_settings(),
+        _Events(on_event),
+        manifest_path.name,
+        positions,
+        confirm,
+    )
 
 
 def score_circuit(
-    qasm_path: Path, out_dir: Path, target: str | None = None, on_event: OnEvent | None = None
+    qasm_path: Path,
+    out_dir: Path,
+    target: str | None = None,
+    on_event: OnEvent | None = None,
+    confirm: Confirm | None = None,
 ) -> ScoreResult:
     """Single OpenQASM file, manual-upload defaults (04 §2.2), optional target override."""
     safe = "".join(
@@ -115,7 +144,16 @@ def score_circuit(
         doc["defaults"] = {"target": {"backend": target}}
     manifest = ProjectManifest.model_validate(doc)
     sha = sha256_hex(canonical_json(manifest.model_dump(mode="json")))
-    return _score(manifest, qasm_path.parent, sha, out_dir, get_settings(), _Events(on_event))
+    return _score(
+        manifest,
+        qasm_path.parent,
+        sha,
+        out_dir,
+        get_settings(),
+        _Events(on_event),
+        qasm_path.name,
+        confirm=confirm,
+    )
 
 
 def score_qasm_text(
