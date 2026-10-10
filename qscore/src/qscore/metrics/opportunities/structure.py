@@ -93,7 +93,7 @@ def commuting_runs(qc: QuantumCircuit) -> list[dict[str, Any]]:
         runs.append(
             {
                 "qubits": qubits,
-                "layers": [layers[idxs[0]], layers[idxs[-1]]],
+                "layers": [min(layers[i] for i in idxs), max(layers[i] for i in idxs)],
                 "gate_indices": idxs,
                 "num_ops": len(idxs),
             }

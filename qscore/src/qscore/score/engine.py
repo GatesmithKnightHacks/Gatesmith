@@ -7,6 +7,7 @@ logged at ERROR, and the scorecard becomes `partial` (specs/06 §1, R4) — metr
 from __future__ import annotations
 
 import logging
+import os
 import time
 from datetime import UTC, datetime
 
@@ -17,7 +18,7 @@ from qscore.diagnose.rules import evaluate
 from qscore.errors import InvalidInput
 from qscore.intake.loaders import LoadedCircuit
 from qscore.manifest.resolve import ResolvedItem
-from qscore.metrics.base import Metric
+from qscore.metrics.base import Metric, Requirement
 from qscore.metrics.registry import all_metrics
 from qscore.record.provenance import collect
 from qscore.schemas.common import Status
@@ -45,9 +46,38 @@ def _run_metric(metric: Metric, ctx: ScoringContext) -> MetricResult:
         "kind": metric.kind,
         "scope": metric.scope,
     }
+    dependency = None
+    requirements = {
+        Requirement.COMPILED: "representative",
+        Requirement.ALL_TO_ALL: "all_to_all",
+        Requirement.ROUTING_STAGE: "routing_stage",
+        Requirement.RAW_TRANSLATION: "raw_translation",
+    }
+    required = set(metric.requires)
+    if Requirement.ROUTING_STAGE in required:
+        required.add(Requirement.COMPILED)
     try:
+        for requirement, attr in requirements.items():
+            if requirement in required:
+                dependency = requirement
+                if requirement in ctx.failures:
+                    raise ctx.failures[requirement]
+                getattr(ctx, attr)
+        dependency = None
         out = metric.compute(ctx)
+        return MetricResult.model_validate(
+            {
+                **base,
+                "status": out.status,
+                "value": out.value,
+                "unit": out.unit,
+                "reason": out.reason,
+                "evidence": out.evidence or None,
+            }
+        )
     except Exception as exc:
+        if dependency is not None:
+            ctx.failures[dependency] = exc
         log.exception("metric %s failed for item %s", metric.id, ctx.resolved.item.id)
         return MetricResult.model_validate(
             {
@@ -56,24 +86,14 @@ def _run_metric(metric: Metric, ctx: ScoringContext) -> MetricResult:
                 "error": {"type": type(exc).__name__, "message": str(exc)},
             }
         )
-    return MetricResult.model_validate(
-        {
-            **base,
-            "status": out.status,
-            "value": out.value,
-            "unit": out.unit,
-            "reason": out.reason,
-            "evidence": out.evidence or None,
-        }
-    )
 
 
 def score_item(
     resolved: ResolvedItem, loaded: LoadedCircuit, manifest_sha256: str, settings: Settings
 ) -> Scorecard:
-    started, t0, c0 = datetime.now(UTC), time.perf_counter(), time.process_time()
+    started, t0, c0 = datetime.now(UTC), time.perf_counter(), _cpu_time()
     item = resolved.item
-    ctx = ScoringContext(resolved, loaded.circuit)
+    ctx = ScoringContext(resolved, loaded.circuit, loaded.rebuild)
     if loaded.circuit.num_qubits > ctx.target.num_qubits:
         raise InvalidInput(
             f"[Q404] item {item.id}: circuit has {loaded.circuit.num_qubits} qubits, target "
@@ -82,11 +102,21 @@ def score_item(
         )
     groups = set(item.diagnose.groups or []) if item.diagnose else set()
     metrics = []
+    budget = item.budget.wall_time_s if item.budget is not None else None
     for metric in all_metrics().values():
-        if groups and metric.group not in groups:
+        reason = "not selected" if groups and metric.group not in groups else None
+        if reason is None and budget is not None and time.perf_counter() - t0 >= budget:
+            reason = "budget"
+        if reason is not None:
             metrics.append(
                 MetricResult(
-                    id=metric.id, group=metric.group, status=Status.SKIPPED, reason="not selected"
+                    id=metric.id,
+                    group=metric.group,
+                    version=metric.version,
+                    kind=metric.kind,
+                    scope=metric.scope,
+                    status=Status.SKIPPED,
+                    reason=reason,
                 )
             )
         else:
@@ -99,25 +129,37 @@ def score_item(
     )
     diagnosis = evaluate(by_id, policy)
     findings = rank(apply(policy, diagnosis.findings))
-    rep = ctx.representative
+    # Artifact assembly must not start/retry dependencies or lose failed metric results.
+    rep = ctx.__dict__.get("representative")
     target = ctx.target
-    compile_info = CompileInfo(
-        seeds=ctx.seeds,
-        representative_seed=rep.seed,
-        selection_policy=SELECTION_POLICY,
-        per_seed=[
-            SeedResult(
-                seed=r.seed,
-                two_qubit_count=r.two_qubit_count,
-                two_qubit_depth=r.two_qubit_depth,
-                depth=r.depth,
-                time_s=r.time_s,
-            )
-            for r in ctx.compile_set.results
-        ],
-        all_to_all={"two_qubit_count": min(r.two_qubit_count for r in ctx.all_to_all.results)},
-        route_only={"swaps_inserted": ctx.routing_stage.swaps_inserted},
-    )
+    all_to_all = ctx.__dict__.get("all_to_all")
+    route = ctx.__dict__.get("routing_stage")
+    compile_info = None
+    if rep is not None:
+        policy_text = (
+            SELECTION_POLICY
+            if ctx.objective.direction == "minimize"
+            else ("max primary; tie: two_qubit_depth, seed order")
+        )
+        compile_info = CompileInfo(
+            seeds=ctx.seeds,
+            representative_seed=rep.seed,
+            selection_policy=policy_text,
+            per_seed=[
+                SeedResult(
+                    seed=r.seed,
+                    two_qubit_count=r.two_qubit_count,
+                    two_qubit_depth=r.two_qubit_depth,
+                    depth=r.depth,
+                    time_s=r.time_s,
+                )
+                for r in ctx.compile_set.results
+            ],
+            all_to_all=None
+            if all_to_all is None
+            else {"two_qubit_count": min(r.two_qubit_count for r in all_to_all.results)},
+            route_only=None if route is None else {"swaps_inserted": route.swaps_inserted},
+        )
     failed = any(m.status is Status.FAILED for m in metrics)
     assert item.execution is not None  # resolved items always carry execution (CP-0021)
     seed_sim = item.execution.seed_simulator
@@ -146,7 +188,7 @@ def score_item(
             "findings": findings,
             "requests": [],
             "resources": ResourceUse(
-                wall_s=time.perf_counter() - t0, cpu_s=time.process_time() - c0, gpu_s=0.0
+                wall_s=time.perf_counter() - t0, cpu_s=_cpu_time() - c0, gpu_s=0.0
             ),
             "fallbacks_used": [],
             "provenance": collect(settings, ctx.seeds, seed_sim, started),
@@ -158,3 +200,9 @@ def score_item(
 
 def error_card_details(exc: Exception) -> ErrorInfo:
     return ErrorInfo(type=type(exc).__name__, message=str(exc))
+
+
+def _cpu_time() -> float:
+    """CPU seconds including reaped compiler child processes on supported platforms."""
+    times = os.times()
+    return times.user + times.system + times.children_user + times.children_system

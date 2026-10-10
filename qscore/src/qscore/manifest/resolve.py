@@ -9,7 +9,7 @@ from typing import Any
 
 from qscore.errors import InvalidInput
 from qscore.schemas.common import canonical_json, sha256_hex
-from qscore.schemas.manifest import CircuitItem, ProjectManifest
+from qscore.schemas.manifest import CalibrationFile, CircuitItem, ProjectManifest
 from qscore.targets.registry import NAMED_BACKENDS
 
 # CP-0021 item 5: the built-in defaults are the specs/04 §2 example's `defaults` block.
@@ -67,6 +67,12 @@ def merge(base: dict[str, Any], over: dict[str, Any], path: str = "") -> dict[st
     out = copy.deepcopy(base)
     for key, value in over.items():
         here = f"{path}.{key}" if path else key
+        if here == "target" and isinstance(value, dict) and isinstance(out.get(key), dict):
+            if "coupling_map" in value or "basis_gates" in value:
+                out[key].pop("backend", None)
+            elif "backend" in value:
+                out[key].pop("coupling_map", None)
+                out[key].pop("basis_gates", None)
         if here == "objective" or not (isinstance(value, dict) and isinstance(out.get(key), dict)):
             if here == "diagnose.ignore" and isinstance(out.get(key), list):
                 out[key] = [*out[key], *value]
@@ -138,5 +144,7 @@ def item_hash(item: CircuitItem, root: Path) -> str:
         extra.append(_file_hash(root / params.file))
     if item.invariants.task is not None and item.invariants.task.observable:
         extra.append(_file_hash(root / item.invariants.task.observable))
+    if item.target is not None and isinstance(item.target.calibration, CalibrationFile):
+        extra.append(_file_hash(root / item.target.calibration.file))
     body = canonical_json(item.model_dump(mode="json", exclude_none=True))
     return sha256_hex(body + _file_hash(root / src, "Q200" if qasm else "Q201") + "".join(extra))

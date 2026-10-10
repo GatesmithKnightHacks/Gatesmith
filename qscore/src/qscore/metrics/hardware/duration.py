@@ -32,14 +32,21 @@ class ScheduledDuration:
         if not bundle.has_durations:
             return unavailable("target has no gate durations")
         target, circuit = bundle.target, ctx.representative.circuit
-        if target.dt is None:
-            return unavailable("target has no dt (time resolution)")
         props = target.qubit_properties
         active = c.active_qubits(circuit)
         t2 = {q: props[q].t2 for q in active} if props is not None else {}
         known = {q: v for q, v in t2.items() if v is not None}
         if not known:
             return unavailable("target has no T2 data for the active qubits")
+        durations = target.durations()
+        unit = "dt" if target.dt is not None else "s"
+        for inst in circuit.data:
+            if c.is_directive(inst):
+                continue
+            qs = tuple(circuit.find_bit(q).index for q in inst.qubits)
+            props_op = target[inst.operation.name].get(qs)
+            if props_op is None or props_op.duration is None:
+                return unavailable(f"target has no duration for {inst.operation.name}{qs}")
         pm = PassManager([ALAPScheduleAnalysis(target=target)])
         pm.run(circuit)
         starts = pm.property_set["node_start_time"]
@@ -49,8 +56,8 @@ class ScheduledDuration:
             if getattr(node.op, "_directive", False):
                 continue
             qargs = [circuit.find_bit(q).index for q in node.qargs]
-            end_dt = max(end_dt, start + durations.get(node.op, qargs, unit="dt"))
-        duration_s = end_dt * target.dt
+            end_dt = max(end_dt, start + durations.get(node.op, qargs, unit=unit))
+        duration_s = end_dt * target.dt if target.dt is not None else end_dt
         median_t2 = statistics.median(known.values())
         return computed(
             duration_s,

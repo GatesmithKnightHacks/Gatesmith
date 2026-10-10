@@ -9,6 +9,7 @@ Q400 (reversible gate set), Q401 (measurements needed), Q402 (mid-circuit measur
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from qiskit import QuantumCircuit
@@ -107,7 +108,7 @@ def semantic_issues(
         obs_path = root / inv.task.observable
         try:
             doc = json.loads(obs_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             issues.append(
                 issue(
                     "Q205",
@@ -134,6 +135,30 @@ def semantic_issues(
                         "invariants.task.observable",
                         f"observable acts on {width} qubits, the circuit has {circuit.num_qubits}",
                         "Regenerate the observable for this circuit size.",
+                    )
+                )
+            elif (
+                doc.get("schema") != "qscore.observable/v0.1"
+                or not isinstance(doc.get("terms"), list)
+                or any(
+                    not isinstance(term, dict)
+                    or not isinstance(term.get("pauli"), str)
+                    or len(term["pauli"]) != width
+                    or set(term["pauli"]) - set("IXYZ")
+                    or not isinstance(term.get("coeff"), (int, float))
+                    or isinstance(term["coeff"], bool)
+                    or not math.isfinite(term["coeff"])
+                    for term in doc.get("terms", [])
+                )
+            ):
+                issues.append(
+                    issue(
+                        "Q205",
+                        "invariants.task.observable",
+                        "observable must use qscore.observable/v0.1 and Pauli terms "
+                        "of the declared "
+                        "width with finite numeric coefficients",
+                        "See 04-contracts.md §2.4 for the observable format.",
                     )
                 )
 

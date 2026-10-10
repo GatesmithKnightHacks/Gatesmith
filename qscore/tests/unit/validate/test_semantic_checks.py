@@ -102,6 +102,7 @@ def test_q403_observable_width_differs_from_circuit(tmp_path: Path) -> None:
     item = _item({"intent": "expectation", "task": task})
     assert _codes(item, _bell(measure=False), tmp_path) == ["Q403"]
     obs["num_qubits"] = 2
+    obs["terms"][0]["pauli"] = "ZZ"
     (tmp_path / "h.json").write_text(json.dumps(obs))
     assert _codes(item, _bell(measure=False), tmp_path) == []
 
