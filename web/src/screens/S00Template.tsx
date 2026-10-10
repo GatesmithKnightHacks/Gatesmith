@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FINDINGS, SUPPRESSED } from '../data/demo'
+import { actions } from '../data/run'
 import { SectionIcons } from '../ui/icons'
 import {
   Field,
@@ -52,6 +53,8 @@ function Check() {
 
 /** S-00 · Shell template: the measured grammar every screen is built from. */
 export function S00Template() {
+  const [selected, setSelected] = useState('D03')
+  const [suppressed, setSuppressed] = useState(true)
   const [open, setOpen] = useState({ budget: true, resources: true, findings: true })
   const [dataTab, setDataTab] = useState<'data' | 'second'>('data')
   const toggle = (k: keyof typeof open) => setOpen((o) => ({ ...o, [k]: !o[k] }))
@@ -71,7 +74,7 @@ export function S00Template() {
         <>
           <ModeTabs />
           <ModeBlock line="Runs on this machine">
-            <PrimaryButton>Confirm and score</PrimaryButton>
+            <PrimaryButton onClick={() => actions.confirmAndScore()}>Confirm and score</PrimaryButton>
             <PoweredBy />
           </ModeBlock>
           <div className="s00-insp-body">
@@ -108,15 +111,37 @@ export function S00Template() {
               <Section
                 icon={SectionIcons.list}
                 title="Findings"
-                meta="3 open · 1 suppressed"
+                meta={suppressed ? '3 open · 1 suppressed' : '4 open'}
                 open={open.findings}
                 onToggle={() => toggle('findings')}
                 bodyStyle={{ paddingBottom: 16 }}
               >
                 {FINDINGS.map((f) => (
-                  <FindingCard key={f.rule} finding={f} selected={f.rule === 'D03'} />
+                  <FindingCard
+                    key={f.rule}
+                    finding={f}
+                    selected={f.rule === selected}
+                    onSelect={() => setSelected(f.rule)}
+                    onRequest={() => actions.requestFix(f.rule)}
+                  />
                 ))}
-                <SuppressedRow rule={SUPPRESSED.rule} label={SUPPRESSED.label} />
+                {suppressed ? (
+                  <SuppressedRow rule={SUPPRESSED.rule} label={SUPPRESSED.label} onRestore={() => setSuppressed(false)} />
+                ) : (
+                  <FindingCard
+                    finding={{
+                      rank: 4,
+                      severity: 'info',
+                      rule: 'D08',
+                      ruleName: 'measurement_order',
+                      title: 'Measurements are not in qubit order',
+                      evidence: '12 measures · c[0] to c[11]',
+                    }}
+                    selected={selected === 'D08'}
+                    onSelect={() => setSelected('D08')}
+                    onRequest={() => actions.requestFix('D08')}
+                  />
+                )}
               </Section>
             </div>
           </div>
