@@ -1,0 +1,431 @@
+{
+  "$defs": {
+    "Ancillas": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "add": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Add",
+          "type": "integer"
+        },
+        "reuse": {
+          "default": true,
+          "title": "Reuse",
+          "type": "boolean"
+        }
+      },
+      "title": "Ancillas",
+      "type": "object"
+    },
+    "CircuitPayload": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "format": {
+          "enum": [
+            "openqasm3",
+            "openqasm2"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "num_qubits": {
+          "minimum": 1,
+          "title": "Num Qubits",
+          "type": "integer"
+        },
+        "qasm": {
+          "title": "Qasm",
+          "type": "string"
+        },
+        "qubit_map": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Qubit Map",
+          "type": "object"
+        },
+        "scope": {
+          "enum": [
+            "region",
+            "whole"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "scope",
+        "qasm",
+        "qubit_map",
+        "num_qubits"
+      ],
+      "title": "CircuitPayload",
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "info",
+        "warning",
+        "high"
+      ],
+      "title": "FindingSeverity",
+      "type": "string"
+    },
+    "Region": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "gate_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Gate Indices",
+          "type": "array"
+        },
+        "layers": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Layers",
+          "type": "array"
+        },
+        "qubits": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Qubits",
+          "type": "array"
+        },
+        "scope": {
+          "enum": [
+            "logical",
+            "compiled"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "qubits",
+        "layers"
+      ],
+      "title": "Region",
+      "type": "object"
+    },
+    "RequestBudget": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "max_proposals": {
+          "minimum": 1,
+          "title": "Max Proposals",
+          "type": "integer"
+        },
+        "timeout_s": {
+          "exclusiveMinimum": 0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "max_proposals",
+        "timeout_s"
+      ],
+      "title": "RequestBudget",
+      "type": "object"
+    },
+    "RequestFinding": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "evidence": {
+          "additionalProperties": true,
+          "title": "Evidence",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Region"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rule": {
+          "pattern": "^D\\d{2}$",
+          "title": "Rule",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        }
+      },
+      "required": [
+        "id",
+        "rule",
+        "severity"
+      ],
+      "title": "RequestFinding",
+      "type": "object"
+    },
+    "RequestInvariants": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "global_phase": {
+          "enum": [
+            "ignore",
+            "exact"
+          ],
+          "title": "Global Phase",
+          "type": "string"
+        },
+        "intent": {
+          "enum": [
+            "exact_unitary",
+            "reversible_function",
+            "known_output",
+            "distribution",
+            "expectation",
+            "structure_only"
+          ],
+          "title": "Intent",
+          "type": "string"
+        },
+        "verification": {
+          "enum": [
+            "exact",
+            "probabilistic_ok"
+          ],
+          "title": "Verification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "intent",
+        "verification",
+        "global_phase"
+      ],
+      "title": "RequestInvariants",
+      "type": "object"
+    },
+    "RequestItem": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "item_sha256": {
+          "title": "Item Sha256",
+          "type": "string"
+        },
+        "score_version": {
+          "title": "Score Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "item_sha256",
+        "score_version"
+      ],
+      "title": "RequestItem",
+      "type": "object"
+    },
+    "RequestObjective": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "direction": {
+          "enum": [
+            "minimize",
+            "maximize"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "primary": {
+          "title": "Primary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "primary",
+        "direction"
+      ],
+      "title": "RequestObjective",
+      "type": "object"
+    },
+    "RequestPermitted": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "ancillas": {
+          "$ref": "#/$defs/Ancillas"
+        },
+        "changes": {
+          "items": {
+            "enum": [
+              "layout",
+              "routing",
+              "commuting_reorder",
+              "block_resynthesis",
+              "reversible_rewrite",
+              "approximate_synthesis"
+            ],
+            "type": "string"
+          },
+          "title": "Changes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "changes"
+      ],
+      "title": "RequestPermitted",
+      "type": "object"
+    },
+    "RequestTarget": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "backend": {
+          "title": "Backend",
+          "type": "string"
+        },
+        "basis": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Basis",
+          "type": "array"
+        },
+        "coupling_map": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Coupling Map",
+          "type": "array"
+        }
+      },
+      "required": [
+        "backend",
+        "basis",
+        "coupling_map"
+      ],
+      "title": "RequestTarget",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.request/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "budget": {
+      "$ref": "#/$defs/RequestBudget"
+    },
+    "circuit": {
+      "$ref": "#/$defs/CircuitPayload"
+    },
+    "finding": {
+      "$ref": "#/$defs/RequestFinding"
+    },
+    "invariants": {
+      "$ref": "#/$defs/RequestInvariants"
+    },
+    "item": {
+      "$ref": "#/$defs/RequestItem"
+    },
+    "objective": {
+      "$ref": "#/$defs/RequestObjective"
+    },
+    "permitted": {
+      "$ref": "#/$defs/RequestPermitted"
+    },
+    "proposal_schema": {
+      "const": "qscore.proposal/v0.2",
+      "title": "Proposal Schema",
+      "type": "string"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema": {
+      "const": "qscore.request/v0.2",
+      "title": "Schema",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/RequestTarget"
+    }
+  },
+  "required": [
+    "schema",
+    "request_id",
+    "item",
+    "finding",
+    "circuit",
+    "target",
+    "objective",
+    "permitted",
+    "invariants",
+    "budget",
+    "proposal_schema"
+  ],
+  "title": "ImprovementRequest",
+  "type": "object"
+}

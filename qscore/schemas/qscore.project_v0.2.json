@@ -1,0 +1,1123 @@
+{
+  "$defs": {
+    "Ancillas": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "add": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Add",
+          "type": "integer"
+        },
+        "reuse": {
+          "default": true,
+          "title": "Reuse",
+          "type": "boolean"
+        }
+      },
+      "title": "Ancillas",
+      "type": "object"
+    },
+    "Budget": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "gpu_time_s": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gpu Time S"
+        },
+        "layer_timeout_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Layer Timeout S"
+        },
+        "max_proposals": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Proposals"
+        },
+        "max_rounds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Rounds"
+        },
+        "wall_time_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wall Time S"
+        }
+      },
+      "title": "Budget",
+      "type": "object"
+    },
+    "BuilderSource": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "args": {
+          "additionalProperties": true,
+          "title": "Args",
+          "type": "object"
+        },
+        "builder": {
+          "title": "Builder",
+          "type": "string"
+        },
+        "parameters": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParametersFile"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "builder"
+      ],
+      "title": "BuilderSource",
+      "type": "object"
+    },
+    "CalibrationFile": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "file": {
+          "title": "File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file"
+      ],
+      "title": "CalibrationFile",
+      "type": "object"
+    },
+    "CircuitItem": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "budget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Budget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "diagnose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DiagnoseSettings"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Evidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "execution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Execution"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "invariants": {
+          "$ref": "#/$defs/Invariants"
+        },
+        "objective": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Objective"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "permitted": {
+          "$ref": "#/$defs/Permitted"
+        },
+        "privacy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Privacy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "size_sweep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SizeSweep"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/QasmSource"
+            },
+            {
+              "$ref": "#/$defs/BuilderSource"
+            }
+          ],
+          "title": "Source"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TargetSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "source"
+      ],
+      "title": "CircuitItem",
+      "type": "object"
+    },
+    "Constraint": {
+      "additionalProperties": false,
+      "description": "A metric and exactly one bound (§2.2, Q103).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "max_vs_baseline": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Vs Baseline"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "min_vs_baseline": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Vs Baseline"
+        }
+      },
+      "required": [
+        "metric"
+      ],
+      "title": "Constraint",
+      "type": "object"
+    },
+    "Defaults": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "budget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Budget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "diagnose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DiagnoseSettings"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Evidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "execution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Execution"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "objective": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Objective"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "privacy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Privacy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TargetSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Defaults",
+      "type": "object"
+    },
+    "DiagnoseSettings": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "groups": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/MetricGroup"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Groups"
+        },
+        "ignore": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/IgnoreEntry"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ignore"
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile"
+        }
+      },
+      "title": "DiagnoseSettings",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "on_inconclusive": {
+          "const": "reject",
+          "default": "reject",
+          "title": "On Inconclusive",
+          "type": "string"
+        },
+        "verification": {
+          "default": "exact",
+          "enum": [
+            "exact",
+            "probabilistic_ok"
+          ],
+          "title": "Verification",
+          "type": "string"
+        }
+      },
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Execution": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "device": {
+          "anyOf": [
+            {
+              "enum": [
+                "auto",
+                "cpu",
+                "gpu"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Device"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Precision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seed_simulator": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed Simulator"
+        },
+        "shots": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shots"
+        },
+        "transpiler_seeds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transpiler Seeds"
+        }
+      },
+      "title": "Execution",
+      "type": "object"
+    },
+    "IgnoreEntry": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "rule": {
+          "pattern": "^D\\d{2}$",
+          "title": "Rule",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule",
+        "reason"
+      ],
+      "title": "IgnoreEntry",
+      "type": "object"
+    },
+    "Invariants": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "final_permutation": {
+          "default": "allowed",
+          "enum": [
+            "allowed",
+            "forbidden"
+          ],
+          "title": "Final Permutation",
+          "type": "string"
+        },
+        "global_phase": {
+          "default": "ignore",
+          "enum": [
+            "ignore",
+            "exact"
+          ],
+          "title": "Global Phase",
+          "type": "string"
+        },
+        "intent": {
+          "default": "exact_unitary",
+          "enum": [
+            "exact_unitary",
+            "reversible_function",
+            "known_output",
+            "distribution",
+            "expectation",
+            "structure_only"
+          ],
+          "title": "Intent",
+          "type": "string"
+        },
+        "reliability": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReliabilityInvariant"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "task": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Task"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Invariants",
+      "type": "object"
+    },
+    "MetricGroup": {
+      "enum": [
+        "resources",
+        "hardware",
+        "opportunities",
+        "research"
+      ],
+      "title": "MetricGroup",
+      "type": "string"
+    },
+    "Objective": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "constraints": {
+          "items": {
+            "$ref": "#/$defs/Constraint"
+          },
+          "title": "Constraints",
+          "type": "array"
+        },
+        "direction": {
+          "enum": [
+            "minimize",
+            "maximize"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "primary": {
+          "title": "Primary",
+          "type": "string"
+        },
+        "report": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Report",
+          "type": "array"
+        }
+      },
+      "required": [
+        "primary",
+        "direction"
+      ],
+      "title": "Objective",
+      "type": "object"
+    },
+    "ParametersFile": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "file": {
+          "title": "File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file"
+      ],
+      "title": "ParametersFile",
+      "type": "object"
+    },
+    "Permitted": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "ancillas": {
+          "$ref": "#/$defs/Ancillas"
+        },
+        "approximation": {
+          "default": "none",
+          "title": "Approximation",
+          "type": "string"
+        },
+        "changes": {
+          "items": {
+            "enum": [
+              "layout",
+              "routing",
+              "commuting_reorder",
+              "block_resynthesis",
+              "reversible_rewrite",
+              "approximate_synthesis"
+            ],
+            "type": "string"
+          },
+          "title": "Changes",
+          "type": "array"
+        },
+        "scope": {
+          "default": "region",
+          "enum": [
+            "region",
+            "whole"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "title": "Permitted",
+      "type": "object"
+    },
+    "Precision": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "confirm": {
+          "const": "double",
+          "default": "double",
+          "title": "Confirm",
+          "type": "string"
+        },
+        "screen": {
+          "default": "single",
+          "enum": [
+            "single",
+            "double"
+          ],
+          "title": "Screen",
+          "type": "string"
+        }
+      },
+      "title": "Precision",
+      "type": "object"
+    },
+    "Privacy": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "external_inference": {
+          "default": false,
+          "title": "External Inference",
+          "type": "boolean"
+        },
+        "send_region_only": {
+          "default": true,
+          "title": "Send Region Only",
+          "type": "boolean"
+        }
+      },
+      "title": "Privacy",
+      "type": "object"
+    },
+    "ProjectInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "root": {
+          "default": ".",
+          "title": "Root",
+          "type": "string"
+        },
+        "runner": {
+          "$ref": "#/$defs/Runner"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ProjectInfo",
+      "type": "object"
+    },
+    "QasmSource": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "qasm": {
+          "title": "Qasm",
+          "type": "string"
+        }
+      },
+      "required": [
+        "qasm"
+      ],
+      "title": "QasmSource",
+      "type": "object"
+    },
+    "ReliabilityInvariant": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "min_vs_baseline": {
+          "title": "Min Vs Baseline",
+          "type": "number"
+        }
+      },
+      "required": [
+        "min_vs_baseline"
+      ],
+      "title": "ReliabilityInvariant",
+      "type": "object"
+    },
+    "Runner": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "env": {
+          "default": "engine",
+          "enum": [
+            "engine",
+            "uv"
+          ],
+          "title": "Env",
+          "type": "string"
+        },
+        "mem_mb": {
+          "default": 4096,
+          "exclusiveMinimum": 0,
+          "title": "Mem Mb",
+          "type": "integer"
+        },
+        "timeout_s": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      "title": "Runner",
+      "type": "object"
+    },
+    "SizeSweep": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "arg": {
+          "title": "Arg",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "arg",
+        "values"
+      ],
+      "title": "SizeSweep",
+      "type": "object"
+    },
+    "TargetSpec": {
+      "additionalProperties": false,
+      "description": "A named backend, or a custom `{coupling_map, basis_gates}` target (§2.2, Q103).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "backend": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backend"
+        },
+        "basis_gates": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Basis Gates"
+        },
+        "calibration": {
+          "anyOf": [
+            {
+              "enum": [
+                "from_backend",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/CalibrationFile"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration"
+        },
+        "coupling_map": {
+          "anyOf": [
+            {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coupling Map"
+        }
+      },
+      "title": "TargetSpec",
+      "type": "object"
+    },
+    "Task": {
+      "additionalProperties": false,
+      "description": "Intent-specific task (§2.1): `bitstring`/`min_probability` for known_output, `tolerance`\nfor distribution/expectation, `observable` for expectation; `shots` for all three.",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "bitstring": {
+          "anyOf": [
+            {
+              "pattern": "^[01]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bitstring"
+        },
+        "min_probability": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Probability"
+        },
+        "observable": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observable"
+        },
+        "shots": {
+          "exclusiveMinimum": 0,
+          "title": "Shots",
+          "type": "integer"
+        },
+        "tolerance": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tolerance"
+        }
+      },
+      "required": [
+        "shots"
+      ],
+      "title": "Task",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.project/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "circuits": {
+      "items": {
+        "$ref": "#/$defs/CircuitItem"
+      },
+      "title": "Circuits",
+      "type": "array"
+    },
+    "defaults": {
+      "$ref": "#/$defs/Defaults"
+    },
+    "project": {
+      "$ref": "#/$defs/ProjectInfo"
+    },
+    "schema": {
+      "const": "qscore.project/v0.2",
+      "title": "Schema",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "project",
+    "circuits"
+  ],
+  "title": "ProjectManifest",
+  "type": "object"
+}

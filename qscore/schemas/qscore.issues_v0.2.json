@@ -1,0 +1,178 @@
+{
+  "$defs": {
+    "IssueModel": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "code": {
+          "pattern": "^Q\\d{3}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "docs": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Docs"
+        },
+        "hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hint"
+        },
+        "item": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Item"
+        },
+        "location": {
+          "$ref": "#/$defs/Location"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "location",
+        "message"
+      ],
+      "title": "IssueModel",
+      "type": "object"
+    },
+    "Location": {
+      "additionalProperties": false,
+      "description": "Where an issue is: file, 1-based line and column, and the field path.",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "column": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        },
+        "field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Field"
+        },
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        }
+      },
+      "required": [
+        "file"
+      ],
+      "title": "Location",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "error",
+        "warning",
+        "info"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "qscore.issues/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "errors": {
+      "minimum": 0,
+      "title": "Errors",
+      "type": "integer"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/IssueModel"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "manifest": {
+      "title": "Manifest",
+      "type": "string"
+    },
+    "schema": {
+      "const": "qscore.issues/v0.2",
+      "title": "Schema",
+      "type": "string"
+    },
+    "warnings": {
+      "minimum": 0,
+      "title": "Warnings",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema",
+    "manifest",
+    "errors",
+    "warnings",
+    "issues"
+  ],
+  "title": "IssueReportModel",
+  "type": "object"
+}

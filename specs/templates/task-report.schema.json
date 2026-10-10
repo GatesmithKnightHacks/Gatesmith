@@ -1,0 +1,59 @@
+{
+  "title": "qscore delegated task report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_id", "status", "summary", "branch", "commits", "files_changed", "tests", "acceptance", "spec_deviations", "fallbacks_introduced", "open_questions", "follow_ups"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "status": {"type": "string", "enum": ["done", "partial", "blocked"]},
+    "summary": {"type": "string"},
+    "branch": {"type": "string"},
+    "commits": {"type": "array", "items": {"type": "string"}},
+    "files_changed": {"type": "array", "items": {"type": "string"}},
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "result", "details"],
+        "properties": {
+          "command": {"type": "string"},
+          "result": {"type": "string", "enum": ["passed", "failed", "not_run"]},
+          "details": {"type": "string"}
+        }
+      }
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["criterion", "met", "evidence"],
+        "properties": {
+          "criterion": {"type": "string"},
+          "met": {"type": "boolean"},
+          "evidence": {"type": "string"}
+        }
+      }
+    },
+    "spec_deviations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["spec_ref", "finding", "evidence", "proposed_change", "impact", "suggested_class"],
+        "properties": {
+          "spec_ref": {"type": "string"},
+          "finding": {"type": "string"},
+          "evidence": {"type": "string"},
+          "proposed_change": {"type": "string"},
+          "impact": {"type": "string"},
+          "suggested_class": {"type": "string", "enum": ["A", "B"]}
+        }
+      }
+    },
+    "fallbacks_introduced": {"type": "array", "items": {"type": "string"}, "description": "Must be empty. List any code path that substitutes a method/device/value on failure."},
+    "open_questions": {"type": "array", "items": {"type": "string"}},
+    "follow_ups": {"type": "array", "items": {"type": "string"}}
+  }
+}

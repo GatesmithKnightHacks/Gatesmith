@@ -1,0 +1,16 @@
+score_version: qscore-2026.1
+rules:
+  D01: {routing_overhead_min: 0.30}
+  D02: {seed_spread_min: 0.15}
+  D03: {min_ops: 6, min_qubits: 4}
+  D04: {resynthesis_potential_min: 1}
+  D05: {min_qubits: 3, max_qubits: 9}
+  D06: {share_min: 0.25}
+  D07: {ratio_to_t2_min: 0.5}
+  D08: {cv_min: 0.5}
+  D09: {min_sizes: 3, exponent_gap_min: 0.3}
+  D10: {}                      # uses the item's own task tolerance
+severity:                      # margin = (value - threshold) / threshold, for ">=" rules
+  warning_margin: 0.0          # fires at all -> at least warning
+  high_margin: 0.25            # >= 25 % past the threshold -> high
+  info_rules: [D02, D08]       # these never exceed "info" in the MVP

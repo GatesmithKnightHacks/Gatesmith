@@ -1,0 +1,172 @@
+{
+  "$defs": {
+    "Candidate": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "format": {
+          "enum": [
+            "openqasm3",
+            "openqasm2"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "qasm": {
+          "title": "Qasm",
+          "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "region",
+            "whole"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "scope",
+        "qasm"
+      ],
+      "title": "Candidate",
+      "type": "object"
+    },
+    "Claims": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "direction": {
+          "enum": [
+            "decrease",
+            "increase"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "equivalent": {
+          "title": "Equivalent",
+          "type": "boolean"
+        },
+        "estimate": {
+          "title": "Estimate",
+          "type": "number"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "direction",
+        "estimate",
+        "equivalent"
+      ],
+      "title": "Claims",
+      "type": "object"
+    },
+    "LayerInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "LayerInfo",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.proposal/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "candidate": {
+      "$ref": "#/$defs/Candidate"
+    },
+    "claims": {
+      "$ref": "#/$defs/Claims"
+    },
+    "layer": {
+      "$ref": "#/$defs/LayerInfo"
+    },
+    "rationale": {
+      "title": "Rationale",
+      "type": "string"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema": {
+      "const": "qscore.proposal/v0.2",
+      "title": "Schema",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "request_id",
+    "layer",
+    "candidate",
+    "claims",
+    "rationale"
+  ],
+  "title": "Proposal",
+  "type": "object"
+}

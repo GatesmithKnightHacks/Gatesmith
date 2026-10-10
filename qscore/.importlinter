@@ -1,0 +1,12 @@
+[importlinter]
+root_package = qscore
+
+[importlinter:contract:layers]
+name = qscore layers point down
+type = layers
+layers =
+    qscore.cli | qscore.worker | qscore.api | qscore.ui
+    qscore.services
+    qscore.manifest : qscore.intake : qscore.validate : qscore.interpret : qscore.score : qscore.record : qscore.bench
+    qscore.targets : qscore.compile : qscore.metrics : qscore.sim : qscore.diagnose : qscore.verify : qscore.improve
+    qscore.schemas : qscore.hardware : qscore.config : qscore.errors : qscore.logging

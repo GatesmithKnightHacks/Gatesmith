@@ -1,0 +1,5 @@
+profile: fault_tolerant
+overrides: {}
+off:
+  D06: logical-level circuits; physical calibration not meaningful
+  D07: logical-level circuits; physical calibration not meaningful

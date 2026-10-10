@@ -1,0 +1,17 @@
+# Golden values (specs/06-metrics.md §4). Person-only file: agents never edit values (R6.1).
+# Rows below are the ones "derived by hand and approved as part of these specs".
+# Record+approve rows (compiled GHZ-5 on FakeTorino seed 11; sbox_oracle toffoli_count) are added
+# only after the user approves the exact numbers.
+approved_by: specs v2.0 (06-metrics.md §4)
+date: 2026-10-09
+bell: {width: 2, size: 2, depth: 2, two_qubit_count: 1, two_qubit_depth: 1, measurement_count: 0}
+ghz5_logical: {width: 5, size: 5, depth: 5, two_qubit_count: 4, two_qubit_depth: 4}
+ghz4_entanglement: {per_qubit: [1, 2, 2, 1], variance: 0.25, cv: 0.3333333333333333}
+ghz5_line5: {seeds: [11, 23, 37], routing_overhead: 0.0, swaps_inserted: 0, two_qubit_count: 4, compile_ratio: 1.0, seed_spread: 0.0}
+reliability_from_ops: {ops: [[cx, [0, 1], 0.01], [sx, [0], 0.001], [measure, [0], 0.02]], expected: 0.9692298, tol: 1.0e-12}
+resynthesis_cx_cx: 2
+resynthesis_swap: 0
+toffoli_ccx_cx_ccx: 2
+# Record+approve rows (06 §4): approved by the user in the conversation on 2026-10-10.
+ghz5_faketorino_seed11: {two_qubit_count: 4, two_qubit_depth: 4, depth: 15, approved_by: user, date: 2026-10-10}
+sbox_oracle_toffoli_count: {value: 100, approved_by: user, date: 2026-10-10, note: "basic MMD per CP-0015; test added with the S6 generator"}

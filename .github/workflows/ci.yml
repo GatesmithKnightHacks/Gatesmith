@@ -1,0 +1,33 @@
+# CI per specs/14-testing.md §4 (engine in qscore/).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: qscore
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (CPU Aer)
+        run: uv sync --frozen
+      - name: Lint and format
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Types
+        run: uv run mypy src
+      - name: Import layers
+        run: uv run lint-imports
+      - name: Tests (CPU; includes tests/contract schema drift)
+        run: >
+          uv run pytest -m "not gpu and not neon and not hub and not llm and not slow"
+          -W error::DeprecationWarning:qiskit -n auto

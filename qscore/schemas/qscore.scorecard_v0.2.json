@@ -1,0 +1,1125 @@
+{
+  "$defs": {
+    "AllToAllInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "two_qubit_count": {
+          "minimum": 0,
+          "title": "Two Qubit Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "two_qubit_count"
+      ],
+      "title": "AllToAllInfo",
+      "type": "object"
+    },
+    "CompileInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "all_to_all": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AllToAllInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "per_seed": {
+          "items": {
+            "$ref": "#/$defs/SeedResult"
+          },
+          "title": "Per Seed",
+          "type": "array"
+        },
+        "representative_seed": {
+          "title": "Representative Seed",
+          "type": "integer"
+        },
+        "route_only": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RouteOnlyInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seeds": {
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Seeds",
+          "type": "array"
+        },
+        "selection_policy": {
+          "title": "Selection Policy",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seeds",
+        "representative_seed",
+        "selection_policy",
+        "per_seed"
+      ],
+      "title": "CompileInfo",
+      "type": "object"
+    },
+    "ErrorInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "message"
+      ],
+      "title": "ErrorInfo",
+      "type": "object"
+    },
+    "FallbackUse": {
+      "additionalProperties": false,
+      "description": "One activation of a planned fallback (specs/17-fallbacks.md §1).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^FB-\\d{2}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "scope": {
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reason",
+        "at",
+        "scope"
+      ],
+      "title": "FallbackUse",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "confidence": {
+          "enum": [
+            "rule_fired",
+            "measured"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "evidence": {
+          "additionalProperties": true,
+          "title": "Evidence",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Region"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rule": {
+          "pattern": "^D\\d{2}$",
+          "title": "Rule",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "strategies": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Strategies",
+          "type": "array"
+        },
+        "suppressed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Suppression"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Threshold"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "rule",
+        "title",
+        "severity",
+        "confidence"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "info",
+        "warning",
+        "high"
+      ],
+      "title": "FindingSeverity",
+      "type": "string"
+    },
+    "GpuInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "arch": {
+          "title": "Arch",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "arch"
+      ],
+      "title": "GpuInfo",
+      "type": "object"
+    },
+    "ItemRef": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "circuit_sha256": {
+          "title": "Circuit Sha256",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "item_sha256": {
+          "title": "Item Sha256",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "score_version": {
+          "title": "Score Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "item_sha256",
+        "circuit_sha256",
+        "manifest_sha256",
+        "score_version"
+      ],
+      "title": "ItemRef",
+      "type": "object"
+    },
+    "MethodInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "aer_method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Aer Method"
+        },
+        "device": {
+          "title": "Device",
+          "type": "string"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "enum": [
+                "single",
+                "double"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precision"
+        },
+        "shots": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shots"
+        }
+      },
+      "required": [
+        "device"
+      ],
+      "title": "MethodInfo",
+      "type": "object"
+    },
+    "MetricGroup": {
+      "enum": [
+        "resources",
+        "hardware",
+        "opportunities",
+        "research"
+      ],
+      "title": "MetricGroup",
+      "type": "string"
+    },
+    "MetricKind": {
+      "enum": [
+        "deterministic",
+        "heuristic",
+        "statistical",
+        "context"
+      ],
+      "title": "MetricKind",
+      "type": "string"
+    },
+    "MetricResult": {
+      "additionalProperties": false,
+      "description": "One metric's outcome. Status is never blank (§3 table).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence"
+        },
+        "group": {
+          "$ref": "#/$defs/MetricGroup"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MetricKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "method": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MethodInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "enum": [
+                "logical",
+                "compiled",
+                "both"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Uncertainty"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id",
+        "group",
+        "status"
+      ],
+      "title": "MetricResult",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Versions, seeds and settings behind a result (specs/04-contracts.md §3).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "aer_build": {
+          "title": "Aer Build",
+          "type": "string"
+        },
+        "fallbacks_enabled": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fallbacks Enabled",
+          "type": "array"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Finished At"
+        },
+        "git_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Git Commit"
+        },
+        "git_dirty": {
+          "title": "Git Dirty",
+          "type": "boolean"
+        },
+        "gpu": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GpuInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hardware_profile_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hardware Profile Id"
+        },
+        "lock_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lock Sha256"
+        },
+        "mqt_qcec": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mqt Qcec"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "python": {
+          "title": "Python",
+          "type": "string"
+        },
+        "qiskit": {
+          "title": "Qiskit",
+          "type": "string"
+        },
+        "qiskit_aer": {
+          "title": "Qiskit Aer",
+          "type": "string"
+        },
+        "qscore": {
+          "title": "Qscore",
+          "type": "string"
+        },
+        "rocm": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rocm"
+        },
+        "seeds": {
+          "$ref": "#/$defs/SeedInfo"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "thresholds_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Thresholds Sha256"
+        }
+      },
+      "required": [
+        "qscore",
+        "git_commit",
+        "git_dirty",
+        "lock_sha256",
+        "python",
+        "qiskit",
+        "qiskit_aer",
+        "aer_build",
+        "mqt_qcec",
+        "profile",
+        "fallbacks_enabled",
+        "seeds",
+        "thresholds_sha256",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Region": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "gate_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Gate Indices",
+          "type": "array"
+        },
+        "layers": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Layers",
+          "type": "array"
+        },
+        "qubits": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Qubits",
+          "type": "array"
+        },
+        "scope": {
+          "enum": [
+            "logical",
+            "compiled"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "qubits",
+        "layers"
+      ],
+      "title": "Region",
+      "type": "object"
+    },
+    "ResourceUse": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "cpu_s": {
+          "minimum": 0,
+          "title": "Cpu S",
+          "type": "number"
+        },
+        "gpu_s": {
+          "minimum": 0,
+          "title": "Gpu S",
+          "type": "number"
+        },
+        "peak_vram_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Peak Vram Mib"
+        },
+        "wall_s": {
+          "minimum": 0,
+          "title": "Wall S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "wall_s",
+        "cpu_s",
+        "gpu_s"
+      ],
+      "title": "ResourceUse",
+      "type": "object"
+    },
+    "RouteOnlyInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "swaps_inserted": {
+          "minimum": 0,
+          "title": "Swaps Inserted",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "swaps_inserted"
+      ],
+      "title": "RouteOnlyInfo",
+      "type": "object"
+    },
+    "SeedInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "simulator_base": {
+          "title": "Simulator Base",
+          "type": "integer"
+        },
+        "transpiler": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Transpiler",
+          "type": "array"
+        }
+      },
+      "required": [
+        "transpiler",
+        "simulator_base"
+      ],
+      "title": "SeedInfo",
+      "type": "object"
+    },
+    "SeedResult": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "depth": {
+          "minimum": 0,
+          "title": "Depth",
+          "type": "integer"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "time_s": {
+          "minimum": 0,
+          "title": "Time S",
+          "type": "number"
+        },
+        "two_qubit_count": {
+          "minimum": 0,
+          "title": "Two Qubit Count",
+          "type": "integer"
+        },
+        "two_qubit_depth": {
+          "minimum": 0,
+          "title": "Two Qubit Depth",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seed",
+        "two_qubit_count",
+        "two_qubit_depth",
+        "depth",
+        "time_s"
+      ],
+      "title": "SeedResult",
+      "type": "object"
+    },
+    "Status": {
+      "enum": [
+        "computed",
+        "skipped",
+        "unavailable",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "Suppression": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "by": {
+          "enum": [
+            "profile",
+            "manifest",
+            "cli"
+          ],
+          "title": "By",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "by",
+        "reason"
+      ],
+      "title": "Suppression",
+      "type": "object"
+    },
+    "TargetInfo": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "basis": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Basis",
+          "type": "array"
+        },
+        "calibration_assumed": {
+          "title": "Calibration Assumed",
+          "type": "boolean"
+        },
+        "calibration_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Calibration Id"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "num_qubits": {
+          "minimum": 1,
+          "title": "Num Qubits",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "num_qubits",
+        "basis",
+        "calibration_id",
+        "calibration_assumed"
+      ],
+      "title": "TargetInfo",
+      "type": "object"
+    },
+    "Threshold": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "margin": {
+          "title": "Margin",
+          "type": "number"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "margin"
+      ],
+      "title": "Threshold",
+      "type": "object"
+    },
+    "Uncertainty": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "ci95": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Ci95",
+          "type": "array"
+        },
+        "trials": {
+          "minimum": 1,
+          "title": "Trials",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ci95",
+        "trials"
+      ],
+      "title": "Uncertainty",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.scorecard/v0.2",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "compile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CompileInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ErrorInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "fallbacks_used": {
+      "items": {
+        "$ref": "#/$defs/FallbackUse"
+      },
+      "title": "Fallbacks Used",
+      "type": "array"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "item": {
+      "$ref": "#/$defs/ItemRef"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/MetricResult"
+      },
+      "title": "Metrics",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "requests": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Requests",
+      "type": "array"
+    },
+    "resources": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceUse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema": {
+      "const": "qscore.scorecard/v0.2",
+      "title": "Schema",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "partial",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TargetInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "schema",
+    "item",
+    "status",
+    "provenance",
+    "created_at"
+  ],
+  "title": "Scorecard",
+  "type": "object"
+}
