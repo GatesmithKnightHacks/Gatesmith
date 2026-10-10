@@ -44,7 +44,7 @@ test('the improvement loop, from a new run to the export', async ({ page }) => {
   await snap(page, '06a-writing')
   const accept = page.getByRole('button', { name: 'Accept' })
   await expect(accept).toBeEnabled({ timeout: 8000 })
-  await expect(page.getByText('Same job, checked exactly')).toBeVisible()
+  await expect(page.getByText('Same job, checked exactly', { exact: true })).toBeVisible()
   await snap(page, '06b-verified')
   await accept.click()
   await page.waitForTimeout(400)

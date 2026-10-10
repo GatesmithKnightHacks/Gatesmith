@@ -50,6 +50,13 @@ type NavigateOptions = {
   replace?: boolean
 }
 
+let preload: (path: RoutePath) => Promise<unknown> = () => Promise.resolve()
+
+/** App registers the screen loader so navigation can wait for the next screen's code. */
+export function setPreloader(fn: (path: RoutePath) => Promise<unknown>) {
+  preload = fn
+}
+
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
@@ -63,14 +70,19 @@ export function navigate(path: RoutePath, opts: NavigateOptions = {}) {
     else history.pushState(null, '', url)
     flushSync(() => window.dispatchEvent(new HashChangeEvent('hashchange')))
   }
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } }
+  const doc = document as Document & {
+    startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> }
+  }
   if (!doc.startViewTransition || reduceMotion()) {
-    apply()
+    void preload(path).then(apply)
     return
   }
   const root = document.documentElement
   if (opts.transition) root.dataset.transition = opts.transition
-  const vt = doc.startViewTransition(apply)
+  const vt = doc.startViewTransition(async () => {
+    await preload(path)
+    apply()
+  })
   vt.finished.finally(() => {
     delete root.dataset.transition
   })
