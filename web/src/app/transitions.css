@@ -1,0 +1,33 @@
+/*
+ * Screen-to-screen motion (DS-07, M1–M6). The browser cross-fades the root; shared elements with a
+ * view-transition-name morph from where they were. Arrive soft (enter curve), leave quick (exit curve).
+ */
+::view-transition-old(root) {
+  animation: vt-fade-out var(--motion-fast) var(--ease-exit) both;
+}
+::view-transition-new(root) {
+  animation: vt-fade-in var(--motion-base) var(--ease-enter) both;
+}
+::view-transition-group(*) {
+  animation-duration: var(--motion-slow);
+  animation-timing-function: var(--ease-standard);
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 80ms !important;
+  }
+}
