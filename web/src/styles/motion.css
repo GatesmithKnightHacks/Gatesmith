@@ -17,6 +17,14 @@
   --stagger: 40ms; /* rank order */
 }
 
+/* Settings can force reduced motion on; it mirrors the system setting below. */
+:root[data-reduce-motion] {
+  --motion-fast: 80ms;
+  --motion-base: 80ms;
+  --motion-slow: 80ms;
+  --motion-count: 0ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-fast: 80ms;

@@ -34,6 +34,45 @@ function subscribe(cb: () => void) {
   return () => window.removeEventListener('hashchange', cb)
 }
 
+/* Where we are in this session's navigation, so Undo and Redo know what they can do. */
+let position = 0
+let furthest = 0
+// Mark the entry the session started on, so coming back to it is recognised.
+if ((history.state as { at?: number } | null)?.at == null) history.replaceState({ at: 0 }, '', location.href)
+const historyListeners = new Set<() => void>()
+const historySnapshot = { canUndo: false, canRedo: false }
+function publishHistory() {
+  historySnapshot.canUndo = position > 0
+  historySnapshot.canRedo = position < furthest
+  historyListeners.forEach((l) => l())
+}
+window.addEventListener('popstate', (e) => {
+  const at = (e.state as { at?: number } | null)?.at
+  if (typeof at === 'number') {
+    position = at
+    publishHistory()
+  }
+})
+
+let historyVersion = 0
+export function useHistoryPosition() {
+  useSyncExternalStore(
+    (cb) => {
+      const l = () => {
+        historyVersion++
+        cb()
+      }
+      historyListeners.add(l)
+      return () => historyListeners.delete(l)
+    },
+    () => historyVersion,
+  )
+  return { canUndo: historySnapshot.canUndo, canRedo: historySnapshot.canRedo }
+}
+
+export const undo = () => position > 0 && history.back()
+export const redo = () => position < furthest && history.forward()
+
 export function useRoute(): RoutePath {
   return useSyncExternalStore(subscribe, current)
 }
@@ -64,8 +103,13 @@ export function setPreloader(fn: (path: RoutePath) => Promise<unknown>) {
 export function navigate(path: RoutePath, opts: NavigateOptions = {}) {
   const apply = () => {
     const url = `#${path}`
-    if (opts.replace) history.replaceState(null, '', url)
-    else history.pushState(null, '', url)
+    if (opts.replace) history.replaceState({ at: position }, '', url)
+    else {
+      position += 1
+      furthest = position
+      history.pushState({ at: position }, '', url)
+    }
+    publishHistory()
     flushSync(() => window.dispatchEvent(new HashChangeEvent('hashchange')))
   }
   const doc = document as Document & {

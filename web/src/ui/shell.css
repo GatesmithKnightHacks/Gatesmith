@@ -90,6 +90,9 @@
   flex-shrink: 0;
   width: var(--container-rail);
   padding: 18px 0 14px;
+  /* above the work area, so the settings and account popovers are not covered */
+  position: relative;
+  z-index: 5;
   background: var(--color-surface-panel);
 }
 .rail-nav {
@@ -191,4 +194,55 @@
 }
 .tabstrip-history button:disabled {
   cursor: default;
+}
+
+/* ── Rail popovers ───────────────────────────────────────────────────── */
+.rail-popover-anchor {
+  position: relative;
+}
+.rail-popover {
+  position: absolute;
+  left: calc(100% + 8px);
+  bottom: 4px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  width: 248px;
+  padding: var(--spacing-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-popover);
+  animation: popover-in var(--motion-base) var(--ease-enter) both;
+}
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+.popover-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+  padding-bottom: var(--spacing-1);
+}
+.popover-note {
+  color: var(--color-text-secondary);
+}
+.popover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-surface-inset);
+}
+.popover-value {
+  color: var(--color-text-primary);
+}
+.popover-action {
+  align-self: flex-start;
+  margin-top: var(--spacing-1);
 }
