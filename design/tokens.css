@@ -20,7 +20,7 @@
   --color-teal-200: #c2dadf; /* secondary text */
   --color-white: #ffffff;
   --color-onyx: #141414;
-  --color-indigo-800: #273463; /* circuit canvas */
+  --color-indigo-800: #2c3456; /* circuit canvas */
 
   --color-mint-200: #aff7d1;
   --color-mint-400: #5feea3;
@@ -34,14 +34,17 @@
   --color-orange-300: #ff986e;
 
   /* ── Semantic · surfaces ────────────────────────────────────────── */
-  --color-surface-app: var(--color-teal-950);
-  --color-surface-panel: var(--color-teal-900);
-  --color-surface-raised: var(--color-teal-800);
-  --color-surface-control: var(--color-teal-750);
-  --color-surface-selected: var(--color-teal-700);
+  --color-surface-app: var(--color-teal-950); /* ground, 4px gutters */
+  --color-surface-panel: var(--color-teal-800); /* panel bodies, active tabs, top bar, rail, inspector */
+  --color-surface-inset: var(--color-teal-900); /* tab strips, inactive tabs, plots, code */
+  --color-surface-raised: var(--color-teal-750); /* cards inside panels, time-axis row */
+  --color-surface-selected: var(--color-teal-700); /* opened card, selected row */
+  --color-surface-control: var(--color-teal-900); /* input fields */
+  --color-surface-popover: var(--color-teal-950); /* tooltips, menus, selects */
   --color-surface-canvas: var(--color-indigo-800);
 
   /* ── Semantic · borders ─────────────────────────────────────────── */
+  --color-border-divider: var(--color-teal-900); /* dark rules between rows and lanes */
   --color-border-subtle: var(--color-teal-700);
   --color-border-control: var(--color-teal-600);
   --color-border-strong: var(--color-teal-500);
@@ -65,6 +68,14 @@
   --color-signal-warn: var(--color-orange-300); /* warning · inconclusive */
   --color-signal-info: var(--color-blue-400); /* info · running · benchmark */
   --color-signal-ai: var(--color-violet-400); /* anything a model proposed */
+
+  /* ── Semantic · code ────────────────────────────────────────────── */
+  --color-code-keyword: #cc99cd;
+  --color-code-number: #f08d49;
+  --color-code-string: #7ec699;
+  --color-code-name: #f8c555;
+  --color-code-operator: #67cdcc;
+  --color-code-comment: #999999;
 
   /* ── Type ───────────────────────────────────────────────────────── */
   --font-ui: "Hanken Grotesk", system-ui, sans-serif;
@@ -108,7 +119,7 @@
   --radius-sm: 6px; /* max; popovers only */
 
   /* ── Layout ─────────────────────────────────────────────────────── */
-  --container-rail: 48px;
-  --container-topbar: 52px;
-  --container-inspector: 320px;
+  --container-rail: 42px;
+  --container-topbar: 42px;
+  --container-inspector: 304px;
 }
