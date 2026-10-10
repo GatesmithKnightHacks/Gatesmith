@@ -16,7 +16,7 @@
 | Role passwords | set on `production` only | 11 §3.2 |
 | `record/neon.py` (Neon store: platform + worker methods) | written, tested locally against the MVP engine | 11 §3–5 |
 | Platform API `api/app.py` | written, tested locally (direct and behind Caddy) | 12 §2, T28 |
-| `worker.py` | **not written**; the engine owner decides who writes it (§3.1) | 11 §5, T22 |
+| `worker.py` | written, tested locally (score, stop, crash + retry); run it per §3.2 | 11 §5, T22 |
 | `qscore db migrate` | not written; migrations were applied by hand | 05 §11, T05 |
 | Deploy files `qscore/docker/` (image, compose, Caddy, scripts) | written, tested locally | 12 §3 |
 | Vultr server (Docker + Caddy, HTTPS via `<ip>.sslip.io`) | live: `https://149.28.122.224.sslip.io` | 12 §3 |
@@ -127,6 +127,32 @@ from `PUBLIC` (CP-0005). Anything not in this table fails with `insufficient_pri
   The UI can show stage changes, not a percentage.
 - **Timing measured in Docker on a laptop:** `sbox_oracle` about 1.5 min, `sidechain_qaoa` (builder via
   the sandbox, 5-size sweep) about 2.3 min. Both `complete`; QAOA gives D01 + D03, as the demo expects.
+
+### 3.2 Running the worker (`qscore/src/qscore/worker.py`)
+
+It only calls `services.score_project`; no engine code was changed for it. Start it from the `qscore/`
+folder of an up-to-date checkout (the same commit as the platform, or score jobs fail with a manifest
+hash mismatch), in a terminal that stays open (`tmux`, or `nohup … &`), not a notebook cell:
+
+```bash
+uv sync --frozen --extra neon          # adds psycopg; install git too if missing
+export QSCORE_NEON_DSN='<qscore_worker connection string, DIRECT host, production branch>'
+export QSCORE_CAPABILITIES='{"gpu": true, "neon_write": true}'   # required until the profiler exists
+export QSCORE_WORKER_ID=w7900-<session>                           # optional; default worker-<hostname>
+uv run python -m qscore.worker
+```
+
+| Situation | Behaviour (verified 2026-10-10) |
+|---|---|
+| Missing `QSCORE_CAPABILITIES`, `QSCORE_NEON_DSN`, `git` or examples | Refuses to start, exit 4, says what is missing |
+| Idle | Polls every 5 s (30 s after 10 idle minutes); keeps `last_seen_at` fresh (GPU-online light) |
+| Job | Claims, heartbeats every 10 s, streams events every 2 s, writes the scorecard, `done` with `result_summary` |
+| Engine raises | Job `failed` with the error; the worker carries on (failed jobs are not retried, 11 §5) |
+| SIGTERM / Ctrl+C mid-job | Job `failed` / `WorkerStopped` (not requeued), exit 0. The signal never reaches engine code |
+| Crash (kill -9, notebook dies) | After 60 s without heartbeat the job is requeued; the next worker retries it (attempt 2 of 3) |
+| Neon unreachable | Exits non-zero; the heartbeat timeout requeues the job |
+
+A retried job's events are numbered after the previous attempt's, so the UI shows both runs in order.
 
 ## 4. Platform API (`api/app.py`): what the web app calls
 

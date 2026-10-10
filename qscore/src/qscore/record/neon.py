@@ -290,6 +290,13 @@ class NeonStore:
                 f"job {job_id} cannot be failed by worker {worker_id!r} (claim lost?)"
             )
 
+    def max_event_seq(self, job_id: UUID) -> int:
+        """Highest event number stored for the job (0 if none): a retry continues after it."""
+        row = self._one(
+            "select coalesce(max(seq), 0) as seq from job_events where job_id = %s", (job_id,)
+        )
+        return int(row["seq"]) if row else 0
+
     def insert_events(self, job_id: UUID, events: Sequence[Event]) -> None:
         """Write a batch of progress events; replays are ignored, conflicting replays raise."""
         if not events:
