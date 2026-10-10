@@ -1,0 +1,208 @@
+/* Shared by S-15 and S-16. */
+
+.stretch-marker {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+
+/* ── Inspector sections ──────────────────────────────────────────────── */
+.st-section .insp-section-header {
+  cursor: pointer;
+}
+.st-section.is-inset {
+  padding-inline: var(--spacing-4);
+}
+.st-section.is-inset .insp-section-header {
+  padding-inline: 0;
+}
+.st-chevron {
+  display: flex;
+  transition: transform var(--motion-base) var(--ease-standard);
+}
+.st-chevron.is-closed {
+  transform: rotate(180deg);
+}
+.st-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows var(--motion-base) var(--ease-standard),
+    opacity var(--motion-base) var(--ease-standard);
+}
+.st-collapse.is-closed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--motion-fast) var(--ease-exit),
+    opacity var(--motion-fast) var(--ease-exit);
+}
+.st-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.st-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: 0 16px 16px;
+}
+.st-section.is-inset .st-section-body {
+  padding-inline: 0;
+}
+
+/* ── Rows ────────────────────────────────────────────────────────────── */
+.st-kv {
+  display: flex;
+  flex-direction: column;
+}
+.st-kv-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 28px;
+  border-top: 1px solid var(--color-surface-app);
+}
+.st-kv-row.is-last {
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.st-kv-label {
+  flex: 1 1 0;
+  color: var(--color-text-secondary);
+}
+.st-kv-value {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.st-note {
+  color: var(--color-text-secondary);
+}
+
+/* ── Run action block (primary + equal secondary pair) ───────────────── */
+.st-action {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.st-action .btn-primary {
+  padding-block: 0;
+}
+
+/* ── Fields ──────────────────────────────────────────────────────────── */
+.st-select {
+  position: relative;
+}
+.st-field-btn {
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--motion-instant) var(--ease-standard);
+}
+.st-field-btn:hover,
+.st-number:hover {
+  border-color: var(--color-border-strong);
+}
+.st-menu {
+  position: absolute;
+  z-index: 10;
+  top: 30px;
+  right: 0;
+  width: 180px;
+  margin: 0;
+  padding: var(--spacing-1);
+  list-style: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-popover);
+  animation: st-menu-in var(--motion-fast) var(--ease-enter) both;
+}
+.st-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 26px;
+  padding-inline: var(--spacing-2);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  transition: background-color var(--motion-instant) var(--ease-standard);
+}
+.st-menu-item:hover {
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+}
+.st-menu-item.is-current {
+  color: var(--color-text-primary);
+}
+@keyframes st-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.st-number {
+  cursor: text;
+}
+.st-number-input {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.st-number:focus-within {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
+/* ── Arrive soft: rows rise 8px and fade in, in rank order ───────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .st-land {
+    animation: st-land var(--motion-base) var(--ease-enter) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+}
+@keyframes st-land {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* status words swap in place with a short fade */
+.st-swap {
+  animation: st-swap var(--motion-base) var(--ease-enter) both;
+}
+@keyframes st-swap {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-swap {
+    animation: none;
+  }
+}
+
+/* ── State banners (states boards) ───────────────────────────────────── */
+.st-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: 12px 16px;
+}
+.st-banner-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.st-banner-title {
+  color: var(--color-text-primary);
+}
