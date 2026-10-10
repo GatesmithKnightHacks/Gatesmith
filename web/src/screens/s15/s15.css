@@ -549,6 +549,5 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-4);
-  margin-top: auto;
-  padding: 12px 24px 14px;
+  padding: 16px 24px 14px;
 }
