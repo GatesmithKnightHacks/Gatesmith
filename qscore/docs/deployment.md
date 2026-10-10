@@ -143,7 +143,13 @@ The SQL follows approved proposals that `schemas/` does not implement yet:
 
 - One Cloud Compute **Regular 2 GB** server, **Docker** marketplace image, region near the Neon region.
 - Vultr **firewall group**: inbound TCP 22, 80, 443 only (Docker bypasses on-host `ufw`; the cloud firewall does not).
-- HTTPS by **Caddy** at `https://<ip>.sslip.io` (or a domain later), proxying to the platform on port 8080.
+- HTTPS by **Caddy** at `https://<ip>.sslip.io` (or a domain later). Caddy serves the **web app** (`web/`,
+  React + Vite, built into the Caddy image) and sends **`/api/*` to the platform on port 8080 with the `/api`
+  prefix removed**: the browser calls `/api/jobs`, the platform receives `/jobs` (the paths of 12 §2).
+- **Deviation (lead: record a class B proposal against D-024 / 12 §1):** the UI is a static React app on
+  the `design` branch, not Gradio inside the platform process; the platform is API only.
+- Live: `https://149.28.122.224.sslip.io` (server `gatesmith-platform`, Atlanta, 1 vCPU / 2 GB). It tracks
+  branch `vepaul-deployment`; deploys are manual (`deploy.sh`).
 - Secrets in `/opt/qscore/.env` (`chmod 600`), never in the image: `QSCORE_NEON_DSN` (platform role),
   `QSCORE_PLATFORM_TOKEN`, `HF_TOKEN` (write to `qscore-runs`, CP-0006), `GEMINI_API_KEY` (Tier 2 only).
   Template: `qscore/docker/env.example` (named without a leading dot because `.gitignore` ignores `.env.*`).
@@ -154,10 +160,12 @@ The SQL follows approved proposals that `schemas/` does not implement yet:
 |---|---|
 | `Containerfile.platform` | `python:3.12-slim` + `uv sync --frozen --no-dev --extra ui --extra neon`; runs as non-root `qscore`; `CMD uvicorn qscore.api.app:app --port 8080` |
 | `Containerfile.platform.dockerignore` | Sends only `pyproject.toml`, `uv.lock`, `README.md`, `LICENSE`, `src/` to the build |
-| `compose.yaml` | Services `caddy` (ports 80/443, cert volume) and `platform` (port 8080, internal only, `env_file` = `/opt/qscore/.env`) |
-| `Caddyfile` | HTTPS for `{$SITE_ADDRESS}` → `platform:8080`; a plain 503 placeholder while the platform is down |
+| `Containerfile.web` | Builds `web/` with Node 22 (`npm ci && npm run build`, needs `design/tokens.css`), then copies `dist/` into a `caddy:2` image at `/srv`. Context: repo root |
+| `Containerfile.web.dockerignore` | Sends only `web/` (minus `node_modules`, `dist`, test output, design PNGs) and `design/tokens.css` |
+| `compose.yaml` | Services `caddy` (built from `Containerfile.web`; ports 80/443; cert volume) and `platform` (port 8080, internal only, `env_file` = `/opt/qscore/.env`) |
+| `Caddyfile` | HTTPS for `{$SITE_ADDRESS}`; `/api/*` → `platform:8080` (prefix stripped); everything else → the web app (`try_files … /index.html`); API calls get a plain 503 message while the platform is down |
 | `bootstrap_vultr.sh` | One time, as root: clone to `/opt/qscore/repo`, create the env file with `SITE_ADDRESS=<ip>.sslip.io`, add 2 GiB swap, run `deploy.sh`. Never overwrites existing files |
-| `deploy.sh` | `git pull --ff-only`, then `docker compose up -d --build`; starts **Caddy only** while `src/qscore/api/app.py` does not exist |
+| `deploy.sh` | `git pull --ff-only`; fails if the branch has no `web/package.json` or `design/tokens.css`; then `docker compose up -d --build` (rebuilds the web app every deploy); starts **Caddy only** while `src/qscore/api/app.py` does not exist |
 | `.gitattributes` | Keeps `*.sh` LF so they run on Linux when committed from Windows |
 
 Run the scripts with `bash <script>` (the executable bit is not preserved from Windows).
@@ -167,12 +175,19 @@ Run the scripts with `bash <script>` (the executable bit is not preserved from W
 - Image builds from the lockfile (1.83 GB; Python 3.12, qiskit 2.5.2, fastapi 0.143.0, gradio 6.30.0, psycopg 3.3.6); `qscore --help` works; runs as `qscore`.
 - `caddy validate` passes (Caddy 2.11.7); with no platform running, the site answers `503` with the placeholder text.
 - `docker compose config` resolves; scripts pass `bash -n`; IP detection and env templating tested on sample input.
+- Web image builds from the `design` branch's `web/` (Node 22, `npm ci`, Vite build). Served behind a stand-in
+  platform: `/` → 200 HTML, assets gzip-compressed, unknown paths → the app, `/api/health` arrives as `/health`,
+  `/api/jobs/123/events` as `/jobs/123/events`; with the platform stopped, `/api/*` → 503 message, `/` still 200.
 - Not testable locally: the real certificate, the clone on the server, swap. They run on first bootstrap.
 
 ### 7.3 For whoever writes `api/app.py` (T28)
 
 - The image's `CMD` expects a module-level FastAPI object named `app` in `qscore.api.app`, served on port 8080
-  behind Caddy (`--proxy-headers`). Gradio mounts into that app (one process, 12 §3).
+  behind Caddy (`--proxy-headers`). It serves the API only; define routes **without** an `/api` prefix
+  (`/health`, `/jobs`, ...). The web app is served by Caddy, same origin, so no CORS setup is needed.
+- **Web app:** call the API with relative URLs under `/api/` (e.g. `fetch('/api/jobs/' + id)`), never a
+  hard-coded host. For `npm run dev` on a laptop, proxy `/api` to a local platform in `vite.config.ts`
+  (`server.proxy`), stripping the prefix the same way.
 - **Empty env values are not "unset":** `QSCORE_NEON_DSN=` yields `SecretStr('')`, not `None`. Treat an empty
   DSN or token as missing and fail loudly (`ConfigError`), or a blank `.env` line looks configured.
 - Extra `QSCORE_*` variables that are not `Settings` fields (e.g. `QSCORE_PLATFORM_TOKEN`) are accepted, not rejected.
@@ -187,6 +202,10 @@ Run the scripts with `bash <script>` (the executable bit is not preserved from W
 ## 9. Open questions
 
 - Hugging Face org name for `qscore-runs`, `qscore-wheels` and the Space (18 §3).
-- Is port 5432 reachable from the Radeon Cloud machine? Check in GPU session 1; if not, FB-03.
+- The Radeon Cloud GPU machine is a **notebook with no inbound access** (no SSH, no exposed port) but with
+  outbound internet. That matches the queue design (the worker connects out to Neon; nothing connects in), but
+  nothing can deploy to it or call it: update its code with `git pull` inside the notebook. **Still unverified:
+  outbound TCP 5432** to Neon (some notebooks allow only HTTPS). If 5432 is blocked, the worker cannot use
+  `QSCORE_NEON_DSN` and FB-03 (Neon Data API over HTTPS, or a relay through the Vultr platform) needs the user's decision.
 - Team decision on two Neon-track extras: per-PR Neon branches running the smoke test in CI, and a
   scheduled Neon Function calling `requeue_stale()` (architecture change; needs a proposal).

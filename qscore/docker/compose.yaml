@@ -1,10 +1,14 @@
-# Vultr platform stack (specs/12 §3): Caddy (HTTPS on 443) in front of the platform (port 8080).
+# Vultr platform stack (specs/12 §3): Caddy (HTTPS on 443) serves the web app from web/ and sends
+# /api/* to the platform (port 8080).
 # Start it with deploy.sh, which passes --env-file so the ${...} values come from /opt/qscore/.env.
 name: qscore
 
 services:
   caddy:
-    image: caddy:2
+    build:
+      context: ../..
+      dockerfile: qscore/docker/Containerfile.web
+    image: qscore-web
     restart: unless-stopped
     ports:
       - "80:80"
