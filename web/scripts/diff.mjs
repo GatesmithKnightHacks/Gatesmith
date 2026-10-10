@@ -33,7 +33,7 @@ for (const id of ids) {
     console.log(`${id}: unknown screen`)
     continue
   }
-  await page.goto(`${BASE}/#${route}`, { waitUntil: 'networkidle' })
+  await page.goto(`${BASE}/?shot=${id}#${route}`, { waitUntil: 'networkidle' })
   await page.evaluate(() => document.fonts.ready)
   await page.waitForTimeout(Number(process.env.SETTLE ?? 1200))
   const actualPath = path.join(out, `${id}.actual.png`)

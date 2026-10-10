@@ -50,7 +50,7 @@ const COLS = 3
 for (const id of ids) {
   const shots = []
   for (const state of STATES[id]) {
-    await page.goto(`${BASE}/#${SCREENS[id]}?state=${state}`, { waitUntil: 'networkidle' })
+    await page.goto(`${BASE}/?shot=${id}-${state}#${SCREENS[id]}?state=${state}`, { waitUntil: 'networkidle' })
     await page.evaluate(() => document.fonts.ready)
     await page.waitForTimeout(900)
     const failed = await page.getByText('failed to render').count()

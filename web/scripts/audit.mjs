@@ -18,13 +18,14 @@ const page = await context.newPage()
 const dead = []
 for (const id of ids) {
   const route = SCREENS[id]
-  await page.goto(`${BASE}/#${route}`, { waitUntil: 'networkidle' })
-  await page.waitForTimeout(600)
+  await page.goto(`${BASE}/?audit=${id}#${route}`, { waitUntil: 'load' })
+  await page.waitForTimeout(500)
   const count = await page.locator('button:visible, [role="button"]:visible, a[href]:visible').count()
   let checked = 0
   for (let i = 0; i < count; i++) {
-    await page.goto(`${BASE}/#${route}`, { waitUntil: 'networkidle' })
-    await page.waitForTimeout(500)
+    // a fresh query string forces a real reload; a hash-only goto would keep the old state
+    await page.goto(`${BASE}/?audit=${id}-${i}#${route}`, { waitUntil: 'load' })
+    await page.waitForTimeout(250)
     const el = page.locator('button:visible, [role="button"]:visible, a[href]:visible').nth(i)
     if (!(await el.count())) continue
     if (await el.isDisabled().catch(() => false)) continue
@@ -39,13 +40,16 @@ for (const id of ids) {
       })
     })
     const before = page.url()
-    const download = page.waitForEvent('download', { timeout: 700 }).then(() => true, () => false)
+    const download = page.waitForEvent('download', { timeout: 400 }).then(() => true, () => false)
     await el.click({ timeout: 2000 }).catch(() => {})
     const downloaded = await download
     await page.waitForTimeout(300)
     const changed = page.url() !== before || (await page.evaluate(() => window.__mutations)) > 0 || downloaded
     checked++
-    if (!changed) dead.push(`${id}  "${label}"`)
+    if (!changed) {
+      dead.push(`${id}  "${label}"`)
+      console.log(`  ${id} no effect: "${label}"`)
+    }
   }
   console.log(`${id}: ${checked} controls checked`)
 }
