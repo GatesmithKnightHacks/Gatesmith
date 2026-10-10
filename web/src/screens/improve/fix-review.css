@@ -1,0 +1,328 @@
+/* S-06 · Fix review */
+
+/* ── Diff tile ───────────────────────────────────────────────────────── */
+.fr-diff {
+  flex-direction: row;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+}
+.fr-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  flex: 1 1 0;
+  min-width: 0;
+}
+.fr-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 16px;
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+}
+.fr-side-title {
+  color: var(--color-text-secondary);
+}
+.fr-side-title.is-ai {
+  color: var(--color-violet-300);
+}
+.fr-side-meta {
+  color: var(--color-text-tertiary);
+}
+.fr-svg {
+  flex-shrink: 0;
+}
+
+/* Candidate region: violet dashed proposal → mint solid once accepted (M4, 140 ms standard). */
+.fr-region {
+  fill: color-mix(in srgb, var(--color-signal-ai) 10%, transparent);
+  stroke: var(--color-signal-ai);
+  stroke-dasharray: 4 3;
+  transition:
+    fill var(--motion-fast) var(--ease-standard),
+    stroke var(--motion-fast) var(--ease-standard),
+    stroke-dasharray var(--motion-fast) var(--ease-standard);
+}
+.fr-region.is-accepted {
+  fill: color-mix(in srgb, var(--color-signal-good) 10%, transparent);
+  stroke: var(--color-signal-good);
+  stroke-dasharray: 7 0;
+}
+.fr-candidate {
+  animation: im-fade var(--motion-base) var(--ease-enter) both;
+}
+.fr-tag {
+  animation: im-fade var(--motion-fast) var(--ease-enter) both;
+}
+.fr-writing {
+  animation: im-fade var(--motion-base) var(--ease-enter) both;
+}
+.fr-pane-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 483px;
+  height: 218px;
+  flex-shrink: 0;
+  padding-inline: 40px;
+  background: var(--color-surface-canvas);
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+.fr-offline-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-text-disabled);
+}
+
+/* ── Lower tiles ─────────────────────────────────────────────────────── */
+.fr-lower {
+  display: flex;
+  gap: var(--spacing-1);
+  flex: 1 1 0;
+  min-height: 0;
+}
+.fr-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  padding: var(--spacing-3);
+  overflow: hidden auto;
+  scrollbar-width: none;
+  transition: opacity var(--motion-base) var(--ease-standard);
+}
+.fr-body.is-pending {
+  opacity: 0.4;
+}
+.fr-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.fr-group-12 {
+  gap: var(--spacing-3);
+}
+
+.fr-verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  height: 36px;
+  animation: im-fade var(--motion-base) var(--ease-enter) both;
+}
+.fr-verdict-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-base);
+}
+.fr-arc {
+  animation: fr-spin 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fr-arc {
+    animation: none;
+  }
+}
+.fr-step-n {
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+}
+.fr-step-word {
+  display: inline-flex;
+  animation: im-fade var(--motion-fast) var(--ease-enter) both;
+}
+.fr-note {
+  width: 380px;
+  color: var(--color-text-tertiary);
+}
+
+.fr-hero {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-3);
+  flex-shrink: 0;
+  height: 36px;
+}
+.fr-hero-from,
+.fr-hero-to {
+  font-size: var(--text-headline);
+  line-height: var(--leading-headline);
+}
+.fr-hero-from {
+  color: var(--color-text-tertiary);
+}
+.fr-hero-to {
+  display: inline-block;
+  color: var(--color-text-primary);
+  animation: fr-count var(--motion-instant) var(--ease-enter) both;
+}
+@keyframes fr-count {
+  from {
+    opacity: 0.5;
+    transform: translateY(4px);
+  }
+}
+.fr-hero-arrow {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-lg);
+  line-height: var(--leading-base);
+}
+.fr-hero-unit {
+  color: var(--color-text-secondary);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+}
+/* The −8% chip waits for the last digit, then settles in from 96%: the one overshoot. */
+.fr-hero-chip {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding-inline: 6px;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-signal-good) 12%, transparent);
+  color: var(--color-signal-good);
+  font-size: var(--text-label);
+  line-height: 14px;
+  animation: fr-settle var(--motion-base) var(--ease-settle) both;
+}
+@keyframes fr-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.fr-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  font-weight: var(--font-weight-regular);
+}
+.fr-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fr-legend-ring,
+.fr-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.fr-legend-ring {
+  border: 1.5px solid var(--color-text-tertiary);
+}
+.fr-legend-dot {
+  background: var(--color-signal-good);
+}
+
+/* ── Regression banner (worse than before: in the screen, never a modal) ── */
+.fr-regression {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  flex-shrink: 0;
+  padding: var(--spacing-4);
+  border-left: 2px solid var(--color-signal-bad);
+  background: color-mix(in srgb, var(--color-signal-bad) 10%, var(--color-surface-panel));
+  animation: im-drop var(--motion-base) var(--ease-enter) both;
+}
+.fr-regression-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 0;
+}
+.fr-regression-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
+.fr-regression-body {
+  max-width: 780px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* ── Inspector ───────────────────────────────────────────────────────── */
+.fr-insp-body {
+  display: flex;
+  flex-direction: column;
+}
+.fr-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+.fr-event {
+  display: flex;
+  gap: 10px;
+}
+.fr-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-control);
+}
+.fr-avatar.is-ai {
+  border-color: var(--color-signal-ai);
+  color: var(--color-violet-300);
+  font-size: var(--text-axis);
+  line-height: 12px;
+}
+.fr-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 0;
+}
+.fr-event-head {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 24px;
+}
+.fr-event-head.is-ai {
+  color: var(--color-violet-300);
+}
+.fr-event-text {
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.fr-n {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.fr-card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.fr-card-rule {
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+}
+.fr-card-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
