@@ -61,16 +61,19 @@ export function TileHeader({ tabs, meta }: { tabs: TileTab[]; meta?: ReactNode }
 }
 
 /* ── Inspector ───────────────────────────────────────────────────────── */
-export function ModeTabs({ active = 'laptop', onChange }: { active?: 'laptop' | 'platform'; onChange?: (m: 'laptop' | 'platform') => void }) {
+/** Laptop or Platform. Uncontrolled unless `onChange` is passed; the underline slides between them. */
+export function ModeTabs({ active, onChange }: { active?: 'laptop' | 'platform'; onChange?: (m: 'laptop' | 'platform') => void }) {
+  const [inner, setInner] = useState<'laptop' | 'platform'>(active ?? 'laptop')
+  const current = onChange ? (active ?? 'laptop') : inner
   return (
     <div className="mode-tabs" role="tablist">
       {(['laptop', 'platform'] as const).map((m) => (
         <button
           key={m}
           role="tab"
-          aria-selected={active === m}
-          className={`mode-tab${active === m ? ' is-active' : ''}`}
-          onClick={() => onChange?.(m)}
+          aria-selected={current === m}
+          className={`mode-tab${current === m ? ' is-active' : ''}`}
+          onClick={() => (onChange ? onChange(m) : setInner(m))}
         >
           {m === 'laptop' ? 'Laptop' : 'Platform'}
         </button>
