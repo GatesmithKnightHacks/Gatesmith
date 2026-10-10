@@ -1,0 +1,11 @@
+# HTTPS front door (specs/12 §3). SITE_ADDRESS comes from the env file, e.g. 203.0.113.7.sslip.io;
+# Caddy obtains and renews the certificate itself (ports 80 and 443 must be open).
+{$SITE_ADDRESS} {
+	reverse_proxy platform:8080
+
+	# Until the platform container runs (or while it restarts), say so instead of a blank error.
+	handle_errors 502 503 504 {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "Gatesmith: the platform app is not running yet, or is restarting. Try again shortly." 503
+	}
+}

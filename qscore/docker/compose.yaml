@@ -1,0 +1,32 @@
+# Vultr platform stack (specs/12 §3): Caddy (HTTPS on 443) in front of the platform (port 8080).
+# Start it with deploy.sh, which passes --env-file so the ${...} values come from /opt/qscore/.env.
+name: qscore
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in the env file}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  platform:
+    build:
+      context: ..
+      dockerfile: docker/Containerfile.platform
+    restart: unless-stopped
+    env_file:
+      - ${QSCORE_ENV_FILE:-/opt/qscore/.env}
+    expose:
+      - "8080"
+
+volumes:
+  caddy_data:    # TLS certificates; keep it, or Let's Encrypt rate limits can bite on rebuilds
+  caddy_config:

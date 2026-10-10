@@ -15,7 +15,8 @@
 | Queue + grants smoke test (41 checks) | passing on `dev` | 14 §2 (queue faults) |
 | Role passwords | set on `production` only | 11 §3.2 |
 | Engine code that uses Neon (`record/neon.py`, `worker.py`, `qscore db migrate`) | **not written** | 11 §4–5, T05, T22 |
-| Vultr server (Docker + Caddy, HTTPS via `<ip>.sslip.io`) | in progress | 12 §3 |
+| Deploy files `qscore/docker/` (image, compose, Caddy, scripts) | written, tested locally | 12 §3 |
+| Vultr server (Docker + Caddy, HTTPS via `<ip>.sslip.io`) | not created yet | 12 §3 |
 | Hugging Face org, repos, tokens | not started | 11 §7, CP-0006 |
 
 ## 2. Neon
@@ -145,8 +146,36 @@ The SQL follows approved proposals that `schemas/` does not implement yet:
 - HTTPS by **Caddy** at `https://<ip>.sslip.io` (or a domain later), proxying to the platform on port 8080.
 - Secrets in `/opt/qscore/.env` (`chmod 600`), never in the image: `QSCORE_NEON_DSN` (platform role),
   `QSCORE_PLATFORM_TOKEN`, `HF_TOKEN` (write to `qscore-runs`, CP-0006), `GEMINI_API_KEY` (Tier 2 only).
-- Deploy files (`qscore/docker/compose.yaml`, `Containerfile.platform`, `Caddyfile`) are not written yet;
-  install with `uv sync --frozen --extra ui --extra neon`.
+  Template: `qscore/docker/env.example` (named without a leading dot because `.gitignore` ignores `.env.*`).
+
+### 7.1 Files in `qscore/docker/`
+
+| File | Does |
+|---|---|
+| `Containerfile.platform` | `python:3.12-slim` + `uv sync --frozen --no-dev --extra ui --extra neon`; runs as non-root `qscore`; `CMD uvicorn qscore.api.app:app --port 8080` |
+| `Containerfile.platform.dockerignore` | Sends only `pyproject.toml`, `uv.lock`, `README.md`, `LICENSE`, `src/` to the build |
+| `compose.yaml` | Services `caddy` (ports 80/443, cert volume) and `platform` (port 8080, internal only, `env_file` = `/opt/qscore/.env`) |
+| `Caddyfile` | HTTPS for `{$SITE_ADDRESS}` → `platform:8080`; a plain 503 placeholder while the platform is down |
+| `bootstrap_vultr.sh` | One time, as root: clone to `/opt/qscore/repo`, create the env file with `SITE_ADDRESS=<ip>.sslip.io`, add 2 GiB swap, run `deploy.sh`. Never overwrites existing files |
+| `deploy.sh` | `git pull --ff-only`, then `docker compose up -d --build`; starts **Caddy only** while `src/qscore/api/app.py` does not exist |
+| `.gitattributes` | Keeps `*.sh` LF so they run on Linux when committed from Windows |
+
+Run the scripts with `bash <script>` (the executable bit is not preserved from Windows).
+
+### 7.2 Verified locally (2026-10-10, Docker 28.4)
+
+- Image builds from the lockfile (1.83 GB; Python 3.12, qiskit 2.5.2, fastapi 0.143.0, gradio 6.30.0, psycopg 3.3.6); `qscore --help` works; runs as `qscore`.
+- `caddy validate` passes (Caddy 2.11.7); with no platform running, the site answers `503` with the placeholder text.
+- `docker compose config` resolves; scripts pass `bash -n`; IP detection and env templating tested on sample input.
+- Not testable locally: the real certificate, the clone on the server, swap. They run on first bootstrap.
+
+### 7.3 For whoever writes `api/app.py` (T28)
+
+- The image's `CMD` expects a module-level FastAPI object named `app` in `qscore.api.app`, served on port 8080
+  behind Caddy (`--proxy-headers`). Gradio mounts into that app (one process, 12 §3).
+- **Empty env values are not "unset":** `QSCORE_NEON_DSN=` yields `SecretStr('')`, not `None`. Treat an empty
+  DSN or token as missing and fail loudly (`ConfigError`), or a blank `.env` line looks configured.
+- Extra `QSCORE_*` variables that are not `Settings` fields (e.g. `QSCORE_PLATFORM_TOKEN`) are accepted, not rejected.
 
 ## 8. Rules for agents
 
