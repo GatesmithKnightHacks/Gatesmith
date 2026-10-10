@@ -1,0 +1,28 @@
+/*
+ * The packaged font subsets skip arrows and math symbols (→ ≤ ≥ ≈ …), so "44 → 33" would fall back
+ * to a system font. These faces cover only those ranges, cut from the full OFL fonts.
+ */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url('./fonts/hanken-grotesk-symbols.woff2') format('woff2');
+  unicode-range: U+2016, U+2190-22FF, U+2300-23FF, U+25A0-25FF, U+2713-2717;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('./fonts/jetbrains-mono-symbols-400.woff2') format('woff2');
+  unicode-range: U+2016, U+2190-22FF, U+2300-23FF, U+25A0-25FF, U+2713-2717;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+  src: url('./fonts/jetbrains-mono-symbols-500.woff2') format('woff2');
+  unicode-range: U+2016, U+2190-22FF, U+2300-23FF, U+25A0-25FF, U+2713-2717;
+}

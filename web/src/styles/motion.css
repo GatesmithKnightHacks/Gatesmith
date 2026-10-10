@@ -1,0 +1,35 @@
+/*
+ * Motion values from DS-07 · Motion.
+ * Proposed tokens, not yet in design/tokens.css. Keep names identical so they can move there unchanged.
+ */
+:root {
+  --motion-instant: 80ms; /* press, hover */
+  --motion-fast: 140ms; /* exits, tabs, toggles */
+  --motion-base: 220ms; /* cards arriving, regions drawing */
+  --motion-slow: 360ms; /* shared elements, playhead */
+  --motion-count: 600ms; /* numbers stepping */
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* moves within a screen */
+  --ease-enter: cubic-bezier(0, 0, 0, 1); /* arriving, slows into place */
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1); /* leaving, speeds away */
+  --ease-settle: cubic-bezier(0.34, 1.56, 0.64, 1); /* accept only, one overshoot */
+
+  --stagger: 40ms; /* rank order */
+}
+
+/* Settings can force reduced motion on; it mirrors the system setting below. */
+:root[data-reduce-motion] {
+  --motion-fast: 80ms;
+  --motion-base: 80ms;
+  --motion-slow: 80ms;
+  --motion-count: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 80ms;
+    --motion-base: 80ms;
+    --motion-slow: 80ms;
+    --motion-count: 0ms;
+  }
+}

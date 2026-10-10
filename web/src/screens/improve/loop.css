@@ -1,0 +1,345 @@
+/* S-07 · Loop view and stop */
+
+.lp-rounds {
+  flex-shrink: 0;
+}
+.lp-header-meta {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding-inline: 10px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+  animation: im-fade var(--motion-base) var(--ease-enter) both;
+}
+.lp-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 10px;
+}
+.lp-transport {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lp-tbtn {
+  display: flex;
+  transition: opacity var(--motion-instant) var(--ease-standard);
+}
+.lp-tbtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.lp-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--color-border-subtle);
+}
+.lp-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lp-zoom-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 56px;
+  height: 12px;
+}
+.lp-zoom-line {
+  flex: 1 1 0;
+  height: 2px;
+  background: #ffffff4d;
+}
+.lp-zoom-knob {
+  position: absolute;
+  left: 22px;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--color-text-primary);
+}
+.lp-timeline {
+  display: flex;
+  padding: var(--spacing-3);
+}
+
+/* ── Timeline motion ─────────────────────────────────────────────────── */
+.tl-block {
+  outline: none;
+  cursor: pointer;
+}
+.tl-block:focus-visible .tl-curve {
+  stroke: var(--color-action-primary);
+}
+.tl-curve {
+  transform-box: view-box;
+  animation: tl-grow var(--motion-base) var(--ease-enter) both;
+  transition:
+    fill var(--motion-base) var(--ease-standard),
+    stroke var(--motion-base) var(--ease-standard);
+}
+@keyframes tl-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+.tl-label,
+.tl-fade,
+.tl-value {
+  animation: im-fade var(--motion-base) var(--ease-enter) both;
+}
+/* The lane chip settles in from 96% scale: the one overshoot (accept only). */
+.tl-chip {
+  transform-box: view-box;
+  animation: tl-settle var(--motion-base) var(--ease-settle) both;
+  animation-delay: var(--motion-fast);
+}
+@keyframes tl-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.tl-playhead {
+  transition: transform var(--motion-slow) var(--ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-curve {
+    animation-name: im-fade;
+  }
+}
+
+/* ── Scorecard ───────────────────────────────────────────────────────── */
+.lp-scorecard {
+  flex: 1 1 0;
+}
+.lp-sc-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: 0 12px 12px;
+}
+.lp-sc-head {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.lp-sc-head + .im-row {
+  border-top: 1px solid var(--color-surface-app);
+}
+.lp-resolved,
+.lp-resolved .mono {
+  color: var(--color-text-disabled);
+}
+.lp-seeds {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--color-surface-app);
+}
+.lp-seed {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 28px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.lp-seed-n {
+  flex: 1 1 0;
+  text-align: right;
+  padding-right: 8px;
+}
+
+/* ── Regression banner: in the screen, never a modal ─────────────────── */
+.lp-regression {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  flex-shrink: 0;
+  padding: var(--spacing-4);
+  border-left: 2px solid var(--color-signal-bad);
+  background: color-mix(in srgb, var(--color-signal-bad) 10%, var(--color-surface-panel));
+  animation: im-drop var(--motion-base) var(--ease-enter) both;
+}
+.lp-regression-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 0;
+}
+.lp-regression-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
+.lp-regression-body {
+  max-width: 720px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.lp-regression-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+/* ── Inspector ───────────────────────────────────────────────────────── */
+.lp-stop-slot {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--motion-base) var(--ease-enter),
+    margin-top var(--motion-base) var(--ease-enter);
+}
+.lp-stop-slot[data-open='false'] {
+  grid-template-rows: 0fr;
+  margin-top: -12px;
+}
+.lp-stop-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.lp-stop-card {
+  gap: var(--spacing-2);
+  transition:
+    opacity var(--motion-base) var(--ease-enter),
+    transform var(--motion-base) var(--ease-enter);
+}
+.lp-stop-slot[data-open='false'] .lp-stop-card {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.lp-stop-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.lp-stop-title {
+  flex: 1 1 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
+.lp-stop-meta {
+  font-size: var(--text-label);
+}
+.lp-stop-text {
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.lp-state-card {
+  gap: var(--spacing-3);
+}
+.lp-state-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+.lp-state-title {
+  margin-top: -4px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  line-height: 16px;
+}
+.lp-card-detail {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+.lp-arc {
+  transform-origin: 5px 5px;
+  animation: fr-spin 1.2s linear infinite;
+}
+.lp-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lp-mini-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.lp-mini-k {
+  flex-shrink: 0;
+  width: 36px;
+}
+.lp-mini-text {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lp-offline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-secondary);
+}
+.lp-offline-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-text-disabled);
+}
+.lp-insp-body {
+  display: flex;
+  flex-direction: column;
+}
+.lp-auto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: var(--spacing-3);
+}
+
+/* In the scorecard's slot: fills it and carries the attempt's facts. */
+.lp-regression.is-slot {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.lp-regression-facts {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spacing-3);
+  max-width: 720px;
+}
+.lp-regression-fact {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-top: 1px solid color-mix(in srgb, var(--color-signal-bad) 22%, transparent);
+}
+.lp-regression-k {
+  width: 140px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+.lp-regression-v {
+  flex: 1 1 0;
+  color: var(--color-text-primary);
+}
+.lp-regression-verdict {
+  color: var(--color-signal-bad);
+}
+.lp-regression-verdict.is-good {
+  color: var(--color-signal-good);
+}
