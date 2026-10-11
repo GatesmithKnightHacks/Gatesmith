@@ -1,0 +1,25 @@
+# Pinned HF router panel (ChP-0048). Prices are estimates per million tokens.
+- id: openai/gpt-oss-120b
+  provider: cerebras
+  license: Apache-2.0
+  strategies: [block_resynthesis, reversible_rewrite, commutation_aware_routing]
+  pricing_usd_per_mtok: {input: 0.35, output: 0.75}
+  checked_at: '2026-10-11'
+- id: Qwen/Qwen3-Coder-30B-A3B-Instruct
+  provider: scaleway
+  license: Apache-2.0
+  strategies: [block_resynthesis, reversible_rewrite, commutation_aware_routing]
+  pricing_usd_per_mtok: {input: 0.228, output: 0.912}
+  checked_at: '2026-10-11'
+- id: deepseek-ai/DeepSeek-V4-Flash
+  provider: deepinfra
+  license: MIT
+  strategies: [block_resynthesis, reversible_rewrite, commutation_aware_routing]
+  pricing_usd_per_mtok: {input: 0.09, output: 0.18}
+  checked_at: '2026-10-11'
+- id: openai/gpt-oss-20b
+  provider: groq
+  license: Apache-2.0
+  strategies: [block_resynthesis, reversible_rewrite, commutation_aware_routing]
+  pricing_usd_per_mtok: {input: 0.10, output: 0.50}
+  checked_at: '2026-10-11'
