@@ -22,12 +22,12 @@ jobs:
       - name: Install (CPU Aer)
         run: uv sync --frozen --extra hf --extra ui
       - name: Lint and format
-        run: uv run ruff check . && uv run ruff format --check .
+        run: uv run --no-sync ruff check . && uv run --no-sync ruff format --check .
       - name: Types
-        run: uv run mypy src
+        run: uv run --no-sync mypy src
       - name: Import layers
-        run: uv run lint-imports
+        run: uv run --no-sync lint-imports
       - name: Tests (CPU; includes tests/contract schema drift)
         run: >
-          uv run pytest -m "not gpu and not platform and not hub and not llm and not slow"
+          uv run --no-sync pytest -m "not gpu and not platform and not hub and not llm and not slow"
           -W error::DeprecationWarning:qiskit -n auto
