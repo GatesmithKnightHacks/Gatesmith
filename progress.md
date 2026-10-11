@@ -28,6 +28,10 @@
 - Proposed three isolated agent streams: Action/bundle; review-app/Gemini; HF adapter. Coordinator handles common contracts and integration.
 - No UI edits, merges, pushes or new runtime dependencies made by the planning audit.
 
+## Broken / blocked (integration checks)
+
+- 2026-10-11 cce9a70: `uv run --project qscore pytest qscore/tests/contract qscore/tests/unit/improve/test_requests.py -q`: 103 passed, one slow builder test failed in preexec_fn on macOS (existing RLIMIT_AS restriction). Reproduce test_sidechain_qaoa_requests_validate_and_include_d01_and_d03; run it unchanged on Linux CI. No test weakened.
+
 ## Integration implementation — 2026-10-11
 
 - User approved ChP-0040/0049 and lifted HF deferral. Merged origin/lead/post-mvp into github-app.

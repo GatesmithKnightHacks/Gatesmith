@@ -223,11 +223,14 @@ Pauli strings use Qiskit's `SparsePauliOp` label order (qubit 0 is the rightmost
   "permitted": {"changes": ["routing", "commuting_reorder"], "ancillas": {"add": 0, "reuse": true}},
   "invariants": {"intent": "expectation", "verification": "exact", "global_phase": "ignore"},
   "budget": {"max_proposals": 4, "timeout_s": 60},
+  "permitted_strategies": ["routing_search", "commutation_aware_routing"],
+  "privacy": {"external_inference": false, "send_region_only": true},
   "proposal_schema": "qscore.proposal/v0.2"
 }
 ```
 
-- `circuit.scope` is `region` unless the manifest says `permitted.scope: whole`. The region is a **convex** block cut with `diagnose/regions.convex_blocks()`; `qubit_map` maps region-local qubit indices to circuit qubits; `coupling_map` is restricted to the mapped physical qubits.
+- ChP-0002: `privacy` is copied from the resolved item; `permitted_strategies` is the finding’s strategies intersected with permitted changes and served capabilities. `Proposal.strategy` must be in that list.
+- `circuit.scope` is `region` unless the manifest says `permitted.scope: whole` or the request is for a whole-circuit layout/routing strategy. Whole requests never go to HF when region-only privacy is required. The region is a **convex** block cut with `diagnose/regions.convex_blocks()`; `qubit_map` maps region-local qubit indices to circuit qubits; `coupling_map` is restricted to the mapped physical qubits.
 
 ## 5. Proposal `qscore.proposal/v0.2`
 
@@ -239,6 +242,7 @@ Pauli strings use Qiskit's `SparsePauliOp` label order (qubit 0 is the rightmost
             "provider": "cerebras", "prompt_version": "p-2026.1"},
   "candidate": {"format": "openqasm3", "scope": "region", "qasm": "OPENQASM 3.0; …"},
   "claims": {"metric": "two_qubit_count", "direction": "decrease", "estimate": -6, "equivalent": true},
+  "strategy": "commutation_aware_routing",
   "rationale": "Reorder commuting RZZ terms so interacting qubits are adjacent."
 }
 ```
