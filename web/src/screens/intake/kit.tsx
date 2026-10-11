@@ -4,6 +4,8 @@
  * --motion-* tokens (fallbacks inline until motion.css carries them).
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
+import { redo, undo, useHistoryPosition } from '../../app/router'
+import { IconRedo, IconUndo } from '../../ui/icons'
 import './kit.css'
 
 /* ── Spinner: ring, 2 px stroke, 270° arc, 1000 ms per turn, always beside a stage word ── */
@@ -134,9 +136,9 @@ export function RunBlock({ line, children, center }: { line: ReactNode; children
 }
 
 /* ── Inspector fact rows: 28 tall, label 12 secondary, value mono 12 white ── */
-export function Facts({ rows, labelWidth = 120 }: { rows: [ReactNode, ReactNode][]; labelWidth?: number }) {
+export function Facts({ rows, labelWidth = 120, topRule = true }: { rows: [ReactNode, ReactNode][]; labelWidth?: number; topRule?: boolean }) {
   return (
-    <div className="ink-facts">
+    <div className={`ink-facts${topRule ? ' has-top' : ''}`}>
       {rows.map(([label, value], i) => (
         <div key={i} className="ink-fact">
           <span className="ink-fact-label" style={{ width: labelWidth }}>
@@ -156,16 +158,18 @@ export function InspSection({
   meta,
   children,
   defaultOpen = true,
+  bodyClassName = '',
 }: {
   icon: ReactNode
   title: string
   meta?: ReactNode
   children: ReactNode
   defaultOpen?: boolean
+  bodyClassName?: string
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <section className="ink-sec">
+    <section className={`ink-sec${open ? ' is-open' : ''}`}>
       <button className="ink-sec-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         {icon}
         <span className="ink-sec-title">{title}</span>
@@ -174,7 +178,7 @@ export function InspSection({
           <path d="M3.5 8.75L7 5.25l3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && <div className="ink-sec-body">{children}</div>}
+      {open && <div className={`ink-sec-body ${bodyClassName}`}>{children}</div>}
     </section>
   )
 }
@@ -196,5 +200,62 @@ export function AccountHandle({ handle = 'qlab-dev' }: { handle?: string }) {
       </span>
       <span className="mono">{handle}</span>
     </span>
+  )
+}
+
+/* ── Code block: 20 px lines, 44 px gutter with a 2 px rule, 2 px rail per line ── */
+export type CodeLine = { text: string; tone?: 'comment' | 'bad'; rail?: 'bad' | 'accepted' | 'select' }
+export function Code({
+  lines,
+  start = 1,
+  className = '',
+  label,
+  style,
+}: {
+  lines: CodeLine[]
+  start?: number
+  className?: string
+  label?: string
+  style?: CSSProperties
+}) {
+  return (
+    <div className={`ink-code ${className}`} role="region" aria-label={label} style={style}>
+      {lines.map((l, i) => (
+        <div key={i} className={`ink-code-line${l.rail ? ` is-${l.rail}` : ''}`}>
+          <span className="mono ink-code-n">{l.tone === 'bad' && !l.rail ? '' : start + i}</span>
+          <span className={`mono ink-code-text${l.tone ? ` is-${l.tone}` : ''}`}>{l.text}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/*
+ * The intake tab strip (S-01 to S-03): the shell's tab band with one tab and no "+" (the tab is
+ * the new run), the New run tab carries its 10 px plus. Same classes as the shared TabStrip.
+ */
+export function IntakeTabs({ label, plus, onClick }: { label: string; plus?: boolean; onClick?: () => void }) {
+  const { canUndo, canRedo } = useHistoryPosition()
+  return (
+    <div className="tabstrip">
+      <div className="tabstrip-tabs" role="tablist">
+        <button role="tab" aria-selected className="run-tab is-active ink-tab" onClick={onClick}>
+          {plus && (
+            <svg width="10" height="10" viewBox="0 0 24 24" aria-hidden>
+              <path d="M12 4v16M4 12h16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+            </svg>
+          )}
+          {label}
+        </button>
+      </div>
+      <div className="tabstrip-history">
+        <button aria-label="Undo" title="Undo" disabled={!canUndo} onClick={undo}>
+          <IconUndo color={canUndo ? 'var(--color-text-primary)' : 'var(--color-text-disabled)'} />
+        </button>
+        <button aria-label="Redo" title="Redo" disabled={!canRedo} onClick={redo}>
+          <IconRedo color={canRedo ? 'var(--color-text-primary)' : 'var(--color-text-disabled)'} />
+        </button>
+      </div>
+    </div>
   )
 }

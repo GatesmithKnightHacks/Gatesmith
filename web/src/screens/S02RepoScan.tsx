@@ -1,542 +1,558 @@
-import { useState, type ReactNode } from 'react'
-import { navigate, ROUTES, useHashParams } from '../app/router'
+/*
+ * S-02 · Repo scan (Paper 172W-0, states 1OCW-0). What the scan of qlab/sidechain-packing found: the
+ * circuits, the manifest Gatesmith will write (or the repo's own), and the Qiskit check. The mint
+ * "Use these" takes the chosen circuit and manifest into pre-flight.
+ * States at #/scan?state=found | no-qiskit | private-repo | token-rejected | scanning | offline | focus.
+ */
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import { useHashParams } from '../app/router'
 import { actions } from '../data/run'
-import { Chevron } from '../ui/icons'
-import { EditorButton, ModeBlock, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
-import { Content, Shell, TabStrip } from '../ui/Shell'
-import { QaoaCircuit } from './intake/QaoaCircuit'
-import './intake/intake.css'
-import './intake/s01.css'
+import { EditorButton, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
+import { GpuStatus, Shell } from '../ui/Shell'
+import { AccountHandle, Banner, Code, Facts, Glyph, GroupHeader, InspSection, IntakeTabs, RunBlock, Shim, Spinner } from './intake/kit'
+import { codeLines } from './intake/code'
+import { useOnline } from './intake/online'
+import { draftManifest, FOUND_MANIFEST, NOT_CHECKED, QASM_FILES, QISKIT_SOURCES, REPO, SKIPPED, type ScanFile } from './intake/scanData'
 import './intake/s02.css'
 
-type FileRow = { path: string; size: string; qubits: string; kind: string; broken?: boolean }
-
-const FILES: FileRow[] = [
-  { path: 'circuits/sidechain_qaoa.qasm', size: '3.1 KB', qubits: '12 q', kind: 'OpenQASM 2' },
-  { path: 'circuits/sidechain_qaoa_p1.qasm', size: '1.7 KB', qubits: '12 q', kind: 'OpenQASM 2' },
-  { path: 'src/packing/qaoa.py · build_qaoa', size: '6.4 KB', qubits: '12 q', kind: 'Qiskit builder' },
-  { path: 'tests/fixtures/broken_header.qasm', size: '0.2 KB', qubits: 'n/a', kind: '× not OpenQASM', broken: true },
-]
-
-const MANIFEST = `version: 1
-items:
-  - id: packing_qaoa_p2
-    source: circuits/sidechain_qaoa.qasm
-    intent: expectation   # default
-    target: FakeTorino    # default
-    seeds: 8              # default
-    primary: two_qubit_count
-    max_rounds: 4         # default
-    layers: [reference-qiskit, local]`
-
-const DEFAULTS = [
-  ['intent', 'measure all, no oracle register, so expectation'],
-  ['target', 'the platform default fake backend'],
-  ['primary', 'two-qubit gates dominate the QAOA cost'],
-  ['layers', 'GPU online, so the local model is on'],
-  ['seeds', 'the engine default, enough to see seed spread'],
-  ['max_rounds', 'the engine default; it can recommend stopping sooner'],
-]
-
-const CHECKS: { ok: boolean; text: string; meta: string }[] = [
-  { ok: true, text: 'Aer simulator found', meta: 'qiskit-aer==0.15.1' },
-  { ok: true, text: 'build_qaoa returns a QuantumCircuit', meta: 'signature only' },
-  { ok: true, text: 'No hardware credentials in the repo', meta: 'nothing is sent' },
-  { ok: false, text: '1 file skipped, header is not OpenQASM', meta: 'tests/fixtures' },
-]
-
-const REPO = [
-  ['URL', 'github.com/knighthacks/qaoa-packing'],
-  ['Branch', 'main'],
-  ['Commit', 'a41c9e2'],
-  ['Scanned', '214 files · 2.8 s'],
-]
-
-const LOG = [
-  ['Clone', '1.2 s · depth 1'],
-  ['Search', '0.9 s · 214 files'],
-  ['Parse', '0.6 s · 4 circuits, 1 rejected'],
-  ['Draft the manifest', '0.1 s · qscore.yaml'],
-]
-
-const SKIPPED = [
-  ['.venv/', 'environment'],
-  ['.github/workflows/', '1 workflow · no circuits'],
-  ['notebooks/*.ipynb', '3 files · not read in v1'],
-  ['data/', '41 files · no circuits'],
-]
-
-type S02State = 'none' | 'scanning' | 'no-circuit' | 'no-qiskit' | 'private-repo' | 'focus' | 'offline'
-
-const FILES_META: Partial<Record<S02State, string>> = {
-  scanning: '96 of 214 files',
-  'no-circuit': '0 circuits · 1 builder · 214 files',
-  'no-qiskit': '0 circuits · 214 files',
-  'private-repo': 'not scanned',
-}
-
-/* What the rest of the screen says while a state holds, so no tile contradicts the state cell. */
-const BLOCKED: Partial<Record<S02State, { line: string; manifest: string; manifestMeta: string }>> = {
-  scanning: {
-    line: 'Scanning on this machine · nothing is run',
-    manifest: 'The manifest is drafted when the scan finishes.',
-    manifestMeta: 'waiting for the scan',
-  },
-  'no-circuit': {
-    line: 'Scanned on this machine · no circuit to use yet',
-    manifest: 'Nothing to draft yet: export the builder or upload a .qasm file first.',
-    manifestMeta: 'nothing to write',
-  },
-  'no-qiskit': {
-    line: 'Scanned on this machine · no Qiskit circuit found',
-    manifest: 'Nothing to draft: Gatesmith only reads Qiskit circuits for now.',
-    manifestMeta: 'nothing to write',
-  },
-  'private-repo': {
-    line: 'Not scanned · the repo is private',
-    manifest: 'Nothing to draft: the repo was not cloned.',
-    manifestMeta: 'nothing to write',
-  },
-}
-
-type CheckRow = { kind: 'ok' | 'warn' | 'bad' | 'pending'; text: string; meta: string }
-
-const CHECK_ROWS: Partial<Record<S02State, CheckRow[]>> = {
-  scanning: [
-    { kind: 'ok', text: 'Qiskit 1.3 found in pyproject.toml', meta: 'qiskit==1.3.2' },
-    { kind: 'pending', text: 'Aer simulator', meta: 'checking' },
-    { kind: 'pending', text: 'Builder signatures', meta: 'after parse' },
-    { kind: 'pending', text: 'Hardware credentials', meta: 'after parse' },
-  ],
-  'no-circuit': [
-    { kind: 'ok', text: 'Qiskit 1.3 found in pyproject.toml', meta: 'qiskit==1.3.2' },
-    { kind: 'ok', text: 'build_qaoa returns a QuantumCircuit', meta: 'signature only' },
-    { kind: 'ok', text: 'No hardware credentials in the repo', meta: 'nothing is sent' },
-    { kind: 'warn', text: 'No OpenQASM file in the repo', meta: '214 files read' },
-  ],
-  'no-qiskit': [
-    { kind: 'bad', text: 'No qiskit package in pyproject.toml or requirements.txt', meta: 'Q210' },
-    { kind: 'pending', text: 'Aer simulator', meta: 'not checked' },
-    { kind: 'pending', text: 'Builder signatures', meta: 'not checked' },
-    { kind: 'ok', text: 'No hardware credentials in the repo', meta: 'nothing is sent' },
-  ],
-  'private-repo': [
-    { kind: 'pending', text: 'Qiskit version', meta: 'not cloned' },
-    { kind: 'pending', text: 'Aer simulator', meta: 'not cloned' },
-    { kind: 'pending', text: 'Builder signatures', meta: 'not cloned' },
-    { kind: 'pending', text: 'Hardware credentials', meta: 'not cloned' },
-  ],
-}
-
-const LOG_ROWS: Partial<Record<S02State, { kind: 'ok' | 'running' | 'pending' | 'bad'; label: string; meta: string }[]>> = {
-  scanning: [
-    { kind: 'ok', label: 'Clone', meta: '1.2 s · depth 1' },
-    { kind: 'running', label: 'Search', meta: '96 of 214 files' },
-    { kind: 'pending', label: 'Parse', meta: 'next' },
-    { kind: 'pending', label: 'Draft the manifest', meta: 'last' },
-  ],
-  'private-repo': [
-    { kind: 'bad', label: 'Clone', meta: 'HTTP 404 · Q205' },
-    { kind: 'pending', label: 'Search', meta: 'not run' },
-    { kind: 'pending', label: 'Parse', meta: 'not run' },
-    { kind: 'pending', label: 'Draft the manifest', meta: 'not run' },
-  ],
-  'no-qiskit': [
-    { kind: 'ok', label: 'Clone', meta: '1.2 s · depth 1' },
-    { kind: 'ok', label: 'Search', meta: '0.9 s · 214 files' },
-    { kind: 'ok', label: 'Parse', meta: '0.4 s · 0 circuits' },
-    { kind: 'pending', label: 'Draft the manifest', meta: 'nothing to draft' },
-  ],
-  'no-circuit': [
-    { kind: 'ok', label: 'Clone', meta: '1.2 s · depth 1' },
-    { kind: 'ok', label: 'Search', meta: '0.9 s · 214 files' },
-    { kind: 'ok', label: 'Parse', meta: '0.5 s · 0 circuits, 1 builder' },
-    { kind: 'pending', label: 'Draft the manifest', meta: 'nothing to draft' },
-  ],
-}
+type S02State = 'not-found' | 'found' | 'no-qiskit' | 'private-repo' | 'token-rejected' | 'scanning' | 'offline' | 'focus'
 
 const icons = {
   repo: (
+    <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden>
+      <path d="M6 3.5v13M6 9.5c0 2.2 1.8 3 4 3h1.2a3 3 0 003-3V8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path
+        d="M6 3.5m-1.8 0a1.8 1.8 0 103.6 0a1.8 1.8 0 10-3.6 0M14.2 6.2m-1.8 0a1.8 1.8 0 103.6 0a1.8 1.8 0 10-3.6 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+    </svg>
+  ),
+  chosen: (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <circle cx="5" cy="4" r="1.6" fill="none" stroke="#FFFFFF" strokeWidth="1.4" />
-      <circle cx="5" cy="14" r="1.6" fill="none" stroke="#FFFFFF" strokeWidth="1.4" />
-      <circle cx="13" cy="5.5" r="1.6" fill="none" stroke="#FFFFFF" strokeWidth="1.4" />
-      <path d="M5 5.6v6.8M13 7.1c0 3-4.2 2.6-7.4 5.4" fill="none" stroke="#FFFFFF" strokeWidth="1.4" strokeLinecap="round" />
+      <rect x="3" y="3" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 9.2l2 2 4-4.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
-  log: (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <path d="M3 4.5h12M3 9h12M3 13.5h7" fill="none" stroke="#FFFFFF" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  ),
-  skip: (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <circle cx="9" cy="9" r="6" fill="none" stroke="#FFFFFF" strokeWidth="1.4" />
-      <path d="M4.8 13.2l8.4-8.4" fill="none" stroke="#FFFFFF" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  ),
-  check: (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
-      <path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="#C2DADF" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  checkWide: (
-    <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-      <path d="M3 7.5l2.5 2.5L11 4.5" fill="none" stroke="#C2DADF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  warn: (
-    <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-      <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.6" strokeLinejoin="round" />
-    </svg>
-  ),
-  bad: (
-    <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-      <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  ),
-  pending: (
-    <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-      <circle cx="7" cy="7" r="3.5" fill="none" stroke="#667E83" strokeWidth="1.4" />
-    </svg>
-  ),
-  running: (
-    <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-      <circle cx="7" cy="7" r="3.5" fill="#2EA3F8" />
+  lock: (
+    <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden>
+      <rect x="2.5" y="5.5" width="7" height="5" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M4 5.5V4a2 2 0 014 0v1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
     </svg>
   ),
 }
 
-function Section({ icon, title, meta, children }: { icon: ReactNode; title: string; meta?: string; children: ReactNode }) {
-  const [open, setOpen] = useState(true)
-  return (
-    <section className="insp-section">
-      <button className="insp-section-header" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {icon}
-        <span className="insp-section-title">{title}</span>
-        {meta && <span className="insp-section-meta">{meta}</span>}
-        <span className={`s01-chevron${open ? '' : ' is-closed'}`}>
-          <Chevron open />
-        </span>
-      </button>
-      <div className={`s01-collapse${open ? ' is-open' : ''}`}>
-        <div className="s01-collapse-inner">
-          <div className="s01-section-body">{children}</div>
-        </div>
-      </div>
-    </section>
-  )
-}
+/* The scan's stage list while it runs: clone and search done, parse running. */
+const SCAN_STAGES = [
+  { word: 'clone', done: '2.4 MB in 3.1 s', running: 'cloning qlab/sidechain-packing', est: 'about 3 s' },
+  { word: 'search', done: '9 candidates in 1,280 files · 1.8 s', running: 'reading the file tree', est: 'about 2 s' },
+  { word: 'parse', done: '9 of 9 read', running: '5 of 9 · circuits/archive/qaoa_p1.qasm', est: 'about 3 s' },
+]
 
 export function S02RepoScan() {
   const params = useHashParams()
-  const state = (params.get('state') ?? 'none') as S02State
-  const [selected, setSelected] = useState(0)
-  const useThese = () => navigate(ROUTES.preflight, { transition: 'forward' })
-  const empty = state === 'no-circuit' || state === 'no-qiskit' || state === 'private-repo'
-  const blocked = BLOCKED[state]
-  const logRows = LOG_ROWS[state]
-  const checkRows = CHECK_ROWS[state]
+  const forced = (params.get('state') ?? 'not-found') as S02State
+  return <RepoScan key={forced} forced={forced} />
+}
+
+function RepoScan({ forced }: { forced: S02State }) {
+  const online = useOnline()
+  const [chosenPath, setChosenPath] = useState(QASM_FILES[0].path)
+  // live flows: a rescan or a token fetch plays the stage list, then shows the result
+  const [scanStage, setScanStage] = useState<number | null>(null)
+  const [access, setAccess] = useState<'ok' | 'private' | 'rejected'>(
+    forced === 'private-repo' ? 'private' : forced === 'token-rejected' ? 'rejected' : 'ok',
+  )
+  const [qiskitOk, setQiskitOk] = useState(forced !== 'no-qiskit')
+  const [token, setToken] = useState('')
+  const rows = useRef<(HTMLButtonElement | null)[]>([])
+  const timers = useRef<number[]>([])
+
+  useEffect(() => {
+    if (forced === 'focus') rows.current[0]?.focus()
+    const pending = timers.current
+    return () => pending.forEach(clearTimeout)
+  }, [forced])
+
+  const offline = forced === 'offline' || !online
+  const stage = forced === 'scanning' ? 2 : scanStage
+  const scanning = stage != null
+  const blocked = access !== 'ok'
+  const found = forced === 'found'
+  const file = QASM_FILES.find((f) => f.path === chosenPath) ?? QASM_FILES[0]
+  const manifestText = found ? FOUND_MANIFEST : draftManifest(file)
+  const manifestLines = manifestText.split('\n').length
+  const ready = !scanning && !blocked
+
+  const rescan = (after?: () => void) => {
+    if (offline) return
+    setScanStage(0)
+    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
+    at(700, () => setScanStage(1))
+    at(1400, () => setScanStage(2))
+    at(2200, () => {
+      setScanStage(null)
+      after?.()
+    })
+  }
+
+  const fetchWithToken = () => {
+    if (!/^(github_pat_|ghp_)\w{20,}$/.test(token.trim())) {
+      setAccess('rejected')
+      return
+    }
+    setAccess('ok')
+    rescan()
+  }
+
+  const onRowKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const next = Math.max(0, Math.min(QASM_FILES.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))
+    rows.current[next]?.focus()
+  }
+
+  const tableMeta = blocked
+    ? '0 files · not reachable'
+    : scanning
+      ? 'scanning · about 3 s left'
+      : offline
+        ? 'last scan 2 min ago'
+        : 'step 2 of 3 · check · 7 circuits · 1 chosen'
 
   return (
     <Shell
-      context="Repo"
-      rail="repo"
-      tabs={
-        <TabStrip
-          tabs={[
-            { id: 'repo', label: 'knighthacks/qaoa-packing', active: true },
-            { id: 'sbox', label: 'sbox_oracle.qasm' },
-          ]}
-        />
-      }
-      inspector={
+      rail="new"
+      status={
         <>
-          <ModeTabs />
-          <ModeBlock line={blocked?.line ?? 'Scanned on this machine · nothing was run'}>
-            {state === 'scanning' ? (
-              <PrimaryButton progress={0.45} name="primary-action">
-                Scanning (45%)
-              </PrimaryButton>
-            ) : (
-              <PrimaryButton
-                disabled={!!blocked}
-                onClick={() => {
-                  actions.selectExample('sidechain_qaoa')
-                  actions.continueToPreflight()
-                }}
-                name="primary-action"
-              >
-                Use these
-              </PrimaryButton>
-            )}
-            <div className="s02-using">
-              {blocked ? (
-                <span>{state === 'scanning' ? 'Pick a circuit when the scan finishes' : 'Nothing selected'}</span>
-              ) : (
-                <>
-                  <span>Using</span>
-                  <span className="mono s02-using-file">sidechain_qaoa.qasm</span>
-                  <span>and a new</span>
-                  <span className="mono s02-using-file">qscore.yaml</span>
-                </>
-              )}
-            </div>
-          </ModeBlock>
-          <Section icon={icons.repo} title="Repository">
-            <div className="ik-insp-rows">
-              {REPO.map(([k, v]) =>
-                k === 'Scanned' && state === 'scanning'
-                  ? [k, '96 of 214 files']
-                  : state === 'private-repo' && (k === 'Commit' || k === 'Scanned')
-                    ? [k, 'not cloned']
-                    : [k, v],
-              ).map(([k, v]) => (
-                <div key={k} className="ik-insp-row">
-                  <span className="ik-insp-row-label">{k}</span>
-                  <span className="ik-insp-row-value">{v}</span>
-                </div>
-              ))}
-            </div>
-          </Section>
-          <Section icon={icons.log} title="Scan log" meta={state === 'scanning' ? 'running' : state === 'private-repo' ? 'stopped' : '2.8 s'}>
-            <div className="ik-insp-rows">
-              {(logRows ?? LOG.map(([label, meta]) => ({ kind: 'ok' as const, label, meta }))).map((r, i) => (
-                <div
-                  key={r.label}
-                  className={`ik-insp-row s02-log-row${r.kind === 'pending' ? ' is-pending' : ''}`}
-                  style={{ animationDelay: `${i * 40}ms` }}
-                >
-                  {r.kind === 'ok' ? icons.check : icons[r.kind]}
-                  <span className="s02-log-label">{r.label}</span>
-                  <span className="mono s02-log-meta">{r.meta}</span>
-                </div>
-              ))}
-            </div>
-            <p className="s02-log-note">Private repo? Paste a read-only token on the New run screen. It stays on this machine.</p>
-          </Section>
-          <Section icon={icons.skip} title="Not scanned" meta=".gitignore + defaults">
-            <div className="ik-insp-rows">
-              {SKIPPED.map(([k, v]) => (
-                <div key={k} className="ik-insp-row">
-                  <span className="mono s02-skip-path">{k}</span>
-                  <span className="mono s02-log-meta">{v}</span>
-                </div>
-              ))}
-            </div>
-          </Section>
+          <GpuStatus online />
+          <AccountHandle />
         </>
       }
-    >
-      <Content className="s02-content">
-        <Tile
-          className="s02-files"
-          tabs={[{ id: 'files', label: 'Files found', active: true }]}
-          meta={<span className="ik-meta-mono">{FILES_META[state] ?? '4 circuits · 214 files'}</span>}
-        >
-          <S02States state={state} />
-          {state !== 'no-circuit' && state !== 'no-qiskit' && state !== 'private-repo' && (
-            <div className="s02-table" role="radiogroup" aria-label="Circuits found">
-              <div className="s02-row s02-head">
-                <span className="s02-radio-slot" />
-                <span className="s02-path">Path</span>
-                <span className="s02-num">Size</span>
-                <span className="s02-num">Qubits</span>
-                <span className="s02-kind">Kind</span>
-              </div>
-              {FILES.map((f, i) => {
-                const on = i === selected
-                return (
-                  <button
-                    key={f.path}
-                    role="radio"
-                    aria-checked={on}
-                    disabled={f.broken}
-                    className={`s02-row s02-file${on ? ' is-selected' : ''}${f.broken ? ' is-broken' : ''}${
-                      state === 'focus' && i === 1 ? ' is-focus' : ''
-                    }`}
-                    onClick={() => setSelected(i)}
-                  >
-                    <span className="s02-radio-slot">
-                      <span className={`s02-radio${on ? ' is-on' : ''}`} />
-                    </span>
-                    <span className="mono s02-path">{f.path}</span>
-                    <span className="mono s02-num s02-size">{f.size}</span>
-                    <span className="mono s02-num s02-q">{f.qubits}</span>
-                    <span className="s02-kind">{f.kind}</span>
-                  </button>
-                )
-              })}
-              <p className="s02-note">Discovery parses files and never runs them. Builders are read for their signature only.</p>
-            </div>
-          )}
-          <div className="tile-header s02-preview-header">
-            <div className="tile-tabs">
-              <span className="tile-tab is-active">Preview</span>
-            </div>
-            <div className="tile-meta ik-meta-mono">{empty ? 'nothing parsed' : '12 q · 44 two-qubit gates · depth 58 · parsed, not run'}</div>
-          </div>
-          <div className="s02-preview">
-            <div className="s02-canvas" style={{ viewTransitionName: 'circuit-canvas' }}>
-              {empty ? (
-                <div className="s02-empty">
-                  <div className="s02-empty-title">No circuit to preview</div>
-                  <div className="mono s02-empty-sub">{state === 'private-repo' ? 'the repo was not cloned' : 'no OpenQASM file in this repo'}</div>
-                </div>
-              ) : (
-                <QaoaCircuit />
-              )}
-            </div>
-          </div>
-        </Tile>
-        <div className="s02-right">
-          <Tile
-            className="s02-manifest"
-            tabs={[{ id: 'manifest', label: 'Manifest', active: true }]}
-            meta={<span className="ik-meta-mono">{blocked?.manifestMeta ?? 'will write qscore.yaml'}</span>}
-            bodyClassName="s02-manifest-body"
+      tabs={<IntakeTabs label="New run" plus />}
+      inspector={
+        <div className="ink-scope rs-insp">
+          <ModeTabs />
+          <RunBlock
+            center
+            line={
+              ready
+                ? `${file.path.split('/').pop()} · ${found ? 'qscore.yaml from the repo' : 'new qscore.yaml'} · Qiskit ${REPO.qiskit}`
+                : scanning
+                  ? 'Scanning qlab/sidechain-packing'
+                  : 'Nothing chosen · the repo is not reachable'
+            }
           >
-            {blocked ? (
-              <div className="s02-empty s02-manifest-empty">
-                <div className="s02-empty-title">No manifest yet</div>
-                <div className="s02-empty-note">{blocked.manifest}</div>
-              </div>
-            ) : (
-              <>
-            <p>No qscore.yaml found. Gatesmith will write one from the circuit.</p>
-            <div className="s02-code">
-              <pre className="s02-gutter">{Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(2, ' ')).join('\n')}</pre>
-              <pre className="s02-yaml">{MANIFEST}</pre>
-            </div>
-            <p className="s02-hint">Every line marked default can be changed on the next screen.</p>
-            <div className="s02-defaults">
-              <div className="s02-defaults-title">Where the defaults came from</div>
-              {DEFAULTS.map(([k, v]) => (
-                <div key={k} className="s02-default">
-                  <span className="mono s02-default-k">{k}</span>
-                  <span className="s02-default-v">{v}</span>
-                </div>
-              ))}
-            </div>
-              </>
-            )}
-          </Tile>
-          <Tile className="s02-check" tabs={[{ id: 'check', label: 'Qiskit check', active: true }]} bodyClassName="s02-check-body">
-            {checkRows ? (
-              <div className="s02-check-rows s02-check-rows-state">
-                {checkRows.map((c) => (
-                  <div key={c.text} className={`s02-check-row is-${c.kind}`}>
-                    {c.kind === 'ok' ? icons.checkWide : icons[c.kind]}
-                    <span className="s02-check-text">{c.text}</span>
-                    <span className="mono s02-check-meta">{c.meta}</span>
+            <PrimaryButton disabled={!ready} onClick={() => actions.continueToPreflight()} name="primary-action">
+              Use these
+            </PrimaryButton>
+          </RunBlock>
+          <InspSection icon={icons.repo} title="Repository" meta={blocked ? 'private · not reachable' : 'public · read-only'}>
+            <Facts
+              topRule={false}
+              labelWidth={84}
+              rows={[
+                ['URL', REPO.url],
+                ['Branch', blocked ? 'not reachable' : REPO.branch],
+                ['Commit', blocked ? 'not reachable' : REPO.commit],
+                ['Fetched', blocked ? '404 in 0.4 s' : REPO.fetched],
+              ]}
+            />
+          </InspSection>
+          <InspSection icon={icons.chosen} title="Chosen" meta={ready ? '1 circuit · 1 manifest' : 'nothing yet'}>
+            {ready ? (
+              <Facts
+                topRule={false}
+                labelWidth={84}
+                rows={[
+                  ['Circuit', file.path],
+                  ['Item id', `${file.item} · ${file.qubits} q`],
+                  ['Manifest', found ? 'qscore.yaml · from the repo' : 'qscore.yaml · written on use'],
+                  ['Qiskit', qiskitOk ? `${REPO.qiskit} · from pyproject` : 'not found · .qasm only'],
+                ]}
+              />
+            ) : scanning ? (
+              <div className="rs-insp-shim" aria-label="Waiting for the scan">
+                {[180, 140, 196, 120].map((w) => (
+                  <div key={w} className="ink-fact">
+                    <span className="ink-fact-label" style={{ width: 84 }}>
+                      <Shim w={52} />
+                    </span>
+                    <span className="ink-fact-value">
+                      <Shim w={w} />
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <>
-                <div className="s02-check-first">
-                  {icons.checkWide}
-                  <span className="s02-check-text">Qiskit 1.3 found in pyproject.toml</span>
-                  <span className="mono s02-check-meta">qiskit==1.3.2</span>
+              <div className="rs-insp-empty">Nothing chosen yet · fetch the repo or go back and pick a file</div>
+            )}
+          </InspSection>
+        </div>
+      }
+    >
+      <div className="rs-tiles ink-scope">
+        {/* ── Files found ── */}
+        <Tile className="rs-files" tabs={[{ id: 'files', label: 'Files found', active: true }]} meta={<span className="mono">{tableMeta}</span>} bodyClassName="rs-files-body">
+          {blocked ? (
+            <PrivateRepo
+              rejected={access === 'rejected'}
+              token={token}
+              onToken={setToken}
+              onFetch={fetchWithToken}
+            />
+          ) : scanning ? (
+            <ScanProgress stage={stage} />
+          ) : (
+            <>
+              {offline && (
+                <Banner tone="warn" word="offline" className="rs-offline">
+                  <span className="ink-banner-grow">You are offline. The scan resumes when the connection returns.</span>
+                </Banner>
+              )}
+              <div className="rs-thead">
+                <span className="rs-col-path">path</span>
+                <span className="rs-col-format">format</span>
+                <span className="rs-col-num">size</span>
+                <span className="rs-col-num">qubits</span>
+              </div>
+              <div className="rs-group is-first">
+                <GroupHeader label="openqasm" note="5 files" className="rs-group-head" />
+                <div role="listbox" aria-label="OpenQASM files">
+                  {QASM_FILES.map((f, i) => {
+                    const on = f.path === chosenPath
+                    return (
+                      <button
+                        key={f.path}
+                        ref={(el) => {
+                          rows.current[i] = el
+                        }}
+                        role="option"
+                        aria-selected={on}
+                        tabIndex={on ? 0 : -1}
+                        className={`rs-row${on ? ' is-selected' : ''}${forced === 'focus' && i === 0 ? ' is-focus' : ''}`}
+                        onClick={() => setChosenPath(f.path)}
+                        onKeyDown={(e) => onRowKey(e, i)}
+                      >
+                        <Cells file={f} />
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="s02-check-rows">
-                  {CHECKS.map((c) => (
-                    <div key={c.text} className="s02-check-row">
-                      {c.ok ? icons.checkWide : icons.warn}
-                      <span className="s02-check-text">{c.text}</span>
-                      <span className="mono s02-check-meta">{c.meta}</span>
-                    </div>
-                  ))}
+              </div>
+              <div className="rs-group">
+                <GroupHeader label="qiskit sources" note="2 files · built at scan" className="rs-group-head" />
+                {QISKIT_SOURCES.map((f) => (
+                  <div key={f.path} className="rs-row is-static">
+                    <span className="mono rs-col-path">{f.path}</span>
+                    <span className="mono rs-col-format">{f.format}</span>
+                    <span className="mono rs-col-num">{f.size}</span>
+                    <span className="mono rs-col-num">{f.qubits}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="rs-group">
+                <GroupHeader label="skipped" note="2 files · not circuits" className="rs-group-head" />
+                {SKIPPED.map((f) => (
+                  <div key={f.path} className="rs-row is-static is-skipped">
+                    <span className="mono rs-col-path">{f.path}</span>
+                    <span className="mono rs-col-format">{f.format}</span>
+                    <span className="mono rs-col-num">{f.size}</span>
+                    <span className="mono rs-col-num is-small">skipped</span>
+                  </div>
+                ))}
+              </div>
+              <Preview file={file} />
+              <div className="rs-done">
+                <Glyph kind="check" />
+                <span>done</span>
+                <span className="mono rs-done-facts">9 files scanned in 1.8 s · .gitignore respected</span>
+              </div>
+            </>
+          )}
+        </Tile>
+
+        <div className="rs-right">
+          {/* ── Manifest ── */}
+          <Tile
+            className="rs-manifest"
+            tabs={[{ id: 'manifest', label: 'Manifest', active: true }]}
+            meta={
+              <span className="mono">
+                {ready ? `qscore.yaml · ${manifestLines} lines · ${found ? 'found' : 'new'}` : scanning ? 'waiting for the scan' : 'no manifest yet'}
+              </span>
+            }
+            bodyClassName="rs-manifest-body"
+          >
+            {ready ? (
+              <ManifestBody found={found} text={manifestText} />
+            ) : scanning ? (
+              <div className="rs-wait" aria-label="Waiting for the scan">
+                {[236, 150, 48, 160, 236, 140, 196, 64, 150, 172, 120, 210].map((w, i) => (
+                  <div key={i} className="rs-wait-line">
+                    <Shim w={18} />
+                    <Shim w={w} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rs-empty">The manifest is read after the scan reaches the repo.</div>
+            )}
+          </Tile>
+
+          {/* ── Qiskit check ── */}
+          <Tile
+            className="rs-check"
+            tabs={[{ id: 'qiskit', label: 'Qiskit check', active: true }]}
+            meta={<span className="mono">{qiskitOk ? 'pyproject.toml' : 'pyproject.toml · requirements.txt'}</span>}
+            bodyClassName="rs-check-body"
+          >
+            {blocked ? (
+              <div className="rs-check-row is-quiet">
+                <Glyph kind="ring" />
+                <span>waiting</span>
+                <span className="rs-check-what">checked once the repo is reachable</span>
+              </div>
+            ) : scanning ? (
+              <div className="rs-check-row">
+                <Spinner size={14} />
+                <span>checking</span>
+                <span className="rs-check-what">pyproject.toml and requirements.txt</span>
+                <span className="rs-grow" />
+                <span className="mono rs-check-meta">about 1 s</span>
+              </div>
+            ) : qiskitOk ? (
+              <div className="rs-check-row">
+                <span className="rs-check-ok">
+                  <Glyph kind="check" size={12} />
+                </span>
+                <span className="rs-check-word">passed</span>
+                <span className="rs-check-what">Qiskit 1.3 found in pyproject</span>
+                <span className="rs-grow" />
+                <span className="mono rs-check-meta">qiskit 1.3.1 · python 3.11</span>
+              </div>
+            ) : (
+              <>
+                <div className="rs-check-row is-bad" role="alert">
+                  <Glyph kind="x" />
+                  <span>No Qiskit detected</span>
+                  <span className="mono rs-check-meta">(Q104) · pyproject.toml · add qiskit 1.3.1</span>
+                </div>
+                <div className="rs-check-fix">
+                  <span className="rs-grow">2 Qiskit sources cannot be built · the .qasm files still can</span>
+                  <EditorButton onClick={() => rescan(() => setQiskitOk(true))} disabled={offline}>
+                    Scan again
+                  </EditorButton>
                 </div>
               </>
             )}
           </Tile>
         </div>
-      </Content>
+      </div>
     </Shell>
   )
+}
 
-  function S02States({ state }: { state: S02State }) {
-    if (state === 'scanning')
-      return (
-        <div className="s02-state s02-scanning">
-          <div className="s02-progress">
-            <span style={{ width: '45%' }} />
+function Cells({ file }: { file: ScanFile }) {
+  return (
+    <>
+      <span className="mono rs-col-path">{file.path}</span>
+      <span className="mono rs-col-format">{file.format}</span>
+      <span className="mono rs-col-num">{file.size}</span>
+      <span className="mono rs-col-num">{file.qubits} q</span>
+    </>
+  )
+}
+
+function ScanProgress({ stage }: { stage: number }) {
+  return (
+    <div className="rs-scan" role="status" aria-live="polite">
+      <div className="rs-stages">
+        {SCAN_STAGES.map((s, i) => {
+          const state = i < stage ? 'done' : i === stage ? 'running' : 'queued'
+          return (
+            <div key={s.word} className={`rs-stage is-${state}`}>
+              <span className="rs-stage-icon">
+                {state === 'done' ? <Glyph kind="check" /> : state === 'running' ? <Spinner size={14} /> : <Glyph kind="ring" size={8} />}
+              </span>
+              <span className="rs-stage-word">{s.word}</span>
+              <span className="mono rs-stage-detail">{state === 'done' ? s.done : state === 'running' ? s.running : 'queued'}</span>
+              <span className={state === 'running' ? 'mono rs-stage-est' : 'rs-stage-end'}>
+                {state === 'done' ? 'done' : state === 'running' ? s.est : 'queued'}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <div className="rs-scan-rows" aria-hidden>
+        {[200, 168, 216, 184, 152, 208].map((w) => (
+          <div key={w} className="rs-scan-row">
+            <Shim w={w} />
+            <span className="rs-grow" />
+            <Shim w={84} />
+            <Shim w={48} />
+            <Shim w={32} />
           </div>
-          <div className="mono s01-stages">
-            <span className="s01-stage is-done">✓ clone</span>
-            <span className="s01-stage is-running">● search</span>
-            <span className="s01-stage is-pending">○ parse</span>
-            <span className="s01-spacer-grow" />
-            <span className="s01-stage-left">about 2 s left</span>
-          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PrivateRepo({
+  rejected,
+  token,
+  onToken,
+  onFetch,
+}: {
+  rejected: boolean
+  token: string
+  onToken: (t: string) => void
+  onFetch: () => void
+}) {
+  return (
+    <div className="rs-private">
+      {rejected ? (
+        <Banner tone="bad" word="Token rejected">
+          <span className="mono rs-code">(Q903)</span>
+          <span className="mono rs-where">· qlab/sidechain-packing · paste a new token</span>
+        </Banner>
+      ) : (
+        <div className="ink-banner is-bad" role="alert">
+          <span className="ink-banner-word">
+            {icons.lock}
+            Repository not found
+          </span>
+          <span className="mono rs-code">(Q902)</span>
+          <span className="mono rs-where">· qlab/sidechain-packing · add a token</span>
         </div>
-      )
-    if (state === 'offline')
-      return (
-        <div className="s02-state">
-          <div className="s01-banner" role="status">
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-              <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.5" strokeLinejoin="round" />
-            </svg>
-            <span>You are offline. The last scan is shown; Rescan waits for a connection.</span>
+      )}
+      <p className="rs-private-text">
+        {rejected
+          ? 'GitHub refused the token. It may have expired or lack contents: read on this repo.'
+          : 'The repo is private or the URL is wrong. Make it public, or paste a token with contents: read.'}
+      </p>
+      <form
+        className="rs-token"
+        onSubmit={(e) => {
+          e.preventDefault()
+          onFetch()
+        }}
+      >
+        <label className="rs-token-label" htmlFor="rs-token">
+          Token
+        </label>
+        <span className={`rs-token-field${rejected ? ' is-bad' : ''}`}>
+          <input
+            id="rs-token"
+            className="mono"
+            type="password"
+            autoComplete="off"
+            placeholder="github_pat_…"
+            value={token}
+            onChange={(e) => onToken(e.target.value)}
+          />
+          <span className="mono rs-token-scope">contents: read</span>
+        </span>
+        <EditorButton style={{ height: 26, paddingBlock: 0, paddingInline: 12 }}>Fetch with token</EditorButton>
+      </form>
+      <div className="mono rs-token-note">kept for this session only · never written to the manifest</div>
+    </div>
+  )
+}
+
+/** The manifest tile body. The code keeps whole lines: it gets the height left after the status row
+ * and the not-checked list, rounded down to 20 px lines, and scrolls for the rest. */
+function ManifestBody({ found, text }: { found: boolean; text: string }) {
+  const body = useRef<HTMLDivElement>(null)
+  const top = useRef<HTMLDivElement>(null)
+  const bottom = useRef<HTMLDivElement>(null)
+  const maxHeight = useWholeLines(body, top, bottom, text.split('\n').length)
+  return (
+    <div className="rs-manifest-inner" ref={body}>
+      <div ref={top}>
+        {found ? (
+          <div className="rs-found">
+            <Glyph kind="check" />
+            <span className="rs-found-word">found</span>
+            <span className="mono">qscore.yaml</span>
+            <span className="mono rs-found-meta">repo root · sha256 9c41…e07b</span>
           </div>
-          <div className="s02-offline-meta">
-            <span className="mono">main · a41c9e2 · 214 files · scanned 12 min ago</span>
-            <EditorButton disabled>Rescan</EditorButton>
-          </div>
+        ) : (
+          <Banner tone="info" word="info">
+            <span className="ink-banner-grow">No qscore.yaml found. Gatesmith will write one from the circuit.</span>
+          </Banner>
+        )}
+      </div>
+      <Code lines={codeLines(text)} className="rs-manifest-code" label="qscore.yaml" style={maxHeight ? { maxHeight } : undefined} />
+      <div className="rs-notchecked" ref={bottom}>
+        <GroupHeader label="will not be checked" note="from this manifest" />
+        <div className="rs-nc-rows">
+          {NOT_CHECKED.map((r) => (
+            <div key={r.name} className="rs-nc-row">
+              <span className="mono rs-nc-name">{r.name}</span>
+              <Glyph kind="ring" size={8} />
+              <span className="rs-nc-status">{r.status}</span>
+              <span className="mono rs-nc-why">{r.why}</span>
+            </div>
+          ))}
         </div>
-      )
-    if (state === 'no-circuit')
-      return (
-        <div className="s02-state s02-message">
-          <div className="s02-message-title is-warn">
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-              <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.5" strokeLinejoin="round" />
-            </svg>
-            No .qasm file detected
-          </div>
-          <p>
-            Found 1 Qiskit builder: src/packing/qaoa.py · build_qaoa(n_residues, p). Gatesmith can export it to OpenQASM 3 with your arguments, without running
-            anything else in the repo.
-          </p>
-          <div className="s02-actions">
-            <EditorButton onClick={useThese}>Export from builder</EditorButton>
-            <EditorButton onClick={() => navigate(ROUTES.newRun)}>Upload instead</EditorButton>
-          </div>
-        </div>
-      )
-    if (state === 'no-qiskit')
-      return (
-        <div className="s02-state s02-message">
-          <div className="s02-message-title is-bad">
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-              <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            No Qiskit detected
-            <span className="mono s02-code-ref">Q210</span>
-          </div>
-          <p>pyproject.toml and requirements.txt list no qiskit package. Gatesmith supports Qiskit only for now. Upload the circuit as OpenQASM to continue.</p>
-        </div>
-      )
-    if (state === 'private-repo')
-      return (
-        <div className="s02-state s02-message">
-          <div className="s02-message-title is-warn">
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-              <rect x="3" y="6.5" width="8" height="5.5" rx="1" fill="none" stroke="#FF986E" strokeWidth="1.4" />
-              <path d="M5 6.5V5a2 2 0 014 0v1.5" fill="none" stroke="#FF986E" strokeWidth="1.4" />
-            </svg>
-            Repository is private
-            <span className="mono s02-code-ref">HTTP 404 · Q205</span>
-          </div>
-          <p>Paste a read-only token, or clone it yourself and use laptop mode. The token stays on this machine.</p>
-          <div className="s01-url">
-            <input className="s01-url-input" placeholder="ghp_ read-only token" aria-label="Read-only token" />
-            <EditorButton style={{ height: 26, paddingBlock: 0 }}>Retry</EditorButton>
-          </div>
-        </div>
-      )
-    return null
-  }
+      </div>
+    </div>
+  )
+}
+
+/** Height for a code block of `lines` 20 px lines that fits what its siblings leave, in whole lines. */
+function useWholeLines(
+  container: RefObject<HTMLElement | null>,
+  above: RefObject<HTMLElement | null>,
+  below: RefObject<HTMLElement | null>,
+  lines: number,
+) {
+  const [h, setH] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const el = container.current
+    if (!el) return
+    const measure = () => {
+      const cs = getComputedStyle(el)
+      const gap = parseFloat(cs.rowGap) || 0
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
+      const used = (above.current?.offsetHeight ?? 0) + (below.current?.offsetHeight ?? 0) + gap * 2 + pad
+      const room = el.clientHeight - used - 10 // 4 + 4 padding, 1 + 1 border
+      const fit = Math.max(1, Math.min(lines, Math.floor(room / 20)))
+      setH(fit * 20 + 10)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    if (above.current) ro.observe(above.current)
+    if (below.current) ro.observe(below.current)
+    return () => ro.disconnect()
+  }, [container, above, below, lines])
+  return h
+}
+
+/** The chosen file's first lines, as many whole 20 px lines as the space holds. */
+function Preview({ file }: { file: ScanFile }) {
+  const box = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(16)
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    const measure = () => setFit(Math.max(1, Math.floor((el.clientHeight - 10) / 20)))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const lines = codeLines(file.preview).slice(0, Math.min(16, fit))
+  return (
+    <div className="rs-preview">
+      <GroupHeader label="preview · chosen file" note={`lines 1 to ${lines.length} of ${file.lines}`} className="rs-group-head" />
+      <div className="rs-preview-box" ref={box}>
+        <Code lines={lines} className="rs-preview-code" label={`${file.path}, first lines`} />
+      </div>
+    </div>
+  )
 }

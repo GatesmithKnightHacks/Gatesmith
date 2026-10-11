@@ -7,9 +7,9 @@ import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'r
 import { navigate, ROUTES, useHashParams } from '../app/router'
 import { actions } from '../data/run'
 import { EditorButton, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
-import { GpuStatus, Shell, TabStrip } from '../ui/Shell'
+import { GpuStatus, Shell } from '../ui/Shell'
 import { InkIcons } from './intake/icons'
-import { AccountHandle, Banner, Glyph, GroupHeader, Facts, RunBlock, Shim, Spinner } from './intake/kit'
+import { AccountHandle, Banner, Glyph, GroupHeader, Facts, IntakeTabs, RunBlock, Shim, Spinner } from './intake/kit'
 import { useOnline } from './intake/online'
 import './intake/s01.css'
 
@@ -149,7 +149,7 @@ function NewRun({ forced }: { forced: S01State }) {
           <AccountHandle />
         </>
       }
-      tabs={<TabStrip tabs={[{ id: 'new', label: 'New run', active: true }]} />}
+      tabs={<IntakeTabs label="New run" plus />}
       inspector={
         <div className="ink-scope nr-insp">
           <ModeTabs />

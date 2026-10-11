@@ -212,6 +212,8 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+}
+.ink-facts.has-top {
   border-top: 1px solid var(--color-surface-app);
 }
 .ink-fact {
@@ -242,7 +244,6 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--color-surface-app);
 }
 .ink-sec-head {
   display: flex;
@@ -273,10 +274,16 @@
 .ink-chev.is-closed {
   transform: rotate(180deg);
 }
+.ink-sec.is-open .ink-sec-head {
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.ink-sec + .ink-sec {
+  border-top: 1px solid var(--color-surface-app);
+}
 .ink-sec-body {
   display: flex;
   flex-direction: column;
-  padding: 0 var(--spacing-4) var(--spacing-4);
+  padding: var(--spacing-1) var(--spacing-4) var(--spacing-3);
   animation: ink-fade var(--motion-tile, 200ms) ease both;
 }
 
@@ -298,4 +305,64 @@
   border-radius: 50%;
   border: 1px solid var(--color-border-control);
   background: var(--color-surface-inset);
+}
+
+/* ── Code block ── */
+.ink-code {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-block: var(--spacing-1);
+  overflow: clip;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+}
+.ink-code-line {
+  display: flex;
+  flex-shrink: 0;
+  height: 20px;
+  border-left: 2px solid transparent;
+}
+.ink-code-line.is-bad {
+  border-left-color: var(--color-signal-bad);
+}
+.ink-code-line.is-accepted {
+  border-left-color: var(--color-text-secondary);
+}
+.ink-code-line.is-select {
+  border-left-color: var(--color-signal-select);
+  background: color-mix(in srgb, var(--color-signal-select) 10%, transparent);
+}
+.ink-code-n {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  width: 44px;
+  padding-right: var(--spacing-2);
+  border-right: 2px solid var(--color-surface-panel);
+  color: var(--color-text-disabled);
+  font-size: var(--text-label);
+  line-height: 20px;
+}
+.ink-code-line.is-select .ink-code-n {
+  color: var(--color-signal-select);
+}
+.ink-code-text {
+  padding-left: var(--spacing-2);
+  color: var(--color-text-primary);
+  line-height: 20px;
+  white-space: pre;
+}
+.ink-code-text.is-comment {
+  color: var(--color-text-tertiary);
+}
+.ink-code-text.is-bad {
+  color: var(--color-signal-bad);
+}
+
+/* ── Intake tab: the plus sits 6 px before the label ── */
+.ink-tab {
+  gap: 6px;
 }
