@@ -1,6 +1,6 @@
 # ChP-0050: Free static HF leaderboard Space
 
-- Status: proposed; Class A; Author: integration coordinator; Date: 2026-10-11
+- Status: withdrawn; Class A; Author: integration coordinator; Date: 2026-10-11
 - Related: T26, specs/12 §5, ChP-0048. Only Space hosting blocked; HF API adapter unaffected.
 
 ## Summary and exact change
@@ -22,4 +22,4 @@ Snapshot requires explicit refresh after benchmark runs; display generation time
 
 ## Decision
 
-Pending user choice. No implementation or account resource creation under this change yet.
+User purchased an HF paid plan on 2026-10-11. CPU Basic is now available; retain the original Gradio Space specification. Static alternative not implemented.

@@ -1,0 +1,232 @@
+{
+  "task_id": "B1-B6-T25-T29-engine-integration",
+  "status": "partial",
+  "summary": "Implemented and independently reviewed the GitHub scoring/review bot, Gemini HIGH review, pinned HF proposer panel, read-only HF leaderboard Space and two narrow engine fixes on github-app. Real Linux CI scored a private PR; the App posted one updating summary, a correct regression failure and a validated Gemini line comment. Real engine output also produced a request consumed by Qwen through HF. Source is committed locally, not pushed; public hosting, verifier/loop, platform import and full Linux test gates remain incomplete.",
+  "branch": "github-app",
+  "commits": [
+    "7e28242",
+    "6b3ea19",
+    "f55d4e1",
+    "80907cb",
+    "a390fee",
+    "8031724",
+    "5858df2",
+    "9026266",
+    "1eb199f",
+    "3887d40",
+    "f5bd10b",
+    "9ce59ab",
+    "63e0a6e",
+    "52f866c",
+    "5a6992c",
+    "35a01c6",
+    "d1f8438",
+    "5e3a62a",
+    "d28423a",
+    "debc066",
+    "de2e00c",
+    "f29fbca",
+    "31182f4",
+    "c759016",
+    "368e16d",
+    "ea805fa",
+    "da40808",
+    "44d6727",
+    "bd6d41b",
+    "0f22d80",
+    "fd94c89",
+    "a513c44",
+    "7c8c34b",
+    "1734096",
+    "ea0dc27",
+    "32c2890",
+    "eb1f0bd",
+    "cce9a70"
+  ],
+  "files_changed": [
+    ".github/workflows/ci.yml",
+    "docs/integration-setup-report.json",
+    "handoff.md",
+    "handoffs/20261011-0235-integration-planning.md",
+    "handoffs/20261011-0658-01a1281b.md",
+    "handoffs/20261011-0658-integration-checkpoint.md",
+    "lab/20261011-real-score-hf-request/NOTES.md",
+    "lab/20261011-real-score-hf-request/build_request.py",
+    "lab/20261011-real-score-hf-request/circuit.qasm",
+    "lab/20261011-real-score-hf-request/consume_offline.py",
+    "lab/20261011-real-score-hf-request/offline-smoke.json",
+    "lab/20261011-real-score-hf-request/propose_hf.py",
+    "lab/20261011-real-score-hf-request/qscore.yaml",
+    "lab/20261011-real-score-hf-request/representative.qasm",
+    "lab/20261011-real-score-hf-request/request.json",
+    "lab/20261011-real-score-hf-request/scorecards/commuting_chain.json",
+    "lab/20261011-real-score-hf-request/summary.json",
+    "progress.md",
+    "qscore/schemas/qscore.proposal_v0.2.json",
+    "qscore/schemas/qscore.request_v0.2.json",
+    "qscore/space/README.md",
+    "qscore/space/app.py",
+    "qscore/space/requirements.txt",
+    "qscore/src/qscore/cli.py",
+    "qscore/src/qscore/config.py",
+    "qscore/src/qscore/errors.py",
+    "qscore/src/qscore/improve/hf_layer.py",
+    "qscore/src/qscore/improve/hf_types.py",
+    "qscore/src/qscore/improve/models.yaml",
+    "qscore/src/qscore/improve/prompts.py",
+    "qscore/src/qscore/improve/protocol.py",
+    "qscore/src/qscore/improve/requests.py",
+    "qscore/src/qscore/metrics/opportunities/structure.py",
+    "qscore/src/qscore/schemas/improvement.py",
+    "qscore/src/qscore/validate/semantic_checks.py",
+    "qscore/tests/unit/diagnose/test_rules.py",
+    "qscore/tests/unit/improve/test_hf_layer.py",
+    "qscore/tests/unit/improve/test_prompts.py",
+    "qscore/tests/unit/metrics/test_structure.py",
+    "qscore/tests/unit/test_models_cli.py",
+    "qscore/tests/unit/test_space.py",
+    "qscore/tests/unit/validate/test_semantic_checks.py",
+    "review-bot/Dockerfile",
+    "review-bot/README.md",
+    "review-bot/action/README.md",
+    "review-bot/action/action.yml",
+    "review-bot/examples/qscore-review.yml",
+    "review-bot/knowledge/engine-definitions.json",
+    "review-bot/knowledge/qiskit.json",
+    "review-bot/pyproject.toml",
+    "review-bot/src/qscore_review/__init__.py",
+    "review-bot/src/qscore_review/action.py",
+    "review-bot/src/qscore_review/app.py",
+    "review-bot/src/qscore_review/bundle.py",
+    "review-bot/src/qscore_review/commands.py",
+    "review-bot/src/qscore_review/contracts.py",
+    "review-bot/src/qscore_review/gemini.py",
+    "review-bot/src/qscore_review/github.py",
+    "review-bot/src/qscore_review/settings.py",
+    "review-bot/src/qscore_review/state.py",
+    "review-bot/src/qscore_review/summary.py",
+    "review-bot/src/qscore_review/validation.py",
+    "review-bot/src/qscore_review/versions.py",
+    "review-bot/tests/test_action.py",
+    "review-bot/tests/test_app.py",
+    "review-bot/tests/test_bundle.py",
+    "review-bot/tests/test_commands.py",
+    "review-bot/tests/test_gemini.py",
+    "review-bot/tests/test_github.py",
+    "review-bot/tests/test_state.py",
+    "review-bot/tests/test_summary.py",
+    "review-bot/tests/test_validation.py",
+    "review-bot/tests/test_versions.py",
+    "review-bot/uv.lock",
+    "specs/04-contracts.md",
+    "specs/19-review-bot.md",
+    "specs/CHANGELOG.md",
+    "specs/proposals/ChP-0040-github-review-bot.md",
+    "specs/proposals/ChP-0048-hf-api-improvement-layer.md",
+    "specs/proposals/ChP-0049-integration-pass.md",
+    "specs/proposals/ChP-0050-static-hf-space.md",
+    "specs/proposals/ChP-0051-verified-algebra-prompt-fixtures.md",
+    "specs/proposals/ChP-0052-provider-sdk-serialization-and-http.md",
+    "specs/proposals/ChP-0053-gemini-generation-comment-budget.md"
+  ],
+  "tests": [
+    {
+      "command": "qscore: uv run --offline --no-sync pytest tests/golden tests/unit/metrics tests/unit/diagnose tests/unit/score tests/unit/validate/test_semantic_checks.py tests/e2e/test_score.py tests/e2e/test_score_path.py tests/e2e/test_determinism_and_partial.py tests/e2e/test_compiled_export.py -m \"not slow\" -q",
+      "result": "passed",
+      "details": "209 passed, 4 slow deselected. Golden files and diagnostic thresholds unchanged."
+    },
+    {
+      "command": "qscore: Ruff check/format, mypy src and lint-imports",
+      "result": "passed",
+      "details": "209 formatted files; 100 typed source files; import-layer contract kept."
+    },
+    {
+      "command": "qscore: offline HF adapter, prompts, Space and models CLI tests",
+      "result": "passed",
+      "details": "96 tests passed. Real S-box QASM scoring also passed in the delegate worktree; approved logical Toffoli count100."
+    },
+    {
+      "command": "review-bot: full offline pytest, Ruff check/format and MYPYPATH=../qscore/src mypy src",
+      "result": "passed",
+      "details": "Final combined run: 144 passed, two dependency deprecation warnings; Ruff checked 25 files formatted, mypy checked 13 source files passed. Reproduction tests execute harmless fake scorers and offline local-wheel installs."
+    },
+    {
+      "command": "Baseline full macOS CPU quick suite",
+      "result": "failed",
+      "details": "833 passed, 50 failed, 10 deselected; predominantly existing builder RLIMIT_AS/preexec_fn restrictions. Limits/assertions are preserved; full Linux gates remain required."
+    },
+    {
+      "command": "Private demo GitHub Actions qscore workflow and locally signed App ingestion",
+      "result": "passed",
+      "details": "Runs 38118723185 attempts 1+2, 38119782036, 38120273945, 38120522229 attempts 1+2 succeeded on Linux. Actual base/head two-qubit count 1 → 6, routing 0 → 0.5, new D01 high. Unsigned 401; signed 202; duplicate 202. Public webhook delivery is not tested."
+    },
+    {
+      "command": "Real Gemini HIGH review of private demo PR1",
+      "result": "passed",
+      "details": "Review 5482293104 posted a valid RIGHT-line 9 comment at head 71c1c0ac6f2977f54d6ea3c6a364779e83adbb02. Sticky 6106354610 retained; check 114414371289 correctly failure. Promptv3 usage 1727 input, 1158 billed output including 945 thinking; estimated $0.017350. Attempt 2 retained summary/check/review IDs and 21 total model records; the reviewed reproduction recipe was verified in the posted summary."
+    },
+    {
+      "command": "Real engine validation → score_item_compiled → build_requests → HfLayer",
+      "result": "passed",
+      "details": "D03 request commuting_chain/r1/D03#1 generated from actual scoring. Qwen/Qwen3-Coder-30B-A3B-Instruct:scaleway returned one schema-valid unverified proposal in one call: 948 prompt, 179 completion, estimated $0.000379392. No acceptance or improvement claimed."
+    },
+    {
+      "command": "HF model catalog checks and read-only Gradio Space refresh",
+      "result": "passed",
+      "details": "All four pinned model/provider entries available. Private GridGxly/qscore Space RUNNING at 7f8c0bd on CPU Basic/Python 3.12. Browser refresh showed No verified benchmark results yet. Dataset GridGxly/qscore-runs has a typed zero-row leaderboard."
+    },
+    {
+      "command": "Public HTTPS webhook, Docker build, new-source Linux full suite, verifier/loop/conformance",
+      "result": "not_run",
+      "details": "Friend provides host; Docker absent locally; source not pushed; verifier/loop handoff absent. No successful deployment, accepted fix or populated benchmark claim."
+    }
+  ],
+  "acceptance": [
+    {
+      "criterion": "Bot consumes real scoring-engine results for immutable PR base/head.",
+      "met": true,
+      "evidence": "Private PR https://github.com/GatesmithKnightHacks/gatesmith-bot-demo/pull/1; six successful Linux scoring attempts, authenticated artifact provenance, one updating summary and correct regression failure."
+    },
+    {
+      "criterion": "Gemini explains recorded evidence with strict output gates and recorded HIGH-thinking usage.",
+      "met": true,
+      "evidence": "Valid live review https://github.com/GatesmithKnightHacks/gatesmith-bot-demo/pull/1#discussion_r4240638006. Earlier unsupported numeric comments filtered visibly; no validator relaxation, repair or model fallback."
+    },
+    {
+      "criterion": "HF API adapter consumes engine-generated improvement requests.",
+      "met": true,
+      "evidence": "Secret-free reproducible lab experiment and separate coordinator Qwen API evidence. Proposals remain unverified/unaccepted."
+    },
+    {
+      "criterion": "Scoring correctness fixes are reviewed and tested without weakening engine policy.",
+      "met": true,
+      "evidence": "Q406 recursive definition validation and D03 convex DAG collection independently reviewed; 209 focused tests passed. Released Action still uses older published engine 6b42f72 until a reviewed release pin update."
+    },
+    {
+      "criterion": "Selected account resources configured with credentials outside Git.",
+      "met": true,
+      "evidence": "Gatesmith Review App 5270729 installation 170168347 restricted to private demo; private HF dataset/Space configured; dataset-only read token in Space. No secrets delegated or committed."
+    },
+    {
+      "criterion": "Continuously deployed bot and complete Linux engine gate.",
+      "met": false,
+      "evidence": "Webhook inactive pending public HTTPS host; source unpublished; full Linux suite pending. Live acceptance used locally signed ingestion of real artifacts."
+    },
+    {
+      "criterion": "Verified improvement workflow and measured leaderboard.",
+      "met": false,
+      "evidence": "Friend-owned verifier/loop/platform missing. Improve command reports unavailable. Leaderboard remains empty rather than inventing verified results."
+    }
+  ],
+  "spec_deviations": [],
+  "fallbacks_introduced": [],
+  "open_questions": [
+    "Public HTTPS destination from deployment owner.",
+    "Fresh authorization before publishing Gatesmith source and coordinating the immutable engine/Action pin update."
+  ],
+  "follow_ups": [
+    "Publish reviewed source when authorized, run full Ubuntu CI, then coordinate matching Action engine pin, definition pack and server allowlist.",
+    "Deploy one App process with persistent SQLite and mounted secrets behind HTTPS; activate and test actual GitHub webhook deliveries.",
+    "Connect friend-owned verifier/loop and approved improvement handoff; run controlled conformance benchmarks before exporting ranked HF results."
+  ]
+}

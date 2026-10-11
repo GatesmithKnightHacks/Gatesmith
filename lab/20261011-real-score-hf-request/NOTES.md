@@ -22,7 +22,7 @@ The manifest selects one CPU seed (11), the real `line-7` target, exact-unitary 
 
 `consume_offline.py` passes the persisted engine-generated request to `HfLayer` using an injected SDK client and `httpx2.MockTransport`. It checks the exact pinned model, generated finding, QASM, and qubit map in the outgoing prompt. The mock response repeats the original region unchanged, so this demonstrates parsing and request/proposal identity only. Its synthetic token counts are not billing evidence. Unexpected transport operations fail immediately.
 
-`propose_hf.py` defaults to offline preview. Only the root session may invoke `--live`, with its existing `HF_TOKEN` environment. The helper contains no credential, does not print the token, and bounds one logical request to three wire attempts and $0.10 of estimated reservation. It saves proposals and call records without verification or acceptance.
+`propose_hf.py` defaults to offline preview. Only the root session may invoke `--live`, with its existing `HF_TOKEN` environment. The helper contains no credential, does not print the token, and bounds one logical request to three generation attempts and $0.10 of estimated reservation. Catalog requests are separate bounded operations. It saves proposals and call records without verification or acceptance.
 
 ## Results
 
