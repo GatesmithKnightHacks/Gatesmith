@@ -23,6 +23,7 @@ import {
   Switch,
   TileHeader,
   EditorButton,
+  type Finding,
 } from '../ui/parts'
 import { Content, GpuStatus, Shell, TabStrip } from '../ui/Shell'
 import { SBOX_QASM, SboxCircuit } from './workspace/SboxCircuit'
@@ -39,7 +40,7 @@ const CIRCUIT_ZOOMS = [0.8, 0.9, 1, 1.15, 1.3]
 
 /* The partial scorecard belongs to sbox_oracle (run 7f37·a2e4: 118 gates, 4 findings, 2 metrics skipped). */
 /* Restoring the suppressed D08 brings it back as an open finding. */
-const D08: (typeof FINDINGS)[number] = {
+const D08: Finding = {
   rank: 4,
   severity: 'info',
   rule: 'D08',
@@ -48,7 +49,7 @@ const D08: (typeof FINDINGS)[number] = {
   evidence: '12 measures · c[0..11]',
 }
 
-const SBOX_FINDINGS: typeof FINDINGS = [
+const SBOX_FINDINGS: Finding[] = [
   { rank: 1, severity: 'high', rule: 'D01', ruleName: 'routing_overhead', title: 'Routing dominates the transpiled circuit', evidence: '0.52 ratio ≥ 0.30 · 61 swaps' },
   { rank: 2, severity: 'warning', rule: 'D04', ruleName: 'resynthesis', title: 'Blocks are resynthesizable', evidence: '38 gates removable · 4 S-boxes' },
   { rank: 3, severity: 'warning', rule: 'D05', ruleName: 'linear_block', title: 'Linear block can be rewritten', evidence: '6 cx · q0–q3' },
@@ -181,7 +182,7 @@ export function S04Workspace() {
           <div className="insp-section-clip">
           <div className="ws-cards">
             {findingsShown === 0 && <div className="ws-cards-empty">Findings appear here, ranked</div>}
-            {(sbox ? SBOX_FINDINGS : restored && findingsShown >= 3 ? [...FINDINGS, D08] : FINDINGS).slice(0, findingsShown + (restored ? 1 : 0)).map((f) => {
+            {(sbox ? SBOX_FINDINGS : restored && findingsShown >= 3 ? [...FINDINGS, D08] : (FINDINGS as Finding[])).slice(0, findingsShown + (restored ? 1 : 0)).map((f) => {
               const isSel = selected === f.rule
               return (
                 <FindingCard

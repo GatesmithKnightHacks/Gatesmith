@@ -1,10 +1,11 @@
 /*
- * The demo engine. It plays the canonical run with the timings from DS-07 / M1–M6, so the
- * live flow moves the way the storyboards say. Deep-linking to a screen shows its Paper snapshot.
+ * The demo engine. It plays the canonical run 7f3a·0412 (321 → 298 → 281 → 270, stopped by the engine
+ * at 490 of 900 s, auto mode off) with the timings from DS-07 / M1–M6, so the live flow moves the way
+ * the storyboards say. Deep-linking to a screen shows its Paper snapshot.
  */
 import { useSyncExternalStore } from 'react'
 import { navigate, ROUTES, type RoutePath } from '../app/router'
-import { ATTEMPTS, type AttemptStatus } from './demo'
+import { ATTEMPTS, RUN, TWO_QUBIT, progressOf, type AttemptStatus } from './demo'
 
 export type Phase =
   | 'intake' // S-01
@@ -18,7 +19,10 @@ export type Phase =
   | 'report' // S-09
   | 'export' // S-10
 
-export type ScoreStage = 'validate' | 'compile' | 'measure' | 'diagnose' | 'done'
+export type ScoreStage = 'validate' | 'confirm' | 'compile' | 'measure' | 'diagnose' | 'done'
+
+/** The first score's stages, in order, as the inspector lists them while scoring (DS-06 scoring frame). */
+export const SCORE_STAGES: Exclude<ScoreStage, 'done'>[] = ['validate', 'confirm', 'compile', 'measure', 'diagnose']
 export type CandidateState = 'writing' | 'verifying' | 'verified'
 
 export type RunState = {
@@ -29,10 +33,14 @@ export type RunState = {
   preflightChecks: number // 0–4 checks landed
   scoreProgress: number // 0–1
   scoreStage: ScoreStage
-  findingsShown: number // 0–3
-  selectedFinding: string | null // rule id
+  findingsShown: number // 0–4
+  /** finding id ('D01', 'D03-1', 'D03-2', 'D04'); 'D03' alone means block 2, the open one */
+  selectedFinding: string | null
   round: number // 1–4
-  loopProgress: number // 0–1, shown in the primary label
+  /** wall time of the run, seconds of the 900 s budget */
+  elapsed: number
+  /** elapsed ÷ budget, 0–1; shown only in the mint label ("Run engine (44%)") */
+  loopProgress: number
   attempts: Record<number, AttemptStatus | 'hidden'>
   twoQubit: number
   candidate: CandidateState
@@ -46,7 +54,10 @@ const allAttempts = (fn: (n: number, round: number) => AttemptStatus | 'hidden')
 
 const finalOf = (n: number) => ATTEMPTS.find((a) => a.n === n)!.final
 
-/** S-04 / DS-06 snapshot: running round 3 of 4 (41%), local proposed commuting_reorder for D03. */
+/** 'D03' on its own means the open commuting block (block 2); finding ids pass through. */
+const normalizeFinding = (id: string) => (id === 'D03' ? 'D03-2' : id)
+
+/** S-04 / DS-06 snapshot: round 3 of 4 at 400 of 900 s (44%); local proposed commutation_aware_routing for D03 block 2. */
 const workspaceSnapshot: RunState = {
   phase: 'looping',
   live: false,
@@ -54,34 +65,51 @@ const workspaceSnapshot: RunState = {
   preflightChecks: 4,
   scoreProgress: 1,
   scoreStage: 'done',
-  findingsShown: 3,
-  selectedFinding: 'D03',
+  findingsShown: 4,
+  selectedFinding: 'D03-2',
   round: 3,
-  loopProgress: 0.41,
+  elapsed: RUN.snapshotAt,
+  loopProgress: progressOf(RUN.snapshotAt),
   attempts: allAttempts((n, r) => (r < 3 ? finalOf(n) : n === 5 ? 'verifying' : n === 6 ? 'proposed' : 'queued')),
-  twoQubit: 36,
+  twoQubit: TWO_QUBIT[2],
   candidate: 'verified',
   ladderStep: 2,
   accepted: false,
   stopCard: false,
 }
 
+/** Before the first score: nothing found, nothing run. */
+const notStarted: Partial<RunState> = {
+  attempts: allAttempts(() => 'hidden'),
+  twoQubit: TWO_QUBIT[0],
+  findingsShown: 0,
+  selectedFinding: null,
+  round: 1,
+  elapsed: 0,
+  loopProgress: 0,
+}
+
+/** After the stop at 490 s: 321 → 270, every attempt decided, the engine recommends stopping. */
+const stopped: Partial<RunState> = {
+  phase: 'stopped',
+  round: 4,
+  elapsed: RUN.stoppedAt,
+  loopProgress: progressOf(RUN.stoppedAt),
+  accepted: true,
+  stopCard: true,
+  twoQubit: TWO_QUBIT[4],
+  attempts: allAttempts((n) => finalOf(n)),
+}
+
 const SNAPSHOTS: Partial<Record<RoutePath, Partial<RunState>>> = {
-  [ROUTES.newRun]: { phase: 'intake', attempts: allAttempts(() => 'hidden'), twoQubit: 44, findingsShown: 0, round: 1, loopProgress: 0 },
-  [ROUTES.preflight]: { phase: 'preflight', attempts: allAttempts(() => 'hidden'), twoQubit: 44, findingsShown: 0, round: 1, loopProgress: 0 },
+  [ROUTES.newRun]: { phase: 'intake', ...notStarted },
+  [ROUTES.preflight]: { phase: 'preflight', ...notStarted },
   [ROUTES.workspace]: {},
+  [ROUTES.estimate]: { ...stopped },
   [ROUTES.fixReview]: { phase: 'review' },
-  [ROUTES.loop]: {
-    phase: 'stopped',
-    round: 4,
-    loopProgress: 1,
-    accepted: true,
-    stopCard: true,
-    twoQubit: 33,
-    attempts: allAttempts((n) => finalOf(n)),
-  },
-  [ROUTES.report]: { phase: 'report', round: 4, loopProgress: 1, accepted: true, twoQubit: 33, attempts: allAttempts((n) => finalOf(n)) },
-  [ROUTES.export]: { phase: 'export', round: 4, loopProgress: 1, accepted: true, twoQubit: 33, attempts: allAttempts((n) => finalOf(n)) },
+  [ROUTES.loop]: { ...stopped },
+  [ROUTES.report]: { ...stopped, phase: 'report', stopCard: false },
+  [ROUTES.export]: { ...stopped, phase: 'export', stopCard: false },
 }
 
 let state: RunState = { ...workspaceSnapshot }
@@ -89,7 +117,9 @@ const listeners = new Set<() => void>()
 const timers = new Set<number>()
 
 function set(patch: Partial<RunState> | ((s: RunState) => Partial<RunState>)) {
-  state = { ...state, ...(typeof patch === 'function' ? patch(state) : patch) }
+  const p = typeof patch === 'function' ? patch(state) : patch
+  // Progress is always wall time: elapsed ÷ budget.
+  state = { ...state, ...p, ...(p.elapsed != null ? { loopProgress: progressOf(p.elapsed) } : {}) }
   listeners.forEach((l) => l())
 }
 
@@ -147,58 +177,59 @@ export const actions = {
   confirmAndScore() {
     clearTimers()
     set({
+      ...notStarted,
       live: true,
       phase: 'scoring',
       scoreProgress: 0.04,
-      scoreStage: 'compile',
-      findingsShown: 0,
-      selectedFinding: null,
-      round: 1,
-      loopProgress: 0,
-      twoQubit: 44,
-      attempts: allAttempts(() => 'hidden'),
+      scoreStage: 'validate',
       accepted: false,
       stopCard: false,
     })
     navigate(ROUTES.workspace, { transition: 'confirm' })
+    // "Scoring (62%)" is the stage share of the first score, the one percent besides the run's.
     const ticks: [number, number, ScoreStage][] = [
+      [350, 0.12, 'confirm'],
       [700, 0.21, 'compile'],
       [1400, 0.38, 'compile'],
       [2150, 0.55, 'measure'],
-      [2900, 0.71, 'measure'],
+      [2600, 0.62, 'measure'],
+      [3000, 0.74, 'measure'],
       [3500, 0.86, 'diagnose'],
       [4100, 1, 'done'],
     ]
     ticks.forEach(([ms, p, st]) => after(ms, () => set({ scoreProgress: p, scoreStage: st })))
     // M2: the count is final first, then cards land 40 ms apart.
     after(4100, () => set({ phase: 'findings', findingsShown: 0 }))
-    for (let i = 1; i <= 3; i++) after(4100 + 80 + (i - 1) * 40, () => set({ findingsShown: i }))
+    for (let i = 1; i <= 4; i++) after(4100 + 80 + (i - 1) * 40, () => set({ findingsShown: i }))
     after(4800, () => actions.runRounds())
   },
 
-  /** Auto mode plays rounds 1 and 2, then round 3 waits on the local proposal for D03. */
+  /**
+   * Rounds 1 and 2 play (the user accepted R1 and R2 in the fix review; auto mode is off), then round 3
+   * waits on the local proposal for D03 block 2 at 400 of 900 s.
+   */
   runRounds() {
-    set({ phase: 'looping', round: 1, loopProgress: 0.02 })
+    set({ phase: 'looping', round: 1, elapsed: 4 })
     const step = 1200 // M6: Play steps one round per 1.2 s
     const reveal = (n: number, s: AttemptStatus) => set((st) => ({ attempts: { ...st.attempts, [n]: s } }))
     // Round 1
-    after(100, () => (reveal(1, 'verifying'), reveal(2, 'verifying')))
-    after(step * 0.6, () => (reveal(1, 'accepted'), reveal(2, 'rejected'), set({ twoQubit: 40, loopProgress: 0.14 })))
+    after(100, () => (reveal(1, 'verifying'), reveal(2, 'verifying'), set({ elapsed: 40 })))
+    after(step * 0.6, () => (reveal(1, 'accepted'), reveal(2, 'rejected'), set({ twoQubit: TWO_QUBIT[1], elapsed: 117 })))
     // Round 2
-    after(step, () => (set({ round: 2 }), reveal(3, 'verifying'), reveal(4, 'verifying')))
-    after(step * 1.6, () => (reveal(3, 'inconclusive'), reveal(4, 'accepted'), set({ twoQubit: 36, loopProgress: 0.28 })))
-    // Round 3: reference verifying, local proposed → D03 is where you are
-    after(step * 2, () => (set({ round: 3 }), reveal(5, 'verifying'), reveal(6, 'proposed'), reveal(7, 'queued'), reveal(8, 'queued')))
-    after(step * 2 + 140, () => set({ selectedFinding: 'D03', loopProgress: 0.41 }))
+    after(step, () => (set({ round: 2, elapsed: 160 }), reveal(3, 'verifying'), reveal(4, 'verifying')))
+    after(step * 1.6, () => (reveal(3, 'inconclusive'), reveal(4, 'accepted'), set({ twoQubit: TWO_QUBIT[2], elapsed: 245 })))
+    // Round 3: reference verifying, local proposed → D03 block 2 is where you are
+    after(step * 2, () => (set({ round: 3, elapsed: 330 }), reveal(5, 'verifying'), reveal(6, 'proposed'), reveal(7, 'queued'), reveal(8, 'queued')))
+    after(step * 2 + 140, () => set({ selectedFinding: 'D03-2', elapsed: RUN.snapshotAt }))
   },
 
-  selectFinding(rule: string) {
-    set({ selectedFinding: rule })
+  selectFinding(id: string) {
+    set({ selectedFinding: normalizeFinding(id) })
   },
 
   /** M3: the finding card grows into the fix review. The candidate fills once the engine verified it. */
-  requestFix(rule = 'D03') {
-    set({ selectedFinding: rule, phase: 'review', candidate: 'writing', ladderStep: 0 })
+  requestFix(id = 'D03-2') {
+    set({ selectedFinding: normalizeFinding(id), phase: 'review', candidate: 'writing', ladderStep: 0 })
     navigate(ROUTES.fixReview, { transition: 'request-fix' })
     if (!state.live) {
       set({ live: true })
@@ -211,19 +242,17 @@ export const actions = {
   /** M4: the accept moment, then the loop view (S-07) finishes round 4 and stops (M5). */
   accept() {
     // From a deep-linked snapshot too: the accept moment starts the live flow from here.
-    set({ phase: 'accepting', accepted: true, live: true })
-    set((st) => ({ attempts: { ...st.attempts, 5: 'rejected', 6: 'accepted' } }))
-    // count 36 → 35 → 34 → 33 over 600 ms, each step a little longer than the last
-    after(140, () => set({ twoQubit: 35 }))
-    after(140 + 180, () => set({ twoQubit: 34 }))
-    after(140 + 180 + 240, () => set({ twoQubit: 33 }))
+    set({ phase: 'accepting', accepted: true, live: true, elapsed: 405 })
+    // The count swaps at 0 ms (281 → 270); the delta fades in beside it. No digit ticking.
+    set((st) => ({ attempts: { ...st.attempts, 5: 'rejected', 6: 'accepted' }, twoQubit: TWO_QUBIT[3] }))
     after(760, () => {
-      set({ phase: 'looping', round: 4, loopProgress: 0.62 })
+      set({ phase: 'looping', round: 4, elapsed: 410 })
       navigate(ROUTES.loop, { transition: 'forward' })
     })
-    after(760 + 400, () => set((st) => ({ attempts: { ...st.attempts, 7: 'verifying', 8: 'verifying' } })))
-    after(760 + 1600, () => set((st) => ({ attempts: { ...st.attempts, 7: 'rejected', 8: 'inconclusive' }, loopProgress: 1 })))
-    after(760 + 1900, () => set({ phase: 'stopped', stopCard: true }))
+    after(760 + 400, () => set((st) => ({ attempts: { ...st.attempts, 7: 'verifying', 8: 'verifying' }, elapsed: 440 })))
+    // Round 4 accepts nothing; the engine stops the run at 490 s.
+    after(760 + 1600, () => set((st) => ({ attempts: { ...st.attempts, 7: 'rejected', 8: 'inconclusive' }, elapsed: 488 })))
+    after(760 + 1900, () => set({ phase: 'stopped', stopCard: true, elapsed: RUN.stoppedAt }))
   },
 
   /** Keep current: the next finding (D04) goes to the models. */
