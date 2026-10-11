@@ -36,12 +36,13 @@ The manifest selects one CPU seed (11), the real `line-7` target, exact-unitary 
 - Offline adapter smoke: **one parsed schema-valid proposal** linked to that generated request; exactly one fake catalog GET and one fake generation POST. Details: `offline-smoke.json`.
 - Default live-helper preview: passed, without credential access or network.
 - Script Ruff and formatting checks: passed.
+- Separate **root-session live check**, reported by the parent session: the generated `commuting_chain/r1/D03#1` request was submitted through the HF adapter to explicitly pinned **Qwen/Qwen3-Coder-30B-A3B-Instruct:scaleway**. It returned **one schema-valid, unverified proposal** in **one call**, with recorded estimated cost **$0.000379392**. Credentials and the live result remain outside git; this delegated run did not access them.
 
 ## Conclusion
 
 The real scoring engine's output connects to the request builder and HF adapter contract. The request and region were generated from actual qscore computation rather than hand-authored request JSON.
 
-This experiment does **not** show a real HF model response, a verified rewrite, a measured improvement, an accepted candidate, a populated benchmark leaderboard, or an automatically invoked improvement workflow. The root session can use the generated request for a separate live inference check. No live inference was performed by this delegated run.
+The offline experiment establishes the engine-to-adapter contract, and the separate root-session live check establishes that the generated request also receives a real provider response. Neither establishes a verified rewrite, a measured improvement, an accepted candidate, a populated benchmark leaderboard, or an automatically invoked improvement workflow. No live inference was performed by this delegated run.
 
 ## Consequence
 
