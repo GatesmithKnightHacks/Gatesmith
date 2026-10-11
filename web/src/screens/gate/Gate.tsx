@@ -15,7 +15,7 @@ export function Gate() {
       <h1 id="gate-title" className="gate-title">
         Gatesmith is a desktop app.
       </h1>
-      <p className="gate-body">Open it in a desktop browser at 1280 px or wider.</p>
+      <p className="gate-body">Open it in a desktop browser with a window at least 1024 px wide.</p>
       <span className="mono gate-link">gatesmith.work</span>
       {/* DS-08 done state: "Copied ✓" for 1200 ms, in the same width */}
       <EditorButton doneLabel="Copied" onClick={() => copyText(window.location.href)}>
