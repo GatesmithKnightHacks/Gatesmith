@@ -105,6 +105,7 @@ export interface AccountApi {
   sync(session: Session, local: SavedRun[]): Promise<AccountCopy>
   /* S-19 needs these too. */
   updateProfile(session: Session, patch: Partial<Pick<Profile, 'handle' | 'email'>>): Promise<Profile>
+  changePassword(session: Session, next: string): Promise<Profile>
   createToken(session: Session, name: string): Promise<NewToken>
   deleteAccount(session: Session, confirmHandle: string): Promise<void>
 }
@@ -120,8 +121,10 @@ const DEMO_PROFILE: Profile = {
   plan: 'hackathon',
   passwordSetAt: '2026-10-09',
 }
-/** 14 characters, the length the sign-in board draws. Only the mock knows it. */
+/** 14 characters, the length the sign-in board draws. */
 const DEMO_PASSWORD = 'qaoa-sidechain'
+/** The filled sign-in form on S-17 (the board's main state) signs in to the mock's demo account. */
+export const DEMO_SIGN_IN = { email: DEMO_PROFILE.email, password: DEMO_PASSWORD }
 
 const run = (
   id: string,
@@ -285,6 +288,13 @@ export function createMemoryAccountApi(): AccountApi & { demoSession(): Session 
         acct.profile.email = key
       }
       if (patch.handle) acct.profile.handle = patch.handle
+      return { ...acct.profile }
+    },
+    async changePassword(session, next) {
+      await reach(LATENCY.write)
+      const acct = owner(session)
+      acct.password = next
+      acct.profile.passwordSetAt = localDay(new Date())
       return { ...acct.profile }
     },
     async createToken(session, name) {
@@ -471,6 +481,15 @@ export const accountActions = {
       copy: state.copy ? { ...state.copy, profile } : state.copy,
       sync: { status: 'synced', lastSyncedAt: Date.now(), error: null },
     })
+    return profile
+  },
+
+  async changePassword(next: string) {
+    const session = state.session
+    if (!session) throw new AccountError('not-signed-in', 'Session ended. Sign in again to keep saving runs.')
+    if (!isOnline()) throw new AccountError('offline', OFFLINE_MESSAGE)
+    const profile = await api.changePassword(session, next)
+    if (state.copy) set({ copy: { ...state.copy, profile } })
     return profile
   },
 
