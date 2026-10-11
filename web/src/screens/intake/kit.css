@@ -136,7 +136,6 @@
 }
 .ink-banner.is-good .ink-banner-word {
   color: var(--color-text-primary);
-  font-weight: var(--font-weight-regular);
 }
 .ink-banner-meta {
   flex-shrink: 0;
@@ -274,7 +273,7 @@
 .ink-chev.is-closed {
   transform: rotate(180deg);
 }
-.ink-sec.is-open .ink-sec-head {
+.ink-sec.is-open.is-ruled .ink-sec-head {
   border-bottom: 1px solid var(--color-surface-app);
 }
 .ink-sec + .ink-sec {

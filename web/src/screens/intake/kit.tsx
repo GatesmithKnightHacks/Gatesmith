@@ -159,6 +159,7 @@ export function InspSection({
   children,
   defaultOpen = true,
   bodyClassName = '',
+  ruled = true,
 }: {
   icon: ReactNode
   title: string
@@ -166,10 +167,12 @@ export function InspSection({
   children: ReactNode
   defaultOpen?: boolean
   bodyClassName?: string
+  /** a rule under the header (fact lists); fields sit without one */
+  ruled?: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <section className={`ink-sec${open ? ' is-open' : ''}`}>
+    <section className={`ink-sec${open ? ' is-open' : ''}${ruled ? ' is-ruled' : ''}`}>
       <button className="ink-sec-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         {icon}
         <span className="ink-sec-title">{title}</span>
