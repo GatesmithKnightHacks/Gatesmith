@@ -81,13 +81,23 @@ test('scorecard read validates row identity and returns current engine records',
 })
 
 test('event reads retain the versioned engine event envelope', async () => {
-  const event: JobEvent = { seq: 1, at: '2026-10-11T08:00:00Z', kind: 'stage_started', data: {
+  const event: JobEvent = { seq: 1, at: '2026-10-11T08:00:00.000000Z', kind: 'stage_started', data: {
     schema: 'qscore.event/v0.2', seq: 1, at: '2026-10-11T08:00:00Z', kind: 'stage_started', stage: 'compile', message: 'Compiling across seeds',
   } }
   respond([event])
   assert.equal((await api.events('job-1', 0))[0].data.stage, 'compile')
+  respond([{ ...event, data: { ...event.data, at: '2026-10-11T04:00:00-04:00' } }])
+  assert.equal((await api.events('job-1', 0))[0].seq, 1)
   respond([{ ...event, data: { ...event.data, seq: 2 } }])
   await assert.rejects(api.events('job-1', 0), /identity/)
+  respond([{ ...event, data: { ...event.data, at: '2026-10-11T08:00:01Z' } }])
+  await assert.rejects(api.events('job-1', 0), /identity/)
+  for (const invalid of ['invalid-date', '2026-10-11T08:00:00', '2026-10-11T99:00:00Z']) {
+    respond([{ ...event, at: invalid }])
+    await assert.rejects(api.events('job-1', 0), /invalid data/)
+    respond([{ ...event, data: { ...event.data, at: invalid } }])
+    await assert.rejects(api.events('job-1', 0), /invalid data/)
+  }
 })
 
 test('terminal failure overrides an earlier successful progress event', () => {

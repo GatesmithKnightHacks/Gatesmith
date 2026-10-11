@@ -91,6 +91,13 @@ function string(value: unknown, where: string): asserts value is string {
 function number(value: unknown, where: string): asserts value is number {
   if (typeof value !== 'number' || !Number.isFinite(value)) invalid(where)
 }
+function instant(value: unknown, where: string): number {
+  string(value, where)
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) invalid(where)
+  const timestamp = Date.parse(value)
+  if (!Number.isFinite(timestamp)) invalid(where)
+  return timestamp
+}
 function array(value: unknown, where: string): asserts value is unknown[] {
   if (!Array.isArray(value)) invalid(where)
 }
@@ -231,10 +238,11 @@ export const api = {
     events.forEach((v, i) => {
       const e = record(v, `events[${i}]`)
       number(e.seq, `events[${i}].seq`)
-      string(e.at, `events[${i}].at`)
+      const at = instant(e.at, `events[${i}].at`)
       string(e.kind, `events[${i}].kind`)
       const data = record(e.data, `events[${i}].data`)
-      if (data.schema !== 'qscore.event/v0.2' || data.seq !== e.seq || data.at !== e.at || data.kind !== e.kind) invalid(`events[${i}].data identity`)
+      const dataAt = instant(data.at, `events[${i}].data.at`)
+      if (data.schema !== 'qscore.event/v0.2' || data.seq !== e.seq || dataAt !== at || data.kind !== e.kind) invalid(`events[${i}].data identity`)
       string(data.message, `events[${i}].data.message`)
       for (const key of ['item_id', 'stage']) if (data[key] != null) string(data[key], `events[${i}].data.${key}`)
     })
