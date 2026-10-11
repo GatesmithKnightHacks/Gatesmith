@@ -19,7 +19,7 @@ from qscore.errors import LayerError, QscoreError, RecordError
 
 from qscore_review.bundle import load_bundle, validate_provenance
 from qscore_review.commands import execute_command, parse_command
-from qscore_review.gemini import MODEL, PROMPT_VERSION, Gemini
+from qscore_review.gemini import MODEL, Gemini
 from qscore_review.github import GitHub
 from qscore_review.settings import Settings, parse_repo_config
 from qscore_review.state import State
@@ -282,6 +282,7 @@ class Service:
         if not config.gemini:
             self.state.save_review(identity, status="complete")
             return
+        review_prompt: str | None = None
         try:
             files = await self.github.pages(
                 f"/repos/{allowed.repository}/pulls/{p.pull_request}/files", token
@@ -317,16 +318,20 @@ class Service:
             if validated.summary_note:
                 body += "\n\nGemini: " + validated.summary_note
             reasons = validated.dropped + diff.skipped
-            body += f"\n\nReview model `{MODEL}` · thinking `HIGH` · `{PROMPT_VERSION}` · "
-            body += f"knowledge `{knowledge['version']}`."
             billed = self.state.model(f"{p.repository_id}:{p.pull_request}:{p.head_sha}")
-            if billed and billed["usage"]:
-                usage = json.loads(billed["usage"])
-                body += (
-                    f" Input tokens `{usage['input_tokens']}`; billed output tokens "
-                    f"`{usage['output_tokens']}` (thinking `{usage['thinking_tokens']}`); "
-                    f"estimated cost `${billed['cost']:.4f}`."
-                )
+            if not billed or not billed["usage"]:
+                raise LayerError("Gemini draft lacks its recorded usage and prompt version")
+            usage = json.loads(billed["usage"])
+            review_prompt = usage.get("prompt_version")
+            if not isinstance(review_prompt, str) or not review_prompt:
+                raise LayerError("Gemini draft lacks its recorded prompt version")
+            body += f"\n\nReview model `{MODEL}` · thinking `HIGH` · `{review_prompt}` · "
+            body += f"knowledge `{knowledge['version']}`."
+            body += (
+                f" Input tokens `{usage['input_tokens']}`; billed output tokens "
+                f"`{usage['output_tokens']}` (thinking `{usage['thinking_tokens']}`); "
+                f"estimated cost `${billed['cost']:.4f}`."
+            )
             if reasons:
                 body += "\n\nReview filtering:\n" + "\n".join("- " + reason for reason in reasons)
             if not await self.current(
@@ -407,7 +412,7 @@ class Service:
         self.state.save_review(
             identity,
             status="complete",
-            result=json.dumps({"conclusion": conclusion, "model": MODEL, "prompt": PROMPT_VERSION}),
+            result=json.dumps({"conclusion": conclusion, "model": MODEL, "prompt": review_prompt}),
         )
 
     def knowledge(self, versions: list[Any], hunks: list[dict[str, str]]) -> dict[str, Any]:

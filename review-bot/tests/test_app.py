@@ -171,13 +171,17 @@ def test_durable_worker_records_sanitized_failure_and_recovers(tmp_path):
     assert tuple(row) == ("failed", "KeyError")
 
 
-def test_rescore_refreshes_deterministic_results_without_another_gemini_call(tmp_path):
+def test_rescore_refreshes_results_and_keeps_actual_cached_prompt_version(tmp_path, monkeypatch):
     from types import SimpleNamespace
 
     from test_gemini import FakeModels
 
+    import qscore_review.gemini as gemini_module
     from qscore_review.gemini import Gemini
 
+    current_system = gemini_module.SYSTEM
+    monkeypatch.setattr(gemini_module, "PROMPT_VERSION", "review-prompt/v1")
+    monkeypatch.setattr(gemini_module, "SYSTEM", "Synthetic previous prompt for cached draft test.")
     cfg = settings(tmp_path)
     cfg.knowledge_path = Path(__file__).parents[1] / "knowledge/qiskit.json"
     state = State(tmp_path / "state.db")
@@ -190,6 +194,9 @@ def test_rescore_refreshes_deterministic_results_without_another_gemini_call(tmp
     service = Service(cfg, state, github, gemini)
     asyncio.run(service.process("workflow_run", payload()))
     first_posts = len(github.posts)
+    assert "review-prompt/v1" in github.posts[-2][1]
+    monkeypatch.setattr(gemini_module, "PROMPT_VERSION", "review-prompt/v2")
+    monkeypatch.setattr(gemini_module, "SYSTEM", current_system)
     github.run["run_attempt"] = 2
 
     def rerun(envelope, payloads):
@@ -200,6 +207,12 @@ def test_rescore_refreshes_deterministic_results_without_another_gemini_call(tmp
     assert len(github.posts) > first_posts
     assert "attempt `2`" in github.posts[first_posts][1]
     assert "| 10 | 22 |" in github.posts[first_posts][1]
+    assert "review-prompt/v1" in github.posts[-2][1]
+    assert "review-prompt/v2" not in github.posts[-2][1]
+    result = state.db.execute("SELECT result FROM reviews ORDER BY rowid DESC LIMIT 1").fetchone()[
+        0
+    ]
+    assert json.loads(result)["prompt"] == "review-prompt/v1"
     assert len(models.calls) == 1
     assert state.db.execute("SELECT COUNT(*) FROM reviews").fetchone()[0] == 2
     posts_after_rescore = len(github.posts)
