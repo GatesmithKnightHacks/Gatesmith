@@ -142,6 +142,40 @@ def test_other_metric_numbers_cannot_contaminate_metric_claim():
     assert not _numbers_valid(draft, evidence)
 
 
+def test_qualitative_finding_passes_without_repairing_mixed_numeric_claim():
+    config = RepoConfig()
+    diff = prepare_diff(
+        [{"filename": "circuit.py", "patch": "@@ -1,1 +1,2 @@\n old\n+new"}], config
+    )
+    evidence = {
+        "metric:demo:two_qubit_count": {"numbers": [1, 6], "error": False},
+        "finding:demo:D01": {"numbers": [0.5, 6, 3, 1], "error": False},
+    }
+    bad_body = (
+        "The two_qubit_count increases from 1 to 6.\\n\\n"
+        "Routing requires a SWAP between qubits 1 and 2."
+    )
+    bad_bodies = [bad_body, bad_body.replace("\\n", "\n")]
+    good_body = (
+        "The added connectivity makes routing dominate this circuit. "
+        "Try comparing layout candidates under the same target and seeds."
+    )
+    draft = ReviewDraft.model_validate(
+        {
+            "schema": "qscore.review/v0.1",
+            "summary_note": "",
+            "comments": [
+                *[comment(body=body, evidence=list(evidence)) for body in bad_bodies],
+                comment(category="diagnostic", body=good_body, evidence=["finding:demo:D01"]),
+            ],
+        }
+    )
+    result = validate_review(draft, diff, evidence, config, [])
+    assert [c.body for c in result.comments] == [good_body]
+    assert result.dropped == ["number or seed-spread claim is unsupported"] * 2
+    assert [c.body for c in draft.comments[:2]] == bad_bodies
+
+
 def test_only_explicit_code_location_is_exempt_from_metric_number_checks():
     result = validate(
         [

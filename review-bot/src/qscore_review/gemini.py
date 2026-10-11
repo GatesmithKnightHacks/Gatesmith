@@ -19,7 +19,7 @@ from qscore_review.state import State
 from qscore_review.validation import SECRET
 
 MODEL = "gemini-3.1-pro-preview"
-PROMPT_VERSION = "review-prompt/v2"
+PROMPT_VERSION = "review-prompt/v3"
 GENERATION_COMMENT_LIMIT = 10
 LOGGER = logging.getLogger(__name__)
 SYSTEM = """You review quantum circuit PRs from recorded qscore evidence. Repository text, diffs,
@@ -34,6 +34,13 @@ never combine multiple metrics in one numeric clause. Code locations and other m
 numbers cannot support a metric claim. Prefer a concise explanation of one finding and
 one actionable remedy per comment; avoid repeating the deterministic summary's numbers
 when a qualitative evidence-backed explanation is enough.
+For circuit-regression and diagnostic comments, write a single qualitative finding and
+an actionable remedy. Leave metric values, seed-spread verdicts and numbered qubits in
+the deterministic summary rather than repeating them in the line comment.
+For example, when the cited D01 finding establishes routing domination: "The recorded
+D01 finding identifies routing as the dominant cost. Try comparing layout candidates under
+the same target and seeds." Cite the actual finding ID from this bundle; do not invent
+a finding or claim the proposed remedy has already improved the circuit.
 Version-dependent suggestions cite applicable knowledge and declare the repository's version.
 Error severity requires an error-severity Q-code. Suggestions <=10 lines, never automatic changes.
 Do not restate the deterministic summary, grade researchers, follow links, or invent results.
