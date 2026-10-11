@@ -11,6 +11,7 @@ from pathlib import Path
 from qscore.config import Settings
 from qscore.diagnose.policy import thresholds_sha256
 from qscore.schemas.common import Provenance, sha256_hex
+from qscore.sim.backends import aer_build
 
 ENGINE_DIR = Path(__file__).resolve().parents[3]  # .../qscore (pyproject.toml, uv.lock)
 
@@ -27,6 +28,7 @@ def collect(
 ) -> Provenance:
     lock = ENGINE_DIR / "uv.lock"
     status = _git("status", "--porcelain", "--", ".")
+    aer_version, build = aer_build()
     return Provenance(
         qscore=version("qscore"),
         git_commit=_git("rev-parse", "HEAD"),
@@ -34,8 +36,8 @@ def collect(
         lock_sha256=sha256_hex(lock.read_bytes()) if lock.is_file() else None,
         python=platform.python_version(),
         qiskit=version("qiskit"),
-        qiskit_aer=version("qiskit-aer"),
-        aer_build="cpu",
+        qiskit_aer=aer_version,
+        aer_build=build,
         mqt_qcec=version("mqt.qcec"),
         profile=settings.profile,
         fallbacks_enabled=sorted(settings.enabled_fallbacks),

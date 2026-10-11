@@ -30,7 +30,7 @@ BASE: dict[str, dict[str, Any]] = {
     "reliability_heuristic": {
         "group": "hardware",
         "value": 0.9,
-        "evidence": {"total_neg_log": 1.0, "top_contributors": {"0-1": 0.1}},
+        "evidence": {"total_neg_log": 1.0, "top_contributors": {"0-1": 0.1}, "faulty_ops": []},
     },
     "entanglement_variance": {
         "group": "opportunities",
@@ -123,10 +123,29 @@ def test_d04_boundaries(value: int, expected: str | None) -> None:
 def test_d06_share(share: float, expected: str | None) -> None:
     ms = metrics(
         reliability_heuristic={
-            "evidence": {"total_neg_log": 1.0, "top_contributors": {"0-1": share, "2": 0.01}}
+            "evidence": {
+                "total_neg_log": 1.0,
+                "top_contributors": {"0-1": share, "2": 0.01},
+                "faulty_ops": [],
+            }
         }
     )
     assert fired(ms).get("D06") == expected
+
+
+def test_d06_faulty_ops_are_high_with_their_qubits() -> None:
+    # ChP-0041: a compiled op the calibration marks faulty (error 1) is a high D06 finding.
+    faulty = [{"op": "cz", "qargs": [15, 19], "error": 1.0, "count": 6}]
+    ms = metrics(
+        reliability_heuristic={
+            "value": 0.0,
+            "evidence": {"total_neg_log": None, "top_contributors": {}, "faulty_ops": faulty},
+        }
+    )
+    (d06,) = [f for f in evaluate(ms, effective_policy(None)).findings if f.rule == "D06"]
+    assert d06.severity == "high"
+    assert d06.evidence["faulty_ops"] == faulty
+    assert d06.region is not None and d06.region.qubits == [15, 19]
 
 
 @pytest.mark.parametrize(("cv", "expected"), [(0.49, None), (0.5, "info"), (2.0, "info")])
@@ -352,3 +371,19 @@ def test_d09_has_no_region_and_skips_without_scalability() -> None:
     )
     skipped = {s["rule"] for s in evaluate(ms, effective_policy(None)).skipped}
     assert "D09" in skipped
+
+
+def test_d06_faulty_ops_respect_info_rules() -> None:
+    import copy
+
+    policy = copy.deepcopy(effective_policy(None))
+    policy.severity["info_rules"] = [*policy.severity["info_rules"], "D06"]
+    faulty = [{"op": "cz", "qargs": [15, 19], "error": 1.0, "count": 1}]
+    ms = metrics(
+        reliability_heuristic={
+            "value": 0.0,
+            "evidence": {"total_neg_log": None, "top_contributors": {}, "faulty_ops": faulty},
+        }
+    )
+    (d06,) = [f for f in evaluate(ms, policy).findings if f.rule == "D06"]
+    assert d06.severity == "info"

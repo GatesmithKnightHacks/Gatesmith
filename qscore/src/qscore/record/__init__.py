@@ -1,1 +1,1 @@
-"""Scorecards, run records, provenance, Neon and Hub stores (specs/11; tasks T15, T22)."""
+"""Scorecards, run records, provenance, the platform job client and Hub store (specs/11)."""

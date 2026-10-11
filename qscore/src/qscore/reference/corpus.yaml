@@ -1,0 +1,1194 @@
+repositories:
+- id: qasmb
+  url: https://github.com/pnnl/QASMBench.git
+  commit: 357b942396d5c2b7cbc1c229c585a6ef5ccaebac
+  license: BSD-3-Clause (Battelle/PNNL)
+- id: mqt
+  url: https://github.com/munich-quantum-toolkit/bench.git
+  commit: 613281fc367189485c7ca7b5f6b7c2ed04f3ec43
+  license: MIT; individual Qiskit-derived files also carry Apache-2.0 notices
+circuits:
+- id: qasmb_adder_n10
+  repository: qasmb
+  source:
+    qasm: small/adder_n10/adder_n10.qasm
+- id: qasmb_adder_n4
+  repository: qasmb
+  source:
+    qasm: small/adder_n4/adder_n4.qasm
+- id: qasmb_basis_change_n3
+  repository: qasmb
+  source:
+    qasm: small/basis_change_n3/basis_change_n3.qasm
+- id: qasmb_basis_trotter_n4
+  repository: qasmb
+  source:
+    qasm: small/basis_trotter_n4/basis_trotter_n4.qasm
+- id: qasmb_bb84_n8
+  repository: qasmb
+  source:
+    qasm: small/bb84_n8/bb84_n8.qasm
+- id: qasmb_bell_n4
+  repository: qasmb
+  source:
+    qasm: small/bell_n4/bell_n4.qasm
+- id: qasmb_cat_state_n4
+  repository: qasmb
+  source:
+    qasm: small/cat_state_n4/cat_state_n4.qasm
+- id: qasmb_deutsch_n2
+  repository: qasmb
+  source:
+    qasm: small/deutsch_n2/deutsch_n2.qasm
+- id: qasmb_dnn_n2
+  repository: qasmb
+  source:
+    qasm: small/dnn_n2/dnn_n2.qasm
+- id: qasmb_dnn_n8
+  repository: qasmb
+  source:
+    qasm: small/dnn_n8/dnn_n8.qasm
+- id: qasmb_error_correctiond3_n5
+  repository: qasmb
+  source:
+    qasm: small/error_correctiond3_n5/error_correctiond3_n5.qasm
+- id: qasmb_fredkin_n3
+  repository: qasmb
+  source:
+    qasm: small/fredkin_n3/fredkin_n3.qasm
+- id: qasmb_grover_n2
+  repository: qasmb
+  source:
+    qasm: small/grover_n2/grover_n2.qasm
+- id: qasmb_hhl_n10
+  repository: qasmb
+  source:
+    qasm: small/hhl_n10/hhl_n10.qasm
+- id: qasmb_hhl_n7
+  repository: qasmb
+  source:
+    qasm: small/hhl_n7/hhl_n7.qasm
+- id: qasmb_hs4_n4
+  repository: qasmb
+  source:
+    qasm: small/hs4_n4/hs4_n4.qasm
+- id: qasmb_inverseqft_n4
+  repository: qasmb
+  source:
+    qasm: small/inverseqft_n4/inverseqft_n4.qasm
+- id: qasmb_ipea_n2
+  repository: qasmb
+  source:
+    qasm: small/ipea_n2/ipea_n2.qasm
+- id: qasmb_ising_n10
+  repository: qasmb
+  source:
+    qasm: small/ising_n10/ising_n10.qasm
+- id: qasmb_iswap_n2
+  repository: qasmb
+  source:
+    qasm: small/iswap_n2/iswap_n2.qasm
+- id: qasmb_linearsolver_n3
+  repository: qasmb
+  source:
+    qasm: small/linearsolver_n3/linearsolver_n3.qasm
+- id: qasmb_lpn_n5
+  repository: qasmb
+  source:
+    qasm: small/lpn_n5/lpn_n5.qasm
+- id: qasmb_pea_n5
+  repository: qasmb
+  source:
+    qasm: small/pea_n5/pea_n5.qasm
+- id: qasmb_qaoa_n3
+  repository: qasmb
+  source:
+    qasm: small/qaoa_n3/qaoa_n3.qasm
+- id: qasmb_qaoa_n6
+  repository: qasmb
+  source:
+    qasm: small/qaoa_n6/qaoa_n6.qasm
+- id: qasmb_qec_en_n5
+  repository: qasmb
+  source:
+    qasm: small/qec_en_n5/qec_en_n5.qasm
+- id: qasmb_qec_sm_n5
+  repository: qasmb
+  source:
+    qasm: small/qec_sm_n5/qec_sm_n5.qasm
+- id: qasmb_qft_n4
+  repository: qasmb
+  source:
+    qasm: small/qft_n4/qft_n4.qasm
+- id: qasmb_qpe_n9
+  repository: qasmb
+  source:
+    qasm: small/qpe_n9/qpe_n9.qasm
+- id: qasmb_qrng_n4
+  repository: qasmb
+  source:
+    qasm: small/qrng_n4/qrng_n4.qasm
+- id: qasmb_quantumwalks_n2
+  repository: qasmb
+  source:
+    qasm: small/quantumwalks_n2/quantumwalks_n2.qasm
+- id: qasmb_sat_n7
+  repository: qasmb
+  source:
+    qasm: small/sat_n7/sat_n7.qasm
+- id: qasmb_shor_n5
+  repository: qasmb
+  source:
+    qasm: small/shor_n5/shor_n5.qasm
+- id: qasmb_simon_n6
+  repository: qasmb
+  source:
+    qasm: small/simon_n6/simon_n6.qasm
+- id: qasmb_teleportation_n3
+  repository: qasmb
+  source:
+    qasm: small/teleportation_n3/teleportation_n3.qasm
+- id: qasmb_toffoli_n3
+  repository: qasmb
+  source:
+    qasm: small/toffoli_n3/toffoli_n3.qasm
+- id: qasmb_variational_n4
+  repository: qasmb
+  source:
+    qasm: small/variational_n4/variational_n4.qasm
+- id: qasmb_vqe_n4
+  repository: qasmb
+  source:
+    qasm: small/vqe_n4/vqe_n4.qasm
+- id: qasmb_vqe_uccsd_n4
+  repository: qasmb
+  source:
+    qasm: small/vqe_uccsd_n4/vqe_uccsd_n4.qasm
+- id: qasmb_vqe_uccsd_n6
+  repository: qasmb
+  source:
+    qasm: small/vqe_uccsd_n6/vqe_uccsd_n6.qasm
+- id: qasmb_vqe_uccsd_n8
+  repository: qasmb
+  source:
+    qasm: small/vqe_uccsd_n8/vqe_uccsd_n8.qasm
+- id: qasmb_wstate_n3
+  repository: qasmb
+  source:
+    qasm: small/wstate_n3/wstate_n3.qasm
+- id: qasmb_bigadder_n18
+  repository: qasmb
+  source:
+    qasm: medium/bigadder_n18/bigadder_n18.qasm
+- id: qasmb_bv_n14
+  repository: qasmb
+  source:
+    qasm: medium/bv_n14/bv_n14.qasm
+- id: qasmb_bv_n19
+  repository: qasmb
+  source:
+    qasm: medium/bv_n19/bv_n19.qasm
+- id: qasmb_bwt_n21
+  repository: qasmb
+  source:
+    qasm: medium/bwt_n21/bwt_n21.qasm
+- id: qasmb_cat_state_n22
+  repository: qasmb
+  source:
+    qasm: medium/cat_state_n22/cat_state_n22.qasm
+- id: qasmb_cc_n12
+  repository: qasmb
+  source:
+    qasm: medium/cc_n12/cc_n12.qasm
+- id: qasmb_dnn_n16
+  repository: qasmb
+  source:
+    qasm: medium/dnn_n16/dnn_n16.qasm
+- id: qasmb_factor247_n15
+  repository: qasmb
+  source:
+    qasm: medium/factor247_n15/factor247_n15.qasm
+- id: qasmb_gcm_n13
+  repository: qasmb
+  source:
+    qasm: medium/gcm_n13/gcm_h6.qasm
+- id: qasmb_ghz_state_n23
+  repository: qasmb
+  source:
+    qasm: medium/ghz_state_n23/ghz_state_n23.qasm
+- id: qasmb_hhl_n14
+  repository: qasmb
+  source:
+    qasm: medium/hhl_n14/hhl_n14.qasm
+- id: qasmb_ising_n26
+  repository: qasmb
+  source:
+    qasm: medium/ising_n26/ising_n26.qasm
+- id: qasmb_knn_n25
+  repository: qasmb
+  source:
+    qasm: medium/knn_n25/knn_n25.qasm
+- id: qasmb_multiplier_n15
+  repository: qasmb
+  source:
+    qasm: medium/multiplier_n15/multiplier_n15.qasm
+- id: qasmb_multiply_n13
+  repository: qasmb
+  source:
+    qasm: medium/multiply_n13/multiply_n13.qasm
+- id: qasmb_qec9xz_n17
+  repository: qasmb
+  source:
+    qasm: medium/qec9xz_n17/qec9xz_n17.qasm
+- id: qasmb_qf21_n15
+  repository: qasmb
+  source:
+    qasm: medium/qf21_n15/qf21_n15.qasm
+- id: qasmb_qft_n18
+  repository: qasmb
+  source:
+    qasm: medium/qft_n18/qft_n18.qasm
+- id: qasmb_qram_n20
+  repository: qasmb
+  source:
+    qasm: medium/qram_n20/qram_n20.qasm
+- id: qasmb_sat_n11
+  repository: qasmb
+  source:
+    qasm: medium/sat_n11/sat_n11.qasm
+- id: qasmb_seca_n11
+  repository: qasmb
+  source:
+    qasm: medium/seca_n11/seca_n11.qasm
+- id: qasmb_square_root_n18
+  repository: qasmb
+  source:
+    qasm: medium/square_root_n18/square_root_n18.qasm
+- id: qasmb_swap_test_n25
+  repository: qasmb
+  source:
+    qasm: medium/swap_test_n25/swap_test_n25.qasm
+- id: qasmb_vqe_n24
+  repository: qasmb
+  source:
+    qasm: medium/vqe_n24/vqe_n24.qasm
+- id: qasmb_wstate_n27
+  repository: qasmb
+  source:
+    qasm: medium/wstate_n27/wstate_n27.qasm
+- id: mqt_ae_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ae.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_ae_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ae.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_ae_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ae.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_ae_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ae.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_bmw_quark_cardinality_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bmw_quark_cardinality.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_bmw_quark_cardinality_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bmw_quark_cardinality.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_bmw_quark_cardinality_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bmw_quark_cardinality.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_bmw_quark_cardinality_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bmw_quark_cardinality.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_bmw_quark_copula_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bmw_quark_copula.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_bmw_quark_copula_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bmw_quark_copula.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_bmw_quark_copula_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bmw_quark_copula.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_bmw_quark_copula_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bmw_quark_copula.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_bv_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bv.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_bv_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bv.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_bv_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bv.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_bv_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/bv.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_cdkm_ripple_carry_adder_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/cdkm_ripple_carry_adder.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_cdkm_ripple_carry_adder_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/cdkm_ripple_carry_adder.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_cdkm_ripple_carry_adder_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/cdkm_ripple_carry_adder.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_cdkm_ripple_carry_adder_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/cdkm_ripple_carry_adder.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_dj_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/dj.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_dj_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/dj.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_dj_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/dj.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_dj_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/dj.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_draper_qft_adder_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/draper_qft_adder.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_draper_qft_adder_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/draper_qft_adder.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_draper_qft_adder_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/draper_qft_adder.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_draper_qft_adder_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/draper_qft_adder.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_dynamic_qft_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/dynamic_qft.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_dynamic_qft_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/dynamic_qft.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_dynamic_qft_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/dynamic_qft.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_dynamic_qft_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/dynamic_qft.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_full_adder_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/full_adder.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_full_adder_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/full_adder.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_full_adder_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/full_adder.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_full_adder_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/full_adder.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_ghz_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ghz.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_ghz_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ghz.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_ghz_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ghz.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_ghz_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ghz.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_ghz_dynamic_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ghz_dynamic.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_ghz_dynamic_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ghz_dynamic.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_ghz_dynamic_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ghz_dynamic.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_ghz_dynamic_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/ghz_dynamic.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_graphstate_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/graphstate.py::create_circuit
+    args:
+      num_qubits: 4
+      seed: 10
+- id: mqt_graphstate_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/graphstate.py::create_circuit
+    args:
+      num_qubits: 8
+      seed: 10
+- id: mqt_graphstate_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/graphstate.py::create_circuit
+    args:
+      num_qubits: 12
+      seed: 10
+- id: mqt_graphstate_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/graphstate.py::create_circuit
+    args:
+      num_qubits: 16
+      seed: 10
+- id: mqt_grover_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/grover.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_grover_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/grover.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_grover_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/grover.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_grover_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/grover.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_half_adder_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/half_adder.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_half_adder_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/half_adder.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_half_adder_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/half_adder.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_half_adder_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/half_adder.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_hhl_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/hhl.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_hhl_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/hhl.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_hhl_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/hhl.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_hhl_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/hhl.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_hrs_cumulative_multiplier_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/hrs_cumulative_multiplier.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_hrs_cumulative_multiplier_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/hrs_cumulative_multiplier.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_hrs_cumulative_multiplier_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/hrs_cumulative_multiplier.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_hrs_cumulative_multiplier_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/hrs_cumulative_multiplier.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_iqpe_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/iqpe.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_iqpe_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/iqpe.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_iqpe_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/iqpe.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_iqpe_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/iqpe.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_mlqae_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/mlqae.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_mlqae_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/mlqae.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_mlqae_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/mlqae.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_mlqae_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/mlqae.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_modular_adder_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/modular_adder.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_modular_adder_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/modular_adder.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_modular_adder_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/modular_adder.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_modular_adder_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/modular_adder.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_multiplier_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/multiplier.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_multiplier_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/multiplier.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_multiplier_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/multiplier.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_multiplier_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/multiplier.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_qaoa_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qaoa.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_qaoa_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qaoa.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_qaoa_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qaoa.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_qaoa_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qaoa.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_qft_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qft.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_qft_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qft.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_qft_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qft.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_qft_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qft.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_qftentangled_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qftentangled.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_qftentangled_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qftentangled.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_qftentangled_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qftentangled.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_qftentangled_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qftentangled.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_qnn_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qnn.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_qnn_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qnn.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_qnn_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qnn.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_qnn_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qnn.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_qpeexact_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qpeexact.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_qpeexact_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qpeexact.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_qpeexact_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qpeexact.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_qpeexact_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qpeexact.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_qpeinexact_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qpeinexact.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_qpeinexact_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qpeinexact.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_qpeinexact_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qpeinexact.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_qpeinexact_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qpeinexact.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_qwalk_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qwalk.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_qwalk_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qwalk.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_qwalk_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qwalk.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_qwalk_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/qwalk.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_randomcircuit_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/randomcircuit.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_randomcircuit_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/randomcircuit.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_randomcircuit_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/randomcircuit.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_randomcircuit_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/randomcircuit.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_rg_qft_multiplier_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/rg_qft_multiplier.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_rg_qft_multiplier_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/rg_qft_multiplier.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_rg_qft_multiplier_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/rg_qft_multiplier.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_rg_qft_multiplier_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/rg_qft_multiplier.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_seven_qubit_steane_code_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/seven_qubit_steane_code.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_seven_qubit_steane_code_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/seven_qubit_steane_code.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_seven_qubit_steane_code_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/seven_qubit_steane_code.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_seven_qubit_steane_code_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/seven_qubit_steane_code.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_shor_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/shor.py::create_circuit
+    args:
+      circuit_size: 4
+- id: mqt_shor_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/shor.py::create_circuit
+    args:
+      circuit_size: 8
+- id: mqt_shor_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/shor.py::create_circuit
+    args:
+      circuit_size: 12
+- id: mqt_shor_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/shor.py::create_circuit
+    args:
+      circuit_size: 16
+- id: mqt_shors_nine_qubit_code_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/shors_nine_qubit_code.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_shors_nine_qubit_code_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/shors_nine_qubit_code.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_shors_nine_qubit_code_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/shors_nine_qubit_code.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_shors_nine_qubit_code_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/shors_nine_qubit_code.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_superdense_coding_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/superdense_coding.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_superdense_coding_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/superdense_coding.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_superdense_coding_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/superdense_coding.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_superdense_coding_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/superdense_coding.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_vbe_ripple_carry_adder_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vbe_ripple_carry_adder.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_vbe_ripple_carry_adder_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vbe_ripple_carry_adder.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_vbe_ripple_carry_adder_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vbe_ripple_carry_adder.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_vbe_ripple_carry_adder_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vbe_ripple_carry_adder.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_vqe_real_amp_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_real_amp.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_vqe_real_amp_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_real_amp.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_vqe_real_amp_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_real_amp.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_vqe_real_amp_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_real_amp.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_vqe_su2_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_su2.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_vqe_su2_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_su2.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_vqe_su2_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_su2.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_vqe_su2_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_su2.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_vqe_two_local_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_two_local.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_vqe_two_local_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_two_local.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_vqe_two_local_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_two_local.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_vqe_two_local_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/vqe_two_local.py::create_circuit
+    args:
+      num_qubits: 16
+- id: mqt_wstate_4
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/wstate.py::create_circuit
+    args:
+      num_qubits: 4
+- id: mqt_wstate_8
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/wstate.py::create_circuit
+    args:
+      num_qubits: 8
+- id: mqt_wstate_12
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/wstate.py::create_circuit
+    args:
+      num_qubits: 12
+- id: mqt_wstate_16
+  repository: mqt
+  source:
+    builder: src/mqt/bench/benchmarks/wstate.py::create_circuit
+    args:
+      num_qubits: 16

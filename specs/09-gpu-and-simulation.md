@@ -18,20 +18,19 @@ Planning rule (from v1): **1.2 × overhead, 10 % margin.** Budget = usable × 0.
 
 | Mode | Budget | When |
 |---|---|---|
-| `exclusive` | 48 GiB × 0.9 ≈ **43.2 GiB** | vLLM stopped |
-| `model_loaded` | 48 GiB × 0.6 × 0.9 ≈ **25.9 GiB** | vLLM resident with `--gpu-memory-utilization 0.40` |
+| `exclusive` | 48 GiB × 0.9 ≈ **43.2 GiB** | always (no model on the GPU; ChP-0048) |
 
-| Workload | Memory | Fits (exclusive) | Fits (model loaded) |
-|---|---|---|---|
-| Statevector, double | 2ⁿ × 16 B × 1.2 | ≤ 31 qubits (38.4 GiB) | ≤ 30 qubits |
-| Statevector, single | 2ⁿ × 8 B × 1.2 | ≤ 32 qubits | ≤ 31 qubits |
-| Batch of 28-qubit candidates | 4.8 GiB each (double) | 9 at once (18 single) | 5 (10 single) |
-| Batch of 30-qubit candidates | 19.2 GiB each (double) | 2 at once (4 single) | 1 (2 single) |
-| Unitary or density matrix, double | 4ⁿ × 16 B | 14 q = 4 GiB, 15 q = 16 GiB; 16 q = 64 GiB does not fit | 15 q (19.2 GiB with overhead) fits |
+| Workload | Memory | Fits (exclusive) |
+|---|---|---|
+| Statevector, double | 2ⁿ × 16 B × 1.2 | ≤ 31 qubits (38.4 GiB) |
+| Statevector, single | 2ⁿ × 8 B × 1.2 | ≤ 32 qubits |
+| Batch of 28-qubit candidates | 4.8 GiB each (double) | 9 at once (18 single) |
+| Batch of 30-qubit candidates | 19.2 GiB each (double) | 2 at once (4 single) |
+| Unitary or density matrix, double | 4ⁿ × 16 B | 14 q = 4 GiB, 15 q = 16 GiB; 16 q = 64 GiB does not fit |
 
 - **Size by active qubits after routing:** Aer truncates to the qubits a circuit touches; routing can add active qubits beyond the logical count. Plan from the compiled circuit's active qubits.
 - The measured overhead factor from the profiler replaces 1.2 once available (recorded in the plan).
-- A job that needs `exclusive` mode while vLLM is loaded is held until the worker stops vLLM (the worker owns that decision and logs it). It never silently runs on the CPU instead.
+- A GPU job never silently runs on the CPU instead.
 - `max_memory_mb` is passed to Aer explicitly from the plan (never left to Aer's default).
 
 ## 3. Planner (`sim/planner.py`)
@@ -82,7 +81,7 @@ Every scorecard carries the profile id in provenance; the bench and the planner 
 
 - `GpuSampler`: background thread, once a second while a job runs: GPU utilisation, VRAM used, power. The **source is chosen once by the profiler** and recorded in the hardware profile: the `amdsmi` Python library if it initialises, else the `amd-smi` CLI (`amd-smi metric --json`), else `off`. At runtime only the recorded source is used; if it fails, the job gets a `warning` event and `telemetry.status = unavailable` in its summary (visible, never silently swapped). Every individual reading is optional (some fields are unsupported inside VMs). Telemetry never changes a score.
 - `JobTimer` for stage times; `summarize(run)` → busy time, peak memory.
-- Writes `telemetry.jsonl` locally and batches rows to Neon every few seconds (`11-records-and-queue.md`); pruned after export.
+- Writes `telemetry.jsonl` locally and puts a summary (peaks, source, status) in the job's `result_summary` (`11-records-and-queue.md`).
 - Capture one `rocprofv3` trace for the README if permissions allow (optional).
 
 **Options (★):** ★ `amdsmi` Python + `amd-smi` CLI reader · `rocm-smi` (older) · reading `/sys/class/drm/card*/device/` sysfs files (no dependencies, fewer metrics).
@@ -106,7 +105,7 @@ Every scorecard carries the profile id in provenance; the bench and the planner 
 ## 9. Rules that keep the GPU honest
 
 - One GPU job at a time per worker (a GPU lease); the CPU pool runs alongside.
-- Nothing else uses the GPU while a batch runs, except a resident vLLM whose memory is already budgeted (`model_loaded` mode).
+- Nothing else uses the GPU while a batch runs (no language model is hosted on it; ChP-0048).
 - Small circuits stay on the CPU below the measured crossover, and the UI says so.
 - Differential tests (CPU vs GPU, single vs double, Aer vs exact `Operator`) run at the start and end of every GPU session.
 - Do not put parsing, compiling or structural metrics on the GPU.

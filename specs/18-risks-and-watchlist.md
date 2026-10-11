@@ -8,7 +8,7 @@
 | Risk | Likelihood | Impact | Mitigation (planned) | If it happens |
 |---|---|---|---|---|
 | Aer's ROCm build fails on the image | Medium | High | First thing in S1, timeboxed 90 min; notes and wheel cached on the Hub | Stop; ask the user about FB-01 |
-| vLLM will not run on gfx1100 | Medium | Medium | Timebox 60 min in S1; AMD lists W7900 support | Ask about FB-02 (llama.cpp + GGUF); the client is unchanged |
+| A pinned Inference Providers model/provider goes offline or loses structured output | Medium | Medium | `qscore models check` before demos; catalog check at layer start | Update `improve/models.yaml` deliberately (class B) |
 | GPU credits run short | Medium | High | Destroy between sessions; credits ledger; short S2 if the rate is > ~2.9/h | Cut benchmarks to the minimal set; CPU worker carries small jobs |
 | Port 5432 blocked from Radeon Cloud | Low | Medium | Check in S1 | FB-03 decision |
 | Model proposals rarely pass verification | High | Low | `reference-qiskit` carries the loop; the comparison is the leaderboard's point | Report it honestly; it is a result |
@@ -38,22 +38,17 @@
 - Plan memory in GiB with the overhead factor; Aer's own `max_memory_mb` default is not our plan — pass it explicitly.
 - Unitary results come back to host memory (16 GiB at 15 qubits): check host RAM.
 - Truncation: Aer simulates only active qubits; planner sizes from active qubits after routing.
-- vLLM pre-allocates its share of memory (`--gpu-memory-utilization 0.40`) at start: the planner's `model_loaded` budget assumes exactly that value — keep them in sync (one constant in config).
-- Two HIP processes (vLLM + Aer) share the GPU: memory is partitioned by budget, compute is not; measure tokens/s and simulation throughput together once (S2).
 - No `HSA_OVERRIDE_GFX_VERSION` (gfx1100 is supported). `HIP_VISIBLE_DEVICES=0` if more than one device appears.
 
-### vLLM and models
-- Wheels are for Python 3.14 only; separate venv; pick the pairing for the image's ROCm version.
-- First requests compile kernels: warm up before measuring or demoing.
-- Use `--max-model-len` to bound KV cache within the 40 % share; record the value.
-- Model ids: `Qiskit/granite-3.3-8b-qiskit` (local), `Qiskit/Qwen2.5-Coder-14B-Qiskit` (exclusive mode only), GGUF variants for FB-02. Check licenses on each model card before publishing outputs.
+### Models (Inference Providers; ChP-0048)
+- Pinned panel in `improve/models.yaml` (`model:provider`); provider status and structured-output support can change — the catalog check fails loudly.
+- Licenses come from each model card (recorded per entry); open weights only.
+- Spend: cost per call is estimated from pinned pricing; per-job caps `hf_max_calls`/`hf_max_cost_usd`; watch the event's HF credits.
 
-### Neon
-- Free plan: 1 GB storage, 100 CU-hours/month, suspend after 5 idle minutes; polling keeps it awake.
-- Direct vs pooled endpoints (PgBouncer transaction mode breaks session features and server-side prepared statements).
-- `requires <@ capabilities` only works for flat boolean flags; keep requirements simple.
-- Cold starts: bounded retries, then raise.
-- Roles: test that each role can do only what it should (T05).
+### Platform job API (ChP-0047)
+- The platform must guarantee atomic claims in its own store; test two concurrent claimants against it.
+- Capability matching only works for flat boolean flags; keep requirements simple.
+- The platform must be up for workers to get work; jobs simply wait otherwise.
 
 ### Hugging Face
 - Batch commits per job; HTTP 429 → bounded retries then `HubError`.

@@ -43,7 +43,7 @@ MODELS: dict[str, type[BaseModel]] = {
     "qscore.job/v0.2": JobSpec,
     "qscore.event/v0.2": Event,
     "qscore.issues/v0.2": IssueReportModel,
-    "qscore.run/v0.2": RunRecord,
+    "qscore.run/v0.3": RunRecord,
 }
 
 
@@ -294,4 +294,4 @@ def test_default_job_requires_has_no_null_flags() -> None:
     job = JobSpec.model_validate({"schema": "qscore.job/v0.2", "kind": "score", "project": "p"})
     assert job.model_dump(mode="json")["requires"] == {}
     dumped = JobSpec.model_validate(example("qscore.job/v0.2")).model_dump(mode="json")
-    assert dumped["requires"] == {"gpu": True, "aer_gpu": True, "local_model": False}
+    assert dumped["requires"] == {"gpu": True, "aer_gpu": True}  # spec 04 example (ChP-0048)

@@ -10,7 +10,7 @@ The scorecard says what is wrong, the improvement request says what may change a
 
 ```python
 class ImprovementLayer(Protocol):
-    name: str                      # "reference-qiskit" | "local" | "hf" | plugin names
+    name: str                      # "reference-qiskit" | "hf" | plugin names
     version: str
     def capabilities(self) -> list[str]: ...          # strategy ids it serves
     def propose(self, request: ImprovementRequest) -> list[Proposal]: ...
@@ -32,14 +32,14 @@ for round in 1..max_rounds:
         proposals = layer.propose(request)                           # ≤ max_proposals, ≤ layer_timeout_s
         for each proposal:
             parse → splice into current circuit → verify (08) → re-score with the same seeds → decide (08 §4)
-            record attempt (accepted or not)  → Neon `attempts`, local JSON, Hub parquet at job end
+            record attempt (accepted or not)  → local JSON, Hub parquet at job end
     if a candidate was accepted: current = best accepted; re-score and re-diagnose (new scorecard)
     if should_stop(history, budget): break
 final: scorecard of the final circuit + attempts + diff vs baseline
 ```
 
 - Candidates within a round are verified in **one batch** where possible (GPU unitary checks at 13–15 qubits are grouped by the planner).
-- Model layers and GPU verification alternate naturally (propose → verify); never run a GPU simulation batch while vLLM is generating if memory mode is `exclusive`.
+- Model calls go to Inference Providers (no local model), so proposing never competes with GPU verification for memory.
 - Budgets: `max_rounds`, `max_proposals` per request per layer, `layer_timeout_s` per call, `wall_time_s`, `gpu_time_s`; the first limit reached stops the loop with `stop_reason`.
 
 ## 4. `reference-qiskit` layer (`improve/reference_qiskit.py`) — deterministic
@@ -57,23 +57,43 @@ Wraps existing Qiskit passes; same input → same output. Handlers:
 
 Every handler states its exact pass configuration in the proposal's `rationale` and `layer.version`.
 
-## 5. Model layers via one OpenAI-compatible client (`improve/openai_compat.py`) `[T1]`
+## 5. The `hf` model layer (`improve/hf_layer.py`) `[T1]` (ChP-0048)
 
-`OpenAICompatLayer(name, base_url, model, api_key_env, provider_label)`:
+**What it is.** `HfLayer(entry)`, one instance per pinned model in `improve/models.yaml`: open-weight models through **Hugging Face Inference Providers**. No model runs on our hardware. Name `hf`; `version` = `hf-<PROMPT_VERSION>`; serves the strategies listed for the entry (default: `block_resynthesis`, `reversible_rewrite`, `commutation_aware_routing`; layout/routing strategies stay with `reference-qiskit`).
 
-| Layer | `base_url` | Model (★ default) | Notes |
+**Transport.** The `openai` Python SDK (extra `[hf]`) with `base_url = https://router.huggingface.co/v1` (setting `hf_router_base_url`) and `api_key = HF_TOKEN` (fine-grained token with "Make calls to Inference Providers"). The model string is always `"<org>/<model>:<provider>"`: the provider is **pinned**, never `:fastest`/`:cheapest`/auto, so structured-output behaviour and cost are stable and recorded.
+
+**Pinned models (`improve/models.yaml`).** Entry fields: `id`, `provider`, `license` (from the model card; open weights only), `strategies`, `pricing_usd_per_mtok: {input, output}` (snapshot for estimates), `checked_at`. Panel checked 2026-10-11 (`GET /v1/models`: live, `supports_structured_output: true`; licenses from the model cards):
+
+| ★ | Model : provider | License | Why |
 |---|---|---|---|
-| `local` | `http://127.0.0.1:8000/v1` (vLLM on the W7900; llama-server if FB-02 is approved) | `Qiskit/granite-3.3-8b-qiskit` | Resident at 40 % GPU memory. The 14B `Qiskit/Qwen2.5-Coder-14B-Qiskit` (~30 GB) joins leaderboard runs only in `exclusive` mode (Tier 2). The 24B (~48 GB) does not fit. |
-| `hf` | `https://router.huggingface.co/v1` (Inference Providers) | Chosen from the router's catalog at build time (record exact ids, e.g. a large open coder model); optional `:provider` suffix | Uses `HF_TOKEN`; spends the event's HF credits — track cost per attempt. |
+| ★ | `openai/gpt-oss-120b:cerebras` | Apache-2.0 | Strong general reasoning; fastest throughput in the catalog |
+| | `Qwen/Qwen3-Coder-30B-A3B-Instruct:scaleway` | Apache-2.0 | Code-specialised |
+| | `deepseek-ai/DeepSeek-V4-Flash:deepinfra` | MIT | Strong and cheap |
+| | `openai/gpt-oss-20b:groq` | Apache-2.0 | Small baseline (size/quality trade-off on the leaderboard) |
 
-- Same request, same prompt version, same budget for every model → comparable leaderboard rows.
-- Temperature 0 (or the lowest the backend accepts), `max_tokens` capped (default 2048), `seed` when supported.
-- **Structured output (★ options):** ★ JSON-schema-constrained output where the backend supports it (vLLM structured outputs / guided JSON; `response_format={"type":"json_schema",...}` where the router's provider supports it) · prompt-only JSON + strict parse · tool/function calling. Whatever is used, the reply is parsed against `qscore.proposal/v0.2`; failure → `parse_ok = false` (no repair, R3).
-- **Privacy guard:** the `hf` layer refuses to run unless `privacy.external_inference: true` for the item and the request scope is `region`; it raises `LayerError("external inference disabled")` otherwise. `local` is not external.
-- Log per call: model, provider, latency, prompt/completion tokens, cost estimate (HF), prompt version. Never log the token.
-- **Bounded retries:** 429/5xx/connection reset → up to 3 attempts with exponential backoff (R3.5); then `LayerError`. Never switch to another model or provider automatically.
+The demo uses the ★ model; leaderboard runs use the whole panel. Qiskit's own fine-tunes are not served by Inference Providers (catalog check 2026-10-11) and are out of scope.
 
-**Client options (★):** ★ `openai` Python SDK with `base_url` · `httpx` raw · `huggingface_hub.InferenceClient` (chat completions) · LiteLLM (extra dependency; not needed).
+**Catalog check.** Before its first call the layer fetches `GET /v1/models` once (bounded retries, then `LayerError`). If the pinned `id` is absent, or its `provider` is not `live` or lacks `supports_structured_output`, it raises `LayerError("<id>:<provider> not available: <reason>")`; it never substitutes another model or provider. `qscore models check` runs the same check for every entry (exit 0 all ok, 3 otherwise).
+
+**One call per request.**
+- Messages from `prompts.render(request)` (§6). `response_format = {"type": "json_schema", "json_schema": {"name": "qscore_candidates", "schema": <CandidateSet>, "strict": true}}`.
+- `CandidateSet` = `{"candidates": [{"format": "openqasm3"|"openqasm2", "qasm": str, "rationale": str (≤ 600 chars), "estimate": number, "equivalent": bool}]}` with at most `max_proposals` items. The engine wraps each candidate into `qscore.proposal/v0.2`: `layer` (name, version, model, provider, prompt version), `candidate.scope = region`, `claims = {metric: objective.primary, direction from objective, estimate, equivalent}`. The model never writes ids, hashes or scope.
+- `temperature = 0`, `max_tokens = 2048`, client timeout `layer_timeout_s` (default 60 s), SDK retries off (the layer owns retries).
+
+**Parsing (no repair, R3).** The reply must be JSON valid against `CandidateSet`; each `qasm` must load with the OpenQASM 2/3 parsers used for uploads and have exactly the region's qubit count. A reply that fails → no proposals and one recorded failure; a candidate that fails is dropped and recorded; extra candidates beyond `max_proposals` are cut and recorded. No regex fixing, no re-asking, no second model.
+
+**Verification and acceptance.** Unchanged: splice → verify (08) → re-score with the same seeds → decide (08 §4). Claims are shown, never trusted.
+
+**Privacy guard.** The layer refuses unless `privacy.external_inference: true` for the item and the request scope is `region` → `LayerError("external inference disabled …")`. QASM comments are stripped from the region (§6).
+
+**Budgets and cost.** Per job: `hf_max_calls` (default 30) and `hf_max_cost_usd` (default 1.00). Cost per call = response `usage` × the entry's pinned pricing, recorded as an **estimate** (provider billing is authoritative). Reaching a limit raises `HfBudgetExhausted` (a `LayerError`); the loop stops with `stop_reason: budget: hf calls|cost`.
+
+**Errors.** 429/5xx/connection/timeout → up to 3 attempts with exponential backoff (R3.5), then `LayerError`; the loop records it and continues with other layers. Other HTTP errors (401/403/400) → `LayerError` at once. Anything unrecognised propagates. Never switch model or provider automatically.
+
+**Logged per call** (`CallRecord`, copied into the attempt record): model, provider, prompt version, latency ms, prompt/completion tokens, cost estimate, retries, reply parsed, proposals, invalid candidates with reasons. Never the token.
+
+**Client options (★):** ★ `openai` SDK with `base_url` (HF's documented OpenAI-compatible route) · `huggingface_hub.InferenceClient` (same router) · raw `httpx` · LiteLLM (extra dependency; not needed).
 
 ## 6. Prompts (`improve/prompts.py`) `[T1]`
 
@@ -93,7 +113,7 @@ Every handler states its exact pass configuration in the proposal's `rationale` 
 
 ## 8. Leaderboard and dataset `[T1]`
 
-- Neon view `leaderboard` (`11-records-and-queue.md` §3) aggregates attempts per (layer, model, provider, prompt_version): requests, proposals, parse rate, verified rate, verified-improvement rate, median latency, tokens, cost estimate.
+- `leaderboard.parquet` (`11-records-and-queue.md` §8) aggregates attempts per (layer, model, provider, prompt_version): requests, proposals, parse rate, verified rate, verified-improvement rate, median latency, tokens, cost estimate.
 - After each `conform` or `improve` job the worker exports `leaderboard.parquet` and the job's attempts parquet to the Hub dataset (`11-records-and-queue.md` §7).
 - The Space reads only `leaderboard.parquet` (`12-platform-ui-space.md` §5).
 - Dataset card (`README.md` in the dataset repo): what an attempt is, fields, license (Apache-2.0 for our data; circuits from examples), how verification works, caveats (evidence vs proof), the qscore version and score version.
@@ -103,5 +123,5 @@ Every handler states its exact pass configuration in the proposal's `rationale` 
 - Models output OpenQASM 2 when asked for 3 (and vice versa): accept both via the same loaders, record the format; anything else is a parse failure.
 - Gate names outside the target basis in model output: allowed for logical-scope regions (they get compiled), rejected for compiled-scope regions (permitted check).
 - `splice` must respect the region's qubit map and convexity; test splice ∘ extract = identity on fixtures.
-- Inference Providers' catalog and prices change: pin model ids in a config file (`improve/models.yaml`) chosen at build time and record them per attempt.
-- vLLM's first requests are slow (kernel compilation/warm-up): warm up before benchmarks and the demo; exclude warm-up from tokens/s.
+- Inference Providers' catalog and prices change: model ids and providers are pinned in `improve/models.yaml`, checked at layer start (`qscore models check` before a demo), and recorded per attempt.
+- Provider latency varies; record it per call and keep `layer_timeout_s` explicit.

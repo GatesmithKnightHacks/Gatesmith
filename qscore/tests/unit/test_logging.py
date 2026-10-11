@@ -17,8 +17,8 @@ def test_secret_env_values_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_url_credentials_redacted() -> None:
-    dsn = "postgresql://worker:s3cr3tpass@ep-x.neon.tech/db"
-    assert redact(dsn) == f"postgresql://{REDACTED}@ep-x.neon.tech/db"
+    dsn = "postgresql://worker:s3cr3tpass@db.example.com/db"
+    assert redact(dsn) == f"postgresql://{REDACTED}@db.example.com/db"
 
 
 def test_plain_text_unchanged() -> None:
@@ -30,7 +30,7 @@ def _record(msg: str, *args: object) -> logging.LogRecord:
 
 
 def test_filter_redacts_args(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("NEON_API_KEY", "napi_0123456789")
+    monkeypatch.setenv("PLATFORM_API_KEY", "napi_0123456789")
     record = _record("connecting with %s", "napi_0123456789")
     assert RedactionFilter().filter(record)
     assert record.getMessage() == f"connecting with {REDACTED}"
