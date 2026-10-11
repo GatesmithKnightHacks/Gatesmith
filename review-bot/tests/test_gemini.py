@@ -6,7 +6,7 @@ import pytest
 from qscore.errors import LayerError
 from test_bundle import allowed
 
-from qscore_review.gemini import MODEL, Gemini
+from qscore_review.gemini import GENERATION_COMMENT_LIMIT, MODEL, Gemini
 from qscore_review.settings import Settings
 from qscore_review.state import State
 
@@ -186,8 +186,106 @@ def test_actual_developer_api_sdk_serializes_strict_json_schema_without_repair(t
     asyncio.run(exercise())
     config = captured[0]["generationConfig"]
     assert "responseSchema" not in config
-    assert config["responseJsonSchema"] == ReviewDraft.model_json_schema(by_alias=True)
+    expected = ReviewDraft.model_json_schema(by_alias=True)
+    assert expected["properties"]["comments"]["maxItems"] == 100
+    expected["properties"]["comments"]["maxItems"] = GENERATION_COMMENT_LIMIT
+    # Exact deep equality proves no other schema field/constraint/reference changed.
+    assert GENERATION_COMMENT_LIMIT == 10
+    assert config["responseJsonSchema"] == expected
+    assert ReviewDraft.model_json_schema(by_alias=True)["properties"]["comments"]["maxItems"] == 100
     assert config["responseJsonSchema"]["additionalProperties"] is False
     # SDK 2.29 copies this nested configuration with its original snake_case keys.
     assert config["thinkingConfig"]["thinking_level"] == "HIGH"
     assert "tools" not in captured[0]
+
+
+def test_actual_sdk_provider_schema_rejection_never_retries_or_changes_schema(tmp_path):
+    import httpx
+    from google import genai
+    from google.genai import types
+
+    captured = []
+    state = State(tmp_path / "state.db")
+
+    def transport(request):
+        captured.append(json.loads(request.content))
+        return httpx.Response(
+            400,
+            json={
+                "error": {
+                    "code": 400,
+                    "status": "INVALID_ARGUMENT",
+                    "message": "Synthetic provider schema rejection",
+                }
+            },
+        )
+
+    async def exercise():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as http:
+            sdk = genai.Client(
+                api_key="test-not-a-real-key",
+                http_options=types.HttpOptions(
+                    httpx_async_client=http, retry_options=types.HttpRetryOptions(attempts=1)
+                ),
+            )
+            layer = Gemini(settings(tmp_path), state, sdk)
+            with pytest.raises(LayerError, match="ClientError"):
+                await layer.draft("rejected-head", "comparison", {})
+            with pytest.raises(LayerError, match="already attempted"):
+                await layer.draft("rejected-head", "comparison", {})
+            await sdk.aio.aclose()
+
+    asyncio.run(exercise())
+    assert len(captured) == 1
+    assert (
+        captured[0]["generationConfig"]["responseJsonSchema"]["properties"]["comments"]["maxItems"]
+        == 10
+    )
+    assert state.model("rejected-head")["cost"] > 0
+    assert state.model("rejected-head")["draft"] is None
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda draft: draft.update(extra="not allowed"),
+        lambda draft: draft.update(schema="unknown"),
+        lambda draft: draft.update(summary_note="x" * 601),
+        lambda draft: draft["comments"][0].update(extra="not allowed"),
+        lambda draft: draft["comments"][0].pop("assumes_versions"),
+        lambda draft: draft["comments"][0].update(line=0),
+        lambda draft: draft["comments"][0].update(side="LEFT"),
+        lambda draft: draft["comments"][0].update(category="unknown"),
+        lambda draft: draft["comments"][0].update(severity="fatal"),
+        lambda draft: draft["comments"][0].update(body=""),
+        lambda draft: draft["comments"][0].update(body="x" * 6001),
+        lambda draft: draft["comments"][0].update(evidence=[]),
+        lambda draft: draft["comments"][0].update(assumes_versions={"qiskit": 25}),
+        lambda draft: draft.update(comments=draft["comments"] * 101),
+    ],
+)
+def test_all_public_constraints_still_reject_invalid_provider_output(tmp_path, mutation):
+    from test_validation import comment
+
+    draft = {"schema": "qscore.review/v0.1", "summary_note": "", "comments": [comment()]}
+    mutation(draft)
+    models = FakeModels(json.dumps(draft))
+    state = State(tmp_path / "state.db")
+    layer = Gemini(settings(tmp_path), state, SimpleNamespace(aio=SimpleNamespace(models=models)))
+    with pytest.raises(LayerError, match="structured-output"):
+        asyncio.run(layer.draft("invalid-head", "comparison", {}))
+    with pytest.raises(LayerError, match="already attempted"):
+        asyncio.run(layer.draft("invalid-head", "comparison", {}))
+    assert len(models.calls) == 1
+    assert state.model("invalid-head")["draft"] is None
+
+
+def test_public_contract_keeps_original_hundred_comment_limit():
+    from test_validation import comment
+
+    from qscore_review.contracts import ReviewDraft
+
+    draft = ReviewDraft.model_validate(
+        {"schema": "qscore.review/v0.1", "summary_note": "", "comments": [comment()] * 100}
+    )
+    assert len(draft.comments) == 100
