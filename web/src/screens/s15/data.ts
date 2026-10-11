@@ -1,75 +1,58 @@
-/* S-15 data. Round 3 is the Paper snapshot; round 4 is what "Verify top 2" sends next. */
+/*
+ * S-15 · Candidate screening, round 4 of run 7f3a·0412 at 400 s: eight candidates for finding #3,
+ * "D03 block 2" (layers 17 to 31, lines 48 to 86). The predictor orders the queue; the engine still
+ * verifies, re-scores and decides. Values as on Paper 1BKI-0 and its states board 1LVA-0.
+ */
 
-export type Verdict = {
-  status: 'accepted' | 'rejected' | 'inconclusive'
-  value: string
-  sub: string
-}
+export type Layer = 'reference-qiskit' | 'local' | 'hf'
+export const LAYER_KIND: Record<Layer, 'engine' | 'model'> = { 'reference-qiskit': 'engine', local: 'model', hf: 'model' }
 
 export type Candidate = {
   rank: number
-  name: string
-  layer: 'local' | 'reference-qiskit' | 'hf'
-  ref: string
-  /** predicted change in two_qubit_count, gates */
+  strategy: string
+  layer: Layer
+  /** predicted two_qubit_count, ±CI95, n seeds */
   predicted: number
-  lo: number
-  hi: number
-  /** verified change, drawn as a diamond once the engine returns */
-  verifiedAt?: number
-  verdict: Verdict
+  ci: number
+  n: number
+  /** probability the engine verifies it */
+  verify: number
+  /** order the model proposed it in (the no-predictor state keeps this order) */
+  proposed: number
 }
 
-export const LAYER_DOT: Record<Candidate['layer'], string> = {
-  local: '#867BFA',
-  hf: '#867BFA',
-  'reference-qiskit': '#2EA3F8',
-}
-
-/** The interval plot: 0 at x 152.9, 28.6 px per gate (−5 … +2). */
-export const xOf = (v: number) => Math.round((152.9 + 28.6 * v) * 10) / 10
-
-export const ROUND3: Candidate[] = [
-  {
-    rank: 1,
-    name: 'commuting_reorder',
-    layer: 'local',
-    ref: 'D03#1',
-    predicted: -3.2,
-    lo: -4.1,
-    hi: -2.3,
-    verifiedAt: -3,
-    verdict: { status: 'accepted', value: '−3 gates', sub: '36 → 33 gates' },
-  },
-  {
-    rank: 2,
-    name: 'layout_search',
-    layer: 'reference-qiskit',
-    ref: 'D01#1',
-    predicted: -2.1,
-    lo: -3.0,
-    hi: -1.2,
-    verifiedAt: -1,
-    verdict: { status: 'rejected', value: '−1 gate', sub: 'depth +6 layers' },
-  },
-  { rank: 3, name: 'block_resynthesis', layer: 'hf', ref: 'D04#1', predicted: -1.4, lo: -2.6, hi: -0.2, verdict: { status: 'rejected', value: '0 gates', sub: 'depth +2 layers' } },
-  { rank: 4, name: 'reversible_rewrite', layer: 'local', ref: 'D04#2', predicted: -0.9, lo: -2.0, hi: 0.2, verdict: { status: 'inconclusive', value: '0 gates', sub: 'exact check timed out' } },
-  { rank: 5, name: 'routing_search', layer: 'reference-qiskit', ref: 'D01#2', predicted: -0.4, lo: -1.1, hi: 0.3, verdict: { status: 'rejected', value: '+1 gate', sub: '36 → 37 gates' } },
-  { rank: 6, name: 'commuting_reorder', layer: 'local', ref: 'D03#2', predicted: 0.6, lo: -0.4, hi: 1.6, verdict: { status: 'rejected', value: '+1 gate', sub: '36 → 37 gates' } },
+/** All eight once screened (the "all screened" state); the main board has #1 to #4 screened. */
+export const CANDIDATES: Candidate[] = [
+  { rank: 1, strategy: 'block_resynthesis', layer: 'reference-qiskit', predicted: 264, ci: 6, n: 5, verify: 0.81, proposed: 2 },
+  { rank: 2, strategy: 'commutation_aware_routing', layer: 'local', predicted: 268, ci: 9, n: 5, verify: 0.74, proposed: 1 },
+  { rank: 3, strategy: 'routing_search', layer: 'reference-qiskit', predicted: 275, ci: 7, n: 5, verify: 0.62, proposed: 3 },
+  { rank: 4, strategy: 'layout_search', layer: 'reference-qiskit', predicted: 281, ci: 4, n: 5, verify: 0.4, proposed: 5 },
+  { rank: 5, strategy: 'commutation_aware_routing', layer: 'hf', predicted: 284, ci: 8, n: 5, verify: 0.31, proposed: 4 },
+  { rank: 6, strategy: 'block_resynthesis', layer: 'local', predicted: 287, ci: 5, n: 5, verify: 0.22, proposed: 6 },
+  { rank: 7, strategy: 'reversible_rewrite', layer: 'local', predicted: 290, ci: 9, n: 5, verify: 0.15, proposed: 7 },
+  { rank: 8, strategy: 'noise_aware_layout', layer: 'reference-qiskit', predicted: 296, ci: 6, n: 5, verify: 0.08, proposed: 8 },
 ]
 
-/* Round 4 keeps the canonical story: reference routing_search rejected, local block_resynthesis inconclusive. */
-export const ROUND4: Candidate[] = [
-  { rank: 1, name: 'block_resynthesis', layer: 'local', ref: 'D04#1', predicted: -1.8, lo: -2.9, hi: -0.7, verdict: { status: 'inconclusive', value: '0 gates', sub: 'exact check timed out' } },
-  { rank: 2, name: 'routing_search', layer: 'reference-qiskit', ref: 'D01#1', predicted: -1.1, lo: -2.0, hi: -0.2, verifiedAt: 1, verdict: { status: 'rejected', value: '+1 gate', sub: '33 → 34 gates' } },
-  { rank: 3, name: 'layout_search', layer: 'reference-qiskit', ref: 'D01#2', predicted: -0.6, lo: -1.5, hi: 0.3, verifiedAt: 2, verdict: { status: 'rejected', value: '+2 gates', sub: '33 → 35 gates' } },
-  { rank: 4, name: 'commuting_reorder', layer: 'local', ref: 'D03#1', predicted: -0.4, lo: -1.2, hi: 0.4, verifiedAt: 0, verdict: { status: 'rejected', value: '0 gates', sub: 'depth +2 layers' } },
-  { rank: 5, name: 'reversible_rewrite', layer: 'local', ref: 'D04#2', predicted: -0.2, lo: -1.0, hi: 0.6, verdict: { status: 'inconclusive', value: '0 gates', sub: 'exact check timed out' } },
-  { rank: 6, name: 'block_resynthesis', layer: 'hf', ref: 'D04#3', predicted: 0.3, lo: -0.5, hi: 1.1, verifiedAt: 1, verdict: { status: 'rejected', value: '+1 gate', sub: '33 → 34 gates' } },
+/** On the main board the first four are screened and the rest are still screening. */
+export const SCREENED_ON_BOARD = 4
+
+/** Round 3's candidate, sent before screening existed: verifying at 400 s. */
+export const IN_VERIFICATION = { label: 'R3', strategy: 'commutation_aware_routing', layer: 'local' as Layer, note: 'attempt 6 · equivalent running' }
+
+export const NOW_GATES = 281
+
+/** The ladder for the selected candidate (all four steps queued before Verify). */
+export const LADDER = ['allowed', 'equivalent', 're-scored', 'decided'] as const
+
+/** Findings at 400 s: "3 open · 1 accepted". */
+export const FINDINGS = [
+  { id: '#1', rule: 'D01 Routing-dominated', note: 'routing_overhead 0.446', state: 'high' as const },
+  { id: '#2', rule: 'D03 block 1', note: 'fixed R2 · 281 gates', state: 'accepted' as const },
+  { id: '#3', rule: 'D03 block 2', note: 'screening · 8 candidates', state: 'high' as const },
+  { id: '#4', rule: 'D04 Resynthesizable blocks', note: '6 gates removable · q25 q26', state: 'high' as const },
 ]
 
-export const fmtChange = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}`
-export const fmtGates = (v: number) => `${fmtChange(v)} gates`
-export const fmtRange = (lo: number, hi: number) => `${fmtChange(lo)} to ${fmtChange(hi)}`
-
-export const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six']
+export const HISTORY = [
+  { round: 'round 4', note: '8 candidates · 4 screened · top 2 to the engine' },
+  { round: 'round 3', note: '3 candidates · 1 sent before screening · verifying' },
+]
