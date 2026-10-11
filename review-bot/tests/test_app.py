@@ -205,3 +205,88 @@ def test_rescore_refreshes_deterministic_results_without_another_gemini_call(tmp
     posts_after_rescore = len(github.posts)
     asyncio.run(service.process("workflow_run", payload()))
     assert len(github.posts) == posts_after_rescore
+
+
+class AnyRunGitHub(FakeGitHub):
+    def __init__(self):
+        super().__init__()
+        self.missing = False
+        self.artifact_downloads = 0
+
+    async def request(self, method, path, **kwargs):
+        import re
+
+        if re.fullmatch(r"/repos/org/demo/actions/runs/\d+", path):
+            self.calls.append((method, path, kwargs))
+            return self.run
+        if "/artifacts?" in path and self.missing:
+            return {"total_count": 0, "artifacts": []}
+        return await super().request(method, path, **kwargs)
+
+    async def artifact(self, *args):
+        self.artifact_downloads += 1
+        return await super().artifact(*args)
+
+    def generation(self, run_id, attempt=1, *, count=20):
+        self.run["id"], self.run["run_attempt"] = run_id, attempt
+
+        def mutate(envelope, payloads):
+            envelope["provenance"]["run_id"] = run_id
+            envelope["provenance"]["run_attempt"] = attempt
+
+        self.raw = fixture_bundle(head_count=count, mutate=mutate)
+        event = payload()
+        event["workflow_run"]["id"] = run_id
+        return event
+
+
+def test_late_older_run_cannot_revert_newer_summary_even_after_restart(tmp_path):
+    cfg = settings(tmp_path)
+    state = State(tmp_path / "state.db")
+    github = AnyRunGitHub()
+    service = Service(cfg, state, github, FailedGemini())
+    asyncio.run(service.process("workflow_run", github.generation(7, count=22)))
+    assert "| 10 | 22 |" in github.posts[0][1]
+    published = list(github.posts)
+    state.close()
+    state = State(tmp_path / "state.db")
+    service = Service(cfg, state, github, FailedGemini())
+    old_event = github.generation(4, count=20)
+    github.raw = b"malformed older artifact must never be parsed"
+    asyncio.run(service.process("workflow_run", old_event))
+    assert github.posts == published
+    assert github.artifact_downloads == 1
+    github.missing = True
+    asyncio.run(service.process("workflow_run", old_event))
+    assert github.posts == published
+
+
+def test_newer_failure_blocks_older_success_and_uses_current_generation(tmp_path):
+    import pytest
+    from qscore.errors import RecordError
+
+    cfg = settings(tmp_path)
+    state = State(tmp_path / "state.db")
+    github = AnyRunGitHub()
+    service = Service(cfg, state, github, FailedGemini())
+    asyncio.run(service.process("workflow_run", github.generation(4)))
+    new_event = github.generation(7)
+    github.missing = True
+    with pytest.raises(RecordError, match="Missing"):
+        asyncio.run(service.process("workflow_run", new_event))
+    assert github.posts[-1] == ("check", "failure")
+    failed_publication = list(github.posts)
+    github.missing = False
+    asyncio.run(service.process("workflow_run", github.generation(4)))
+    assert github.posts == failed_publication
+    assert state.generation_current(f"1:5:{BASE}:{HEAD}", 7, 1)
+
+
+def test_older_attempt_of_same_run_cannot_overwrite_rescore(tmp_path):
+    github = AnyRunGitHub()
+    state = State(tmp_path / "state.db")
+    service = Service(settings(tmp_path), state, github, FailedGemini())
+    asyncio.run(service.process("workflow_run", github.generation(4, 2, count=22)))
+    published = list(github.posts)
+    asyncio.run(service.process("workflow_run", github.generation(4, 1, count=20)))
+    assert github.posts == published

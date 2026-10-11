@@ -70,9 +70,50 @@ class Service:
             else:
                 self.state.finish(job["delivery"])
 
-    async def current(self, repo: str, pr: int, head: str, token: str) -> bool:
+    async def current(
+        self,
+        repo: str,
+        pr: int,
+        head: str,
+        token: str,
+        comparison: str | None = None,
+        generation: tuple[int, int] | None = None,
+    ) -> bool:
+        if comparison is not None and generation is not None:
+            if not self.state.generation_current(comparison, *generation):
+                return False
         latest = await self.github.request("GET", f"/repos/{repo}/pulls/{pr}", token=token)
-        return latest["state"] == "open" and latest["head"]["sha"] == head
+        if latest["state"] != "open" or latest["head"]["sha"] != head:
+            return False
+        if comparison is not None and generation is not None:
+            return latest["base"]["sha"] == comparison.split(":")[
+                2
+            ] and self.state.generation_current(comparison, *generation)
+        return True
+
+    async def claim_contexts(
+        self, repo: str, repository_id: int, run: dict[str, Any], token: str
+    ) -> dict[int, tuple[dict[str, Any], str]]:
+        """Authenticate PR linkage and claim ordering before interpreting any artifact."""
+        contexts = {}
+        for linked in run.get("pull_requests", []):
+            number = linked["number"]
+            pr = await self.github.request("GET", f"/repos/{repo}/pulls/{number}", token=token)
+            if (
+                pr["number"] != number
+                or pr["state"] != "open"
+                or pr["head"]["sha"] != run["head_sha"]
+            ):
+                continue
+            comparison = f"{repository_id}:{number}:{pr['base']['sha']}:{pr['head']['sha']}"
+            if not self.state.accept_generation(comparison, run["id"], run["run_attempt"]):
+                continue
+            identity = f"{comparison}:run:{run['id']}:attempt:{run['run_attempt']}"
+            previous = self.state.review(identity)
+            if previous and previous["status"] == "complete":
+                continue
+            contexts[number] = (pr, comparison)
+        return contexts
 
     async def process(self, kind: str, payload: dict[str, Any]) -> None:
         allowed = self.settings.allowed(payload["repository"]["id"], payload["installation"]["id"])
@@ -114,6 +155,10 @@ class Service:
             or run["status"] != "completed"
         ):
             raise RecordError("Completed workflow is not allowed")
+        contexts = await self.claim_contexts(allowed.repository, allowed.repository_id, run, token)
+        if not contexts:
+            LOGGER.info("Ignored an older or already published workflow generation")
+            return
         artifact_listing = await self.github.request(
             "GET",
             f"/repos/{allowed.repository}/actions/runs/{run_id}/artifacts?per_page=100",
@@ -132,6 +177,7 @@ class Service:
                 run,
                 token,
                 "Workflow did not produce exactly one valid qscore bundle.",
+                contexts,
             )
             raise RecordError("Missing or ambiguous qscore artifact")
         try:
@@ -142,9 +188,9 @@ class Service:
                 uncompressed_limit=self.settings.archive_max_uncompressed,
             )
             p = loaded.envelope.provenance
-            pr = await self.github.request(
-                "GET", f"/repos/{allowed.repository}/pulls/{p.pull_request}", token=token
-            )
+            if p.pull_request not in contexts:
+                raise RecordError("Artifact PR has no current authenticated workflow context")
+            pr, comparison = contexts[p.pull_request]
             if pr["head"]["sha"] != p.head_sha or pr["state"] != "open":
                 LOGGER.info("Ignored a completed workflow for an older or closed PR head")
                 return
@@ -164,7 +210,11 @@ class Service:
             )
         except (QscoreError, ValidationError, KeyError, ValueError) as exc:
             await self.workflow_failure(
-                allowed.repository, run, token, "Evaluation data rejected: " + type(exc).__name__
+                allowed.repository,
+                run,
+                token,
+                "Evaluation data rejected: " + type(exc).__name__,
+                contexts,
             )
             raise
         body = summary.body
@@ -174,7 +224,14 @@ class Service:
                 "lines), recorded metrics/findings/issues and relevant API facts are sent to "
                 "Google Gemini. Excluded and credential-like files are filtered."
             )
-        if not await self.current(allowed.repository, p.pull_request, p.head_sha, token):
+        if not await self.current(
+            allowed.repository,
+            p.pull_request,
+            p.head_sha,
+            token,
+            comparison,
+            (run["id"], run["run_attempt"]),
+        ):
             return
         comment_id = await self.github.sticky(allowed.repository, p.pull_request, token, body)
         self.state.save_review(identity, summary_id=comment_id)
@@ -212,7 +269,14 @@ class Service:
                 "knowledge": knowledge,
                 "general_comments": config.general_comments,
             }
-            if not await self.current(allowed.repository, p.pull_request, p.head_sha, token):
+            if not await self.current(
+                allowed.repository,
+                p.pull_request,
+                p.head_sha,
+                token,
+                comparison,
+                (run["id"], run["run_attempt"]),
+            ):
                 return
             draft = await self.gemini.draft(
                 f"{p.repository_id}:{p.pull_request}:{p.head_sha}", comparison, context
@@ -235,7 +299,14 @@ class Service:
                 )
             if reasons:
                 body += "\n\nReview filtering:\n" + "\n".join("- " + reason for reason in reasons)
-            if not await self.current(allowed.repository, p.pull_request, p.head_sha, token):
+            if not await self.current(
+                allowed.repository,
+                p.pull_request,
+                p.head_sha,
+                token,
+                comparison,
+                (run["id"], run["run_attempt"]),
+            ):
                 return
             if validated.comments:
                 marker = (
@@ -290,7 +361,14 @@ class Service:
             body += (
                 "\n\nGemini review failed: " + type(exc).__name__ + ". No other model was tried."
             )
-        if not await self.current(allowed.repository, p.pull_request, p.head_sha, token):
+        if not await self.current(
+            allowed.repository,
+            p.pull_request,
+            p.head_sha,
+            token,
+            comparison,
+            (run["id"], run["run_attempt"]),
+        ):
             return
         await self.github.sticky(allowed.repository, p.pull_request, token, body)
         await self.github.check(
@@ -328,24 +406,39 @@ class Service:
         return {"version": data["version"], "entries": selected}
 
     async def workflow_failure(
-        self, repo: str, run: dict[str, Any], token: str, reason: str
+        self,
+        repo: str,
+        run: dict[str, Any],
+        token: str,
+        reason: str,
+        contexts: dict[int, tuple[dict[str, Any], str]],
     ) -> None:
-        for linked in run.get("pull_requests", []):
-            if not await self.current(repo, linked["number"], run["head_sha"], token):
+        for number, (_pr, comparison) in contexts.items():
+            if not await self.current(
+                repo, number, run["head_sha"], token, comparison, (run["id"], run["run_attempt"])
+            ):
                 continue
             body = (
                 "<!-- gatesmith:qscore-summary -->\n## Gatesmith could not evaluate this PR\n"
                 + reason
-                + f"\n\n[Workflow logs]({run['html_url']})"
+                + f"\n\nWorkflow run `{run['id']}`, attempt `{run['run_attempt']}`."
+                + f"\n[Workflow logs]({run['html_url']})"
             )
-            await self.github.sticky(repo, linked["number"], token, body)
-            await self.github.check(
-                repo,
-                run["head_sha"],
-                token,
-                "failure",
-                body,
-                f"workflow-failure:{run['id']}:{run['run_attempt']}",
+            summary_id = await self.github.sticky(repo, number, token, body)
+            if not await self.current(
+                repo, number, run["head_sha"], token, comparison, (run["id"], run["run_attempt"])
+            ):
+                continue
+            check_id = await self.github.check(
+                repo, run["head_sha"], token, "failure", body, comparison
+            )
+            identity = f"{comparison}:run:{run['id']}:attempt:{run['run_attempt']}"
+            self.state.save_review(
+                identity,
+                status="complete",
+                summary_id=summary_id,
+                check_id=check_id,
+                result=json.dumps({"conclusion": "failure", "evaluation": "failed"}),
             )
 
 

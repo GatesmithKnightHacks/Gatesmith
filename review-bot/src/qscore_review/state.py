@@ -26,6 +26,8 @@ class State:
         CREATE TABLE IF NOT EXISTS reviews (
           identity TEXT PRIMARY KEY, status TEXT NOT NULL, summary_id INTEGER,
           review_id INTEGER, check_id INTEGER, result TEXT);
+        CREATE TABLE IF NOT EXISTS latest_generations (
+          comparison TEXT PRIMARY KEY, run_id INTEGER NOT NULL, run_attempt INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS commands (identity TEXT PRIMARY KEY);
         CREATE TABLE IF NOT EXISTS model_calls (
           identity TEXT PRIMARY KEY, comparison TEXT NOT NULL, cost REAL NOT NULL,
@@ -89,6 +91,35 @@ class State:
         self.db.execute(
             f"UPDATE reviews SET {assignments} WHERE identity=?", (*fields.values(), identity)
         )
+
+    def accept_generation(self, comparison: str, run_id: int, run_attempt: int) -> bool:
+        """Persist monotonically ordered authenticated workflow generations atomically."""
+        if (
+            type(run_id) is not int
+            or type(run_attempt) is not int
+            or not 0 < run_id < 2**63
+            or not 0 < run_attempt < 2**63
+        ):
+            raise RecordError("Invalid authenticated workflow generation")
+        row = self.db.execute(
+            """
+            INSERT INTO latest_generations VALUES(?,?,?)
+            ON CONFLICT(comparison) DO UPDATE SET
+                run_id=excluded.run_id, run_attempt=excluded.run_attempt
+            WHERE excluded.run_id > latest_generations.run_id
+               OR (excluded.run_id = latest_generations.run_id
+                   AND excluded.run_attempt >= latest_generations.run_attempt)
+        """,
+            (comparison, run_id, run_attempt),
+        )
+        return row.rowcount == 1
+
+    def generation_current(self, comparison: str, run_id: int, run_attempt: int) -> bool:
+        row = self.db.execute(
+            "SELECT run_id,run_attempt FROM latest_generations WHERE comparison=?",
+            (comparison,),
+        ).fetchone()
+        return row is not None and tuple(row) == (run_id, run_attempt)
 
     def claim_command(self, identity: str) -> bool:
         return (
