@@ -73,7 +73,7 @@ function BoardScreen({ cfg }: { cfg: BoardState }) {
     <Shell
       context="Leaderboard"
       rail="leaderboard"
-      status={<TopStatus gpuOn={!cfg.gpuOff} />}
+      gpu={cfg.gpuOff ? 'off' : 'online'}
       tabs={
         <TabStrip
           tabs={[
@@ -137,30 +137,6 @@ function BoardScreen({ cfg }: { cfg: BoardState }) {
   )
 }
 
-function TopStatus({ gpuOn }: { gpuOn: boolean }) {
-  return (
-    <>
-      <span className="gpu-status">
-        <span className="gpu-dot" style={{ background: gpuOn ? 'var(--color-text-primary)' : 'var(--color-text-disabled)' }} />
-        {gpuOn ? 'GPU online' : 'GPU off'}
-      </span>
-      <span className="s14-account">
-        <span className="s14-account-disc" aria-hidden>
-          <svg width="10" height="10" viewBox="0 0 14 14">
-            <path
-              d="M7 7.2a2.4 2.4 0 100-4.8a2.4 2.4 0 000 4.8zM2.8 12.2c.6-2 2.2-3.1 4.2-3.1s3.6 1.1 4.2 3.1"
-              fill="none"
-              stroke="var(--color-text-secondary)"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
-        <span className="mono">qlab-dev</span>
-      </span>
-    </>
-  )
-}
 
 /* ── Sorting and filters ─────────────────────────────────────────────── */
 const SORT_VALUE: Record<SortKey, (r: LayerRow) => number> = {

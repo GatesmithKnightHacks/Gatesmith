@@ -10,7 +10,7 @@ import { DataRow, EditorButton, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, S
 import { Sk, SkRegion } from '../ui/Skeleton'
 import { RunChart } from './team/S12Chart'
 import { S12Icon, S12SectionIcon } from './team/S12Icons'
-import { HighestCell, S12Spinner, S12TopStatus } from './team/S12Parts'
+import { HighestCell, S12Spinner } from './team/S12Parts'
 import { repoView, type RepoView } from './team/S12States'
 import { HEAD, PR_COMMENTS, REPO, type RepoCircuit } from './team/repoData'
 import './team/S12Repo.css'
@@ -31,7 +31,7 @@ function RepoScreen({ view }: { view: RepoView }) {
     <Shell
       context="Repo"
       rail="repo"
-      status={<S12TopStatus gpuOnline={view.gpuOnline} />}
+      gpu={view.gpuOnline ? 'online' : 'off'}
       tabs={<TabStrip tabs={[{ id: 'repo', label: REPO, active: true }]} />}
       inspector={<RepoInspector view={view} circuit={circuit} mode={mode} onMode={setMode} />}
     >

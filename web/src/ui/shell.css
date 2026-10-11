@@ -14,6 +14,9 @@
 
 /* ── Top bar ─────────────────────────────────────────────────────────── */
 .topbar {
+  position: relative;
+  /* above the rail (5) so the account menu hangs over the body */
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -292,6 +295,11 @@
   visibility: visible;
   transition: opacity var(--motion-hover) var(--ease-motion);
 }
+/* The label chip yields to an open menu. */
+.rail-item[aria-expanded='true'] + .rail-tip {
+  opacity: 0;
+  visibility: hidden;
+}
 .rail-tip-key {
   color: var(--color-text-tertiary);
   font-size: var(--text-label);
@@ -376,51 +384,145 @@
   cursor: default;
 }
 
-/* ── Rail menus: fade in 200 in place, out 150 ────────────────────────── */
-.rail-popover {
-  position: absolute;
-  left: calc(100% + 10px);
-  bottom: 4px;
+/* ── Menus (M6 menu open / Esc, DS-08): one grammar for the rail menus and the account menu ── */
+/* 224 wide on the inset, 1px ground border, radius 4, 28px rows, 10px inset, 1px panel rules. In 200, out 150, in place. */
+.menu {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
-  width: 248px;
-  padding: var(--spacing-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-popover);
+  width: 224px;
+  padding: var(--spacing-1) 0;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
   animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
 }
-.rail-popover.is-leaving {
+.menu.is-leaving {
   animation: motion-fade-out var(--motion-hover) var(--ease-motion) both;
+}
+/* A rail menu sits on the content column's left edge, level with its item. */
+.rail-popover {
+  position: absolute;
+  left: calc(100% + 4px);
+  bottom: 0;
 }
 .rail-nav .rail-popover {
   bottom: auto;
   top: 0;
 }
-.popover-title {
+/* The account menu hangs under its mark, right-aligned with it. */
+.topbar-menu {
+  position: absolute;
+  top: 44px;
+  right: var(--spacing-4);
+  z-index: 20;
+}
+.menu-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.menu-title .mono {
   color: var(--color-text-primary);
-  font-size: var(--text-base);
-  font-weight: var(--font-weight-medium);
-  line-height: 18px;
-  padding-bottom: var(--spacing-1);
 }
-.popover-note {
-  color: var(--color-text-secondary);
+.menu-rule {
+  height: 1px;
+  flex-shrink: 0;
+  background: var(--color-surface-panel);
 }
-.popover-row {
+.menu-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
-  color: var(--color-text-secondary);
-  border-top: 1px solid var(--color-surface-inset);
+  gap: var(--spacing-2);
+  height: 28px;
+  padding: 0 10px;
+  width: 100%;
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  text-align: left;
 }
-.popover-value {
+.menu-row.is-action {
+  cursor: pointer;
+  transition: background-color var(--motion-hover) var(--ease-motion);
+}
+.menu-row.is-action:hover {
+  background: var(--color-surface-panel);
+}
+.menu-row.is-action:focus-visible {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: -2px;
+}
+.menu-value {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+/* The one checkbox grammar (S-03 auto mode): 14px, radius 2, control border, on the inset. */
+.menu-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-inset);
   color: var(--color-text-primary);
 }
-.popover-action {
-  align-self: flex-start;
-  margin-top: var(--spacing-1);
+
+/* ── Account mark in the top bar (S-19 board): a #354348 chip with the disc and the handle ── */
+.topbar-account {
+  display: flex;
+  align-items: center;
+}
+.account-mark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-selected);
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  transition: background-color var(--motion-hover) var(--ease-motion);
+}
+.account-mark:hover,
+.account-mark[aria-expanded='true'] {
+  background: var(--color-border-control);
+}
+.account-mark:focus-visible {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.account-mark.is-out {
+  background: none;
+  padding: 0;
+}
+.account-mark.is-out:hover {
+  background: none;
+  color: var(--color-text-primary);
+}
+.account-disc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
 }

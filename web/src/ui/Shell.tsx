@@ -12,12 +12,11 @@
  */
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { navigate, redo, ROUTES, undo, useHistoryPosition, type RoutePath } from '../app/router'
-import { useAccount } from '../data/account'
+import { accountActions, useAccount } from '../data/account'
 import { actions } from '../data/run'
 import { useReducedMotion, setReducedMotion } from './motionPreference'
 import { usePresence } from './presence'
 import { isTyping, railFocus, setRailExpanded, useRailExpanded } from './railState'
-import { Switch } from './parts'
 import {
   IconAccount,
   IconHelp,
@@ -56,15 +55,19 @@ type ShellProps = {
   children: ReactNode
   /** Right side of the top bar. Defaults to GPU online + job id. */
   status?: ReactNode
+  /** GPU dot and word when `status` is not given. */
+  gpu?: 'online' | 'off'
+  /** Job id beside the GPU word on the workbench screens; the account mark shows otherwise. */
+  job?: string
   /** A Toast, floated at the main column's foot. */
   toast?: ReactNode
 }
 
-export function Shell({ context = 'Workbench', rail, railBadges, tabs, inspector, children, status, toast }: ShellProps) {
+export function Shell({ context = 'Workbench', rail, railBadges, tabs, inspector, children, status, toast, gpu, job }: ShellProps) {
   const main = useRef<HTMLElement>(null)
   return (
     <div className="shell">
-      <TopBar context={context} status={status} />
+      <TopBar context={context} status={status} gpu={gpu} job={job} />
       <div className="shell-body">
         <Rail active={rail} badges={railBadges} main={main} />
         <main className="shell-main" ref={main} tabIndex={-1}>
@@ -80,8 +83,17 @@ export function Shell({ context = 'Workbench', rail, railBadges, tabs, inspector
   )
 }
 
-export function TopBar({ context, status }: { context: string; status?: ReactNode }) {
-  const { session } = useAccount()
+export function TopBar({
+  context,
+  status,
+  gpu = 'online',
+  job,
+}: {
+  context: string
+  status?: ReactNode
+  gpu?: 'online' | 'off'
+  job?: string
+}) {
   return (
     <header className="topbar">
       <button className="topbar-brand" onClick={() => navigate(ROUTES.newRun)} aria-label="Gatesmith home">
@@ -92,17 +104,121 @@ export function TopBar({ context, status }: { context: string; status?: ReactNod
       <div className="topbar-status">
         {status ?? (
           <>
-            <GpuStatus online />
-            <span className="mono topbar-job">job 7f3a·0412</span>
-            {session && (
-              <span className="mono topbar-job" title="Signed in">
-                {session.handle}
-              </span>
-            )}
+            <GpuStatus online={gpu === 'online'} />
+            {job ? <span className="mono topbar-job">job {job}</span> : <AccountMark />}
           </>
         )}
       </div>
     </header>
+  )
+}
+
+const PERSON = (
+  <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden>
+    <path d="M7 7.2a2.4 2.4 0 100-4.8a2.4 2.4 0 000 4.8zM2.8 12.2c.6-2 2.2-3.1 4.2-3.1s3.6 1.1 4.2 3.1" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * The account mark (S-19 top bar): a #354348 chip with the disc and the handle. Clicking it opens
+ * the account menu under it (M6 menu open: in 200, Esc out 150 and focus back on the mark).
+ * `signedIn` overrides the store for the states boards.
+ */
+export function AccountMark({ signedIn }: { signedIn?: boolean }) {
+  const { session } = useAccount()
+  const on = signedIn ?? !!session
+  const handle = session?.handle ?? 'qlab-dev'
+  const [open, setOpen] = useState(false)
+  const [view, setView] = useState<'main' | 'settings'>('main')
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      ref.current?.querySelector<HTMLButtonElement>('.account-mark')?.focus()
+    }
+    window.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const go = (path: RoutePath) => {
+    setOpen(false)
+    navigate(path)
+  }
+  return (
+    <div className="topbar-account" ref={ref}>
+      <button
+        className={`account-mark${on ? '' : ' is-out'}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => {
+          setView('main')
+          setOpen((v) => !v)
+        }}
+      >
+        {on ? (
+          <>
+            <span className="account-disc">{PERSON}</span>
+            <span className="mono">{handle}</span>
+          </>
+        ) : (
+          'Not signed in'
+        )}
+      </button>
+      <Menu open={open} label="Account" className="topbar-menu">
+        {view === 'settings' ? (
+          <SettingsRows />
+        ) : on ? (
+          <>
+            <div className="menu-title">
+              Signed in as <span className="mono">{handle}</span>
+            </div>
+            <div className="menu-rule" />
+            <button className="menu-row is-action" role="menuitem" onClick={() => go(ROUTES.account)}>
+              <span>Account</span>
+              <span className="mono menu-value">g a</span>
+            </button>
+            <button className="menu-row is-action" role="menuitem" onClick={() => setView('settings')}>
+              <span>Settings</span>
+            </button>
+            <div className="menu-rule" />
+            <button
+              className="menu-row is-action"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                void accountActions.signOut()
+              }}
+            >
+              <span>Sign out</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="menu-title">Not signed in</div>
+            <div className="menu-rule" />
+            <button className="menu-row is-action" role="menuitem" onClick={() => go(ROUTES.signIn)}>
+              <span>Sign in</span>
+              <span className="mono menu-value">g a</span>
+            </button>
+            <button className="menu-row is-action" role="menuitem" onClick={() => go(ROUTES.signUp)}>
+              <span>Create an account</span>
+            </button>
+            <div className="menu-rule" />
+            <button className="menu-row is-action" role="menuitem" onClick={() => setView('settings')}>
+              <span>Settings</span>
+            </button>
+          </>
+        )}
+      </Menu>
+    </div>
   )
 }
 
@@ -280,8 +396,18 @@ export function Rail({
 }
 
 /** A rail popover: fades in 200 in place, out 150; outside click or Esc closes it. */
-function RailMenu({ open, label, onClose, children }: { open: boolean; label: string; onClose: () => void; children: ReactNode }) {
+/** A menu's presence: in 200 in place, out 150 (M6). Position comes from className. */
+function Menu({ open, label, className, children }: { open: boolean; label: string; className: string; children: ReactNode }) {
   const { mounted, leaving } = usePresence(open)
+  if (!mounted) return null
+  return (
+    <div className={`menu ${className}${leaving ? ' is-leaving' : ''}`} role="menu" aria-label={label}>
+      {children}
+    </div>
+  )
+}
+
+function RailMenu({ open, label, onClose, children }: { open: boolean; label: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -292,10 +418,11 @@ function RailMenu({ open, label, onClose, children }: { open: boolean; label: st
     window.addEventListener('pointerdown', onDown)
     return () => window.removeEventListener('pointerdown', onDown)
   }, [open, onClose])
-  if (!mounted) return null
   return (
-    <div ref={ref} className={`rail-popover${leaving ? ' is-leaving' : ''}`} role="dialog" aria-label={label}>
-      {children}
+    <div ref={ref} className="rail-menu-anchor">
+      <Menu open={open} label={label} className="rail-popover">
+        {children}
+      </Menu>
     </div>
   )
 }
@@ -353,28 +480,43 @@ export function Content({ children, className = '' }: { children: ReactNode; cla
 }
 
 /* ── Rail menus ─────────────────────────────────────────────────────── */
-function SettingsPanel() {
+const CHECK = (
+  <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden>
+    <path d="M3 7.5l2.5 2.5L11 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** The settings rows, shared by the rail's Settings menu and the account menu's Settings row. */
+function SettingsRows() {
   const reduced = useReducedMotion()
   return (
     <>
-      <div className="popover-title">Settings</div>
-      <label className="popover-row">
+      <div className="menu-title">Settings</div>
+      <div className="menu-rule" />
+      <button className="menu-row is-action" role="menuitemcheckbox" aria-checked={reduced} onClick={() => setReducedMotion(!reduced)}>
         <span>Reduce motion</span>
-        <Switch on={reduced} onChange={setReducedMotion} label="Reduce motion" />
-      </label>
-      <div className="popover-row">
+        <span className="menu-check" aria-hidden>
+          {reduced && CHECK}
+        </span>
+      </button>
+      <div className="menu-row">
         <span>Engine</span>
-        <span className="mono popover-value">qscore-2026.1</span>
+        <span className="mono menu-value">qscore-2026.1</span>
       </div>
-      <div className="popover-row">
+      <div className="menu-row">
         <span>Data</span>
-        <span className="popover-value">scripted demo run</span>
+        <span className="menu-value">scripted demo run</span>
       </div>
-      <button className="btn-editor popover-action" onClick={() => actions.reset()}>
-        Restart the demo
+      <div className="menu-rule" />
+      <button className="menu-row is-action" role="menuitem" onClick={() => actions.reset()}>
+        <span>Restart the demo</span>
       </button>
     </>
   )
+}
+
+function SettingsPanel() {
+  return <SettingsRows />
 }
 
 const SHORTCUTS: [string, string][] = [
@@ -390,16 +532,17 @@ const SHORTCUTS: [string, string][] = [
 function HelpPanel() {
   return (
     <>
-      <div className="popover-title">Help</div>
-      <div className="popover-note">Keys work on every screen with the rail.</div>
+      <div className="menu-title">Help · keys work on every screen with the rail</div>
+      <div className="menu-rule" />
       {SHORTCUTS.map(([what, keys]) => (
-        <div key={what} className="popover-row">
+        <div key={what} className="menu-row">
           <span>{what}</span>
-          <span className="mono popover-value">{keys}</span>
+          <span className="mono menu-value">{keys}</span>
         </div>
       ))}
-      <button className="btn-editor popover-action" onClick={() => navigate(ROUTES.template)}>
-        Open the shell template
+      <div className="menu-rule" />
+      <button className="menu-row is-action" role="menuitem" onClick={() => navigate(ROUTES.template)}>
+        <span>Open the shell template</span>
       </button>
     </>
   )

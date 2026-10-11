@@ -24,7 +24,7 @@ import { Content, Shell, TabStrip } from '../ui/Shell'
 import { AccountInspector, type SaveLine } from './account/AccountInspector'
 import { AccountTile, ActivityTile, SessionsTile, StoredTile } from './account/AccountTiles'
 import { useAutoFocus, useDone, useNow, useRetry } from './account/hooks'
-import { AccountStatus, Banner, IconCheck, IconWarn, Spinner, WithCodes } from './account/parts'
+import { Banner, IconCheck, IconWarn, Spinner, WithCodes } from './account/parts'
 import { SignInForm } from './account/SignInForm'
 import './account/s19.css'
 
@@ -33,7 +33,7 @@ export function S19Account() {
   const acct = useAccount()
   if (state === 'signed-out' || !acct.session)
     return (
-      <Shell context="Account" rail="account" status={<AccountStatus />} tabs={<AccountTabs />} inspector={null}>
+      <Shell context="Account" rail="account" tabs={<AccountTabs />} inspector={null}>
         <Content className="acc-center">
           {/* Signed out: the account page asks for sign in, the email stays. */}
           <SignInForm key={state ?? 'main'} view={state === 'signed-out' ? 'signed-out' : null} onSignedIn={() => undefined} />
@@ -237,7 +237,7 @@ function AccountScreen({ view, acct }: { view: View | null; acct: AccountState }
     <Shell
       context="Account"
       rail="account"
-      status={<AccountStatus />}
+     
       tabs={<AccountTabs />}
       inspector={
         <AccountInspector

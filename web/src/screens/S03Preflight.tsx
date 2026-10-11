@@ -9,9 +9,9 @@ import { navigate, ROUTES, useHashParams } from '../app/router'
 import { GPU_OFF_MESSAGE } from '../data/demo'
 import { actions } from '../data/run'
 import { EditorButton, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
-import { GpuStatus, Shell } from '../ui/Shell'
+import { GpuStatus, Shell, AccountMark } from '../ui/Shell'
 import { SboxCanvas, SidechainCanvas } from './intake/canvases'
-import { AccountHandle, Banner, Facts, Glyph, InspSection, IntakeTabs, RunBlock, Shim, Spinner } from './intake/kit'
+import { Banner, Facts, Glyph, InspSection, IntakeTabs, RunBlock, Shim, Spinner } from './intake/kit'
 import { useOnline } from './intake/online'
 import './intake/s03.css'
 
@@ -138,12 +138,12 @@ function Preflight({ forced }: { forced: S03State }) {
               <span className="pf-gpu-off-dot" />
               {GPU_OFF_MESSAGE}
             </span>
-            <AccountHandle />
+            <AccountMark />
           </>
         ) : (
           <>
             <GpuStatus online />
-            <AccountHandle />
+            <AccountMark />
           </>
         )
       }

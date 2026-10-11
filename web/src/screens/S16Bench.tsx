@@ -11,7 +11,7 @@ import { BenchTile, type BenchView } from './s16/Bench'
 import { type HistoryRow } from './s16/data'
 import { S16Inspector } from './s16/Inspector'
 import { GpuTile, TrainingTile, type GpuView, type TrainingView } from './s16/Training'
-import { AccountStatus, Banner } from './stretch/parts'
+import { Banner } from './stretch/parts'
 import './s16/s16.css'
 
 /** ?state= names: the states board captions, kebab-cased, plus `offline` (network) and `gpu-off`. */
@@ -97,7 +97,7 @@ function Bench({ state }: { state: State | null }) {
     <Shell
       context="Leaderboard"
       rail="leaderboard"
-      status={<AccountStatus gpu={gpu === 'off' ? 'off' : 'online'} />}
+      gpu={gpu === 'off' ? 'off' : 'online'}
       tabs={
         <TabStrip
           tabs={[

@@ -9,7 +9,7 @@ import { navigate, ROUTES, useHashParams } from '../app/router'
 import { actions } from '../data/run'
 import { ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Section, Tile } from '../ui/parts'
 import { Content, Shell, TabStrip } from '../ui/Shell'
-import { AccountStatus, Banner, FactRow, InsetButton, MarkIcon, MarkWord, Shim, Spinner, StageLine } from './report/bits'
+import { Banner, FactRow, InsetButton, MarkIcon, MarkWord, Shim, Spinner, StageLine } from './report/bits'
 import { Icons } from './report/icons'
 import { FinalCircuit, OriginalCircuit } from './report/Circuits'
 import {
@@ -50,7 +50,7 @@ export function S09Report() {
       <Shell
         context="Report"
         rail="runs"
-        status={<AccountStatus gpu={state !== 'gpu-off'} />}
+        gpu={state === 'gpu-off' ? 'off' : 'online'}
         tabs={
           <TabStrip
             tabs={[

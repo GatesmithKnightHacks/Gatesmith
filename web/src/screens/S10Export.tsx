@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
 import { EditorButton, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Section, Tile } from '../ui/parts'
 import { Content, Shell, TabStrip } from '../ui/Shell'
-import { AccountStatus, Banner, CodeBlock, FactRow, InsetButton, MarkIcon, MarkWord, Shim, Spinner, StageLine } from './report/bits'
+import { Banner, CodeBlock, FactRow, InsetButton, MarkIcon, MarkWord, Shim, Spinner, StageLine } from './report/bits'
 import { copyText, downloadText, useFlash } from './report/helpers'
 import { Icons } from './report/icons'
 import {
@@ -62,7 +62,6 @@ function ExportView({ state }: { state: S10State }) {
       <Shell
         context="Report"
         rail="runs"
-        status={<AccountStatus />}
         tabs={
           <TabStrip
             tabs={[

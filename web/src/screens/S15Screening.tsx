@@ -10,7 +10,6 @@ import { CandidatesTile, type CandidatesView } from './s15/Candidates'
 import { S15Inspector, type InspectorView } from './s15/Inspector'
 import { PredictorTile } from './s15/Predictor'
 import { RoundsTile } from './s15/Rounds'
-import { AccountStatus } from './stretch/parts'
 import './s15/s15.css'
 
 /** ?state= names: the captions of the states board, kebab-cased, plus `offline` (network) and `gpu-off`. */
@@ -66,7 +65,7 @@ function Screening({ state }: { state: State | null }) {
     <Shell
       context="Leaderboard"
       rail="leaderboard"
-      status={<AccountStatus gpu={state === 'gpu-off' ? 'off' : 'online'} />}
+      gpu={state === 'gpu-off' ? 'off' : 'online'}
       tabs={
         <TabStrip
           tabs={[

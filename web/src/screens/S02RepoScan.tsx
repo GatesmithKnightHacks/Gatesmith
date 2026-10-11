@@ -8,8 +8,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { useHashParams } from '../app/router'
 import { actions } from '../data/run'
 import { EditorButton, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
-import { GpuStatus, Shell } from '../ui/Shell'
-import { AccountHandle, Banner, Code, Facts, Glyph, GroupHeader, InspSection, IntakeTabs, RunBlock, Shim, Spinner } from './intake/kit'
+import { GpuStatus, Shell, AccountMark } from '../ui/Shell'
+import { Banner, Code, Facts, Glyph, GroupHeader, InspSection, IntakeTabs, RunBlock, Shim, Spinner } from './intake/kit'
 import { codeLines } from './intake/code'
 import { useOnline } from './intake/online'
 import { draftManifest, FOUND_MANIFEST, NOT_CHECKED, QASM_FILES, QISKIT_SOURCES, REPO, SKIPPED, type ScanFile } from './intake/scanData'
@@ -127,7 +127,7 @@ function RepoScan({ forced }: { forced: S02State }) {
       status={
         <>
           <GpuStatus online />
-          <AccountHandle />
+          <AccountMark />
         </>
       }
       tabs={<IntakeTabs label="New run" plus />}

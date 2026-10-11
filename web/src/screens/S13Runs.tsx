@@ -1,12 +1,12 @@
 /* S-13 · Runs: every run saved to qlab-dev, newest first, with the selected run, the account and what it stores. */
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { navigate, ROUTES, useHashParams, type RoutePath } from '../app/router'
-import { Content, Shell, TabStrip } from '../ui/Shell'
+import { Content, Shell, TabStrip, GpuStatus, AccountMark } from '../ui/Shell'
 import { Banner, ErrorCode } from '../ui/Banner'
 import { EditorButton, ModeTabs, PoweredBy, PrimaryButton, Section, Tile } from '../ui/parts'
 import { Sk } from '../ui/Skeleton'
 import { FAILURE, ITEMS, JOBS, QUEUED_WHILE_GPU_OFF, STATES, type Job } from './team/runsData'
-import { FilterSelect, InspRow, InspRows, SearchField, StateIcon, StateWord, TopStatus } from './team/S13Parts'
+import { FilterSelect, InspRow, InspRows, SearchField, StateIcon, StateWord } from './team/S13Parts'
 import { isRunsState, noMatchWords, stateConfig, type ItemFilter, type RunsState, type StateConfig, type StateFilter } from './team/S13Config'
 import { SectionGlyph } from './team/S13Glyphs'
 import { LoadingRows, SignInTile } from './team/S13States'
@@ -93,7 +93,13 @@ function RunsScreen({ state, select }: { state: RunsState; select: string | null
     <Shell
       context="Runs"
       rail="runs"
-      status={<TopStatus gpu={cfg.gpu} signedIn={!cfg.signedOut} />}
+      gpu={cfg.gpu ? 'online' : 'off'}
+      status={
+        <>
+          <GpuStatus online={cfg.gpu} />
+          <AccountMark signedIn={!cfg.signedOut} />
+        </>
+      }
       tabs={
         <TabStrip
           tabs={[
