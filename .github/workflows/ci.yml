@@ -4,6 +4,7 @@ name: ci
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   engine:
@@ -20,14 +21,80 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install (CPU Aer)
-        run: uv sync --frozen
+        run: uv sync --frozen --extra hf --extra ui
       - name: Lint and format
-        run: uv run ruff check . && uv run ruff format --check .
+        run: uv run --no-sync ruff check . && uv run --no-sync ruff format --check .
       - name: Types
-        run: uv run mypy src
+        run: uv run --no-sync mypy src
       - name: Import layers
-        run: uv run lint-imports
+        run: uv run --no-sync lint-imports
       - name: Tests (CPU; includes tests/contract schema drift)
         run: >
-          uv run pytest -m "not gpu and not platform and not hub and not llm and not slow"
+          uv run --no-sync pytest -m "not gpu and not platform and not hub and not llm and not slow"
           -W error::DeprecationWarning:qiskit -n auto
+
+  review-bot:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: review-bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install bot and pinned dependencies
+        run: uv sync --frozen
+      - name: Lint and format
+        run: uv run --no-sync ruff check . && uv run --no-sync ruff format --check .
+      - name: Types
+        env:
+          MYPYPATH: ../qscore/src
+        run: uv run --no-sync mypy src
+      - name: Tests (offline transports; no provider credentials)
+        run: uv run --offline --no-sync pytest -q
+
+  deploy:
+    needs: [engine, review-bot]
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && vars.DEPLOY_BRANCH != '' && github.ref_name == vars.DEPLOY_BRANCH
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://gatesmith.work
+    concurrency:
+      group: deploy-vultr
+      cancel-in-progress: false
+    env:
+      HEALTH_URL: ${{ vars.DEPLOY_HEALTH_URL || 'https://gatesmith.work/api/health' }}
+    steps:
+      # The key may run only deploy.sh (forced command on the server), which receives "<branch> <commit>".
+      - name: Deploy this commit over SSH
+        env:
+          SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VULTR_KNOWN_HOSTS }}
+          HOST: ${{ vars.VULTR_HOST }}
+        run: |
+          if [ -z "$SSH_KEY" ] || [ -z "$KNOWN_HOSTS" ] || [ -z "$HOST" ]; then
+            echo "::error::set secrets VULTR_SSH_KEY, VULTR_KNOWN_HOSTS and variable VULTR_HOST (deployment.md §7.4)"
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=10 \
+            "root@$HOST" "$GITHUB_REF_NAME $GITHUB_SHA"
+      - name: Health check
+        run: |
+          for _ in $(seq 1 30); do
+            if body="$(curl -fsS --max-time 10 "$HEALTH_URL")" && grep -q '"ok":true' <<<"$body"; then
+              echo "$body"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::$HEALTH_URL did not report ok within 150 s"
+          exit 1

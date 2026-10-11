@@ -1,6 +1,6 @@
 # ChP-0040: qscore review bot — a Gemini-powered GitHub App for quantum-circuit pull-request review
 
-- **Status:** proposed
+- **Status:** approved by the user 2026-10-11, as amended by ChP-0049
 - **Class:** A (new component and host process, new runtime dependency `google-genai`, new security surface, new contract `qscore.review/v0.1`, scope change in 01 §3–4)
 - **Author:** lead · **Date:** 2026-10-11 01:10 UTC
 - **Related tasks:** none of T00–T32 (new task family B1–B8, owned by a teammate) · **Blocks:** nothing (independent of the engine roadmap)

@@ -1,0 +1,371 @@
+/*
+ * S-11 renders inside a code host's light pull request page, so it does not use the Gatesmith tokens.
+ * tokens.css has no light-page values; these are proposed tokens for the host page, taken from Paper 1AQF-0.
+ */
+@font-face {
+  font-family: 'Noto Sans';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url('./fonts/noto-sans-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Mono';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url('./fonts/noto-sans-mono-latin.woff2') format('woff2');
+}
+
+.pr-page {
+  --pr-ground: #f6f8fa; /* page, header strip, zebra rows */
+  --pr-surface: #ffffff; /* comment body, table rows */
+  --pr-border: #d1d9e0;
+  --pr-text: #1f2328;
+  --pr-muted: #59636e;
+  --pr-link: #0969da;
+  --pr-branch: #ddf4ff;
+  --pr-open: #1f883d;
+  --pr-tab-line: #fd8c73;
+  --pr-neutral: #818b981f; /* counters and inline code */
+  --pr-avatar: #8c959f;
+  --pr-font: 'Noto Sans', system-ui, sans-serif;
+  --pr-code-font: Menlo, 'Noto Sans Mono', monospace;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--pr-ground);
+  color: var(--pr-text);
+  font-family: var(--pr-font);
+  font-size: 14px;
+  line-height: 21px;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+}
+.pr-page * {
+  box-sizing: border-box;
+}
+
+.pr-muted {
+  color: var(--pr-muted);
+}
+.pr-strong {
+  font-weight: 600;
+}
+.pr-icon {
+  display: block;
+  flex-shrink: 0;
+  fill: var(--pr-muted);
+}
+.pr-icon.is-white {
+  fill: #ffffff;
+}
+
+/* ── Host header ─────────────────────────────────────────────────────── */
+.pr-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  height: 56px;
+  padding: 0 24px;
+  background: var(--pr-ground);
+  border-bottom: 1px solid var(--pr-border);
+}
+.pr-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--pr-border);
+  border-radius: 6px;
+}
+.pr-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pr-text);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pr-crumbs:hover .pr-strong {
+  text-decoration: underline;
+}
+.pr-crumbs:focus-visible {
+  outline: 2px solid var(--pr-link);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── Pull request head ───────────────────────────────────────────────── */
+.pr-column {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  width: 800px;
+  padding-top: 24px;
+}
+.pr-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 48px;
+  white-space: nowrap;
+}
+.pr-number {
+  color: var(--pr-muted);
+  font-weight: 300;
+}
+.pr-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  white-space: nowrap;
+}
+.pr-state {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  border-radius: 2em;
+  background: var(--pr-open);
+  color: #ffffff;
+  font-weight: 500;
+  line-height: 20px;
+}
+.pr-meta-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pr-branch {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--pr-branch);
+  color: var(--pr-link);
+  font-family: var(--pr-code-font);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.pr-tabs {
+  display: flex;
+  gap: 8px;
+  height: 65px;
+  padding-top: 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--pr-border);
+}
+.pr-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+.pr-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 6px;
+  background: var(--pr-tab-line);
+}
+.pr-counter {
+  padding: 0 6px;
+  border-radius: 2em;
+  background: var(--pr-neutral);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+/* ── The bot's comment ───────────────────────────────────────────────── */
+.pr-comment {
+  display: flex;
+  flex-direction: column;
+  width: 800px;
+  margin-top: 24px;
+  overflow: clip;
+  border: 1px solid var(--pr-border);
+  border-radius: 6px;
+  background: var(--pr-surface);
+}
+.pr-comment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--pr-ground);
+  border-bottom: 1px solid var(--pr-border);
+}
+.pr-comment-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.pr-avatar {
+  display: block;
+  flex-shrink: 0;
+}
+.pr-avatar-ring {
+  fill: var(--pr-ground);
+  stroke: var(--pr-border);
+}
+.pr-avatar-cell {
+  fill: var(--pr-avatar);
+}
+.pr-bot {
+  padding: 0 7px;
+  border: 1px solid var(--pr-border);
+  border-radius: 2em;
+  color: var(--pr-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+.pr-comment-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  animation: pr-fade var(--motion-tile, 200ms) ease both;
+}
+@keyframes pr-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.pr-primary-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.pr-code {
+  padding: 2px 5px;
+  border-radius: 6px;
+  background: var(--pr-neutral);
+  font-family: var(--pr-code-font);
+  font-size: 12px;
+  line-height: 17px;
+}
+.pr-para {
+  margin: 0;
+}
+.pr-small {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.pr-table {
+  align-self: flex-start;
+  width: 721px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-top: 1px solid var(--pr-border);
+  border-left: 1px solid var(--pr-border);
+}
+.pr-table th,
+.pr-table td {
+  padding: 6px 13px;
+  border-right: 1px solid var(--pr-border);
+  border-bottom: 1px solid var(--pr-border);
+  background: var(--pr-surface);
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+.pr-table th {
+  font-weight: 600;
+}
+.pr-table tbody tr:nth-child(even) td {
+  background: var(--pr-ground);
+}
+.pr-table .is-num {
+  text-align: right;
+}
+.pr-table .is-strong {
+  font-weight: 600;
+}
+.pr-col-metric {
+  width: 200px;
+}
+.pr-col-base,
+.pr-col-head {
+  width: 120px;
+}
+.pr-col-change {
+  width: 168px;
+}
+.pr-col-status {
+  width: 112px;
+}
+
+.pr-finding {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+.pr-h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+.pr-finding-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.pr-finding-line strong {
+  font-weight: 600;
+}
+.pr-link {
+  align-self: flex-start;
+  border-radius: 6px;
+  color: var(--pr-link);
+  text-decoration: none;
+  white-space: nowrap;
+  text-decoration-color: transparent;
+  transition: text-decoration-color var(--motion-hover, 150ms) ease;
+}
+.pr-link:hover {
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+}
+.pr-link:focus-visible {
+  outline: 2px solid var(--pr-link);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-comment-body {
+    animation: none;
+  }
+}

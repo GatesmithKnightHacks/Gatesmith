@@ -26,6 +26,29 @@ MEASUREMENT_INTENTS = frozenset({"known_output", "distribution"})
 _NON_GATES = frozenset({"measure", "reset", "barrier", "delay"})
 
 
+def _classical_control(circuit: QuantumCircuit) -> list[str]:
+    """Find control flow in composite instructions as well as the outer circuit.
+
+    Keep visited definitions alive: shared or cyclic custom definitions must be inspected
+    once, and object identities must not be reused during the traversal.
+    """
+    pending = [circuit]
+    seen = {id(circuit): circuit}
+    names: set[str] = set()
+    while pending:
+        current = pending.pop()
+        for inst in current.data:
+            operation = inst.operation
+            if isinstance(operation, ControlFlowOp):
+                names.add(operation.name)
+                continue
+            definition = operation.definition
+            if definition is not None and id(definition) not in seen:
+                seen[id(definition)] = definition
+                pending.append(definition)
+    return sorted(names)
+
+
 def _mid_circuit_measures(circuit: QuantumCircuit) -> list[int]:
     """Indices of measurements followed, on the same qubit, by anything but a measure/barrier."""
     pending: dict[int, int] = {}  # qubit -> index of the last measure on it
@@ -162,9 +185,7 @@ def semantic_issues(
                     )
                 )
 
-    control = sorted(
-        {inst.operation.name for inst in circuit.data if isinstance(inst.operation, ControlFlowOp)}
-    )
+    control = _classical_control(circuit)
     if control:
         issues.append(
             issue(

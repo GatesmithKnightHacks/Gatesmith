@@ -1,0 +1,42 @@
+# Vultr platform stack (specs/12 §3): Caddy (HTTPS on 443) serves the web app from web/ and sends
+# /api/* to the platform (port 8080).
+# Start it with deploy.sh, which passes --env-file so the ${...} values come from /opt/qscore/.env.
+name: qscore
+
+services:
+  caddy:
+    build:
+      context: ../..
+      dockerfile: qscore/docker/Containerfile.web
+    image: qscore-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in the env file}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  platform:
+    build:
+      context: ..
+      dockerfile: docker/Containerfile.platform
+    restart: unless-stopped
+    env_file:
+      - ${QSCORE_ENV_FILE:-/opt/qscore/.env}
+    environment:
+      API_ROOT_PATH: /api   # Caddy strips /api; this keeps the API's /docs page working behind it
+      QSCORE_PLATFORM_DB_PATH: /var/lib/qscore/platform.sqlite3
+    volumes:
+      - platform_data:/var/lib/qscore
+    expose:
+      - "8080"
+
+volumes:
+  caddy_data:    # TLS certificates; keep it, or Let's Encrypt rate limits can bite on rebuilds
+  caddy_config:
+  platform_data: # Persistent SQLite queue; back up before migrating or replacing the server

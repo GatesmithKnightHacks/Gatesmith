@@ -1,0 +1,484 @@
+/* S-19 · Account (board PHB-0, states QQ3-0). Shares the field, banner and spinner rules in account.css. */
+
+.acc19-content {
+  flex-direction: row;
+}
+.acc19-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  /* 560 at 1440 (the board); between 1280 and 1440 this column gives way and Recent activity keeps 424 */
+  flex: 0 1 560px;
+  min-width: 0;
+  min-height: 0;
+  container: acc19left / inline-size;
+}
+.acc19-tile {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-surface-panel);
+}
+.acc19-account,
+.acc19-sessions {
+  flex-shrink: 0;
+}
+.acc19-stored {
+  flex: 1 1 0;
+}
+.acc19-activity {
+  flex: 1 1 0;
+  min-width: 424px;
+}
+.acc19-body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-1) var(--spacing-3) var(--spacing-3);
+  min-height: 0;
+}
+.acc19-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 36px;
+  white-space: nowrap;
+}
+.acc19-row.is-ruled,
+.acc19-sentence,
+.acc19-item-row.is-ruled,
+.acc19-export-row.is-ruled,
+.acc19-day,
+.acc19-event.is-ruled {
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.acc19-row.is-between {
+  justify-content: space-between;
+}
+.acc19-row > .acc-stage {
+  flex: 1 1 0;
+}
+.acc19-gap {
+  gap: 10px;
+}
+.acc19-label {
+  flex-shrink: 0;
+  width: 112px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.acc19-label.is-wide {
+  width: 250px;
+}
+.acc19-input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.acc19-value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-left: 9px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.acc19-unit {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* ── Stored in your account ─────────────────────────────────────────── */
+.acc19-stored-body {
+  flex: 1 1 0;
+  gap: var(--spacing-3);
+}
+.acc19-stored-body > .acc-banner {
+  margin-top: var(--spacing-2);
+  margin-bottom: calc(-1 * var(--spacing-1));
+}
+.acc19-group {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.acc19-sentence {
+  padding: var(--spacing-2) 0 9px;
+  color: var(--color-text-secondary);
+}
+.acc19-count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-1);
+  flex: 1 1 0;
+  min-width: 0;
+}
+.acc19-size {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-1);
+  flex-shrink: 0;
+}
+.acc19-inset {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 0 var(--spacing-2) var(--spacing-1);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-surface-app);
+}
+.acc19-inset-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 18px;
+  padding-bottom: 2px;
+  white-space: nowrap;
+}
+.acc19-group-label {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  white-space: nowrap;
+}
+.acc19-axis {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.acc19-item-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 24px;
+  white-space: nowrap;
+}
+.acc19-item-name {
+  flex-shrink: 0;
+  width: 170px;
+  font-size: var(--text-label);
+}
+.acc19-item-count,
+.acc19-item-size {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-1);
+  flex-shrink: 0;
+  width: 52px;
+}
+.acc19-item-size {
+  justify-content: flex-end;
+}
+.acc19-bar {
+  position: relative;
+  flex: 1 1 0;
+  height: 6px;
+  /* the scorecard track: white at 8% on the inset */
+  background: color-mix(in srgb, var(--color-white) 8%, transparent);
+}
+.acc19-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-text-secondary);
+}
+.acc19-exports {
+  flex-shrink: 1;
+  min-height: 0;
+}
+.acc19-exports-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-control) transparent;
+}
+.acc19-export-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 22px;
+  white-space: nowrap;
+}
+.acc19-export-file {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--text-label);
+}
+.acc19-export-run {
+  flex-shrink: 0;
+  width: 84px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.acc19-export-size {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--spacing-1);
+  flex-shrink: 0;
+  width: 60px;
+}
+.acc19-kb {
+  width: 14px;
+}
+.acc19-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+.acc19-empty-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
+.acc19-empty-body {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Sessions and tokens ────────────────────────────────────────────── */
+.acc19-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.acc19-baseline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+}
+.acc19-meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.acc19-secret {
+  font-size: var(--text-label);
+  line-height: 14px;
+  user-select: all;
+}
+.acc19-flash {
+  animation: acc19-flash var(--motion-load) var(--ease-motion) both;
+}
+@keyframes acc19-flash {
+  from {
+    background: var(--color-row-flash, var(--color-teal-700));
+  }
+}
+
+/* ── Recent activity ────────────────────────────────────────────────── */
+.acc19-activity-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: var(--spacing-1) var(--spacing-3) 0;
+}
+.acc19-day {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 28px;
+}
+.acc19-activity-group {
+  display: flex;
+  flex-direction: column;
+  flex-basis: 0;
+  min-height: 0;
+}
+.acc19-event {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 0;
+  min-height: 40px;
+  white-space: nowrap;
+}
+.acc19-event-time {
+  flex-shrink: 0;
+  width: 40px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.acc19-event-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* a safety net for longer live details: the value never moves, the detail ends in an ellipsis */
+.acc19-event-text > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.acc19-event-value {
+  flex-shrink: 0;
+}
+.acc19-failed {
+  color: var(--color-signal-bad);
+}
+.acc19-activity-foot {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 36px;
+  margin-top: auto;
+  border-top: 1px solid var(--color-surface-app);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+
+/* ── Inspector ──────────────────────────────────────────────────────── */
+.acc19-save-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+}
+.acc19-session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding-bottom: 2px;
+}
+.acc19-signed-in {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.acc19-handle {
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 16px;
+}
+.acc19-sync {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.acc19-saved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 16px;
+  white-space: nowrap;
+}
+.acc19-saved-word {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+.acc19-saved-at {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.acc19-error-text {
+  color: var(--color-text-primary);
+}
+.acc19-waits {
+  color: var(--color-text-tertiary);
+}
+.acc19-password {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.acc19-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.acc19-rule {
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+}
+.acc19-delete-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  width: 100%;
+  height: 44px;
+  padding-inline: var(--spacing-4);
+  border-bottom: 1px solid var(--color-surface-app);
+  transition: background-color var(--motion-hover) var(--ease-motion);
+}
+.acc19-delete-row:hover {
+  background: var(--color-surface-raised);
+}
+.acc19-delete-word {
+  color: var(--color-signal-bad);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+.acc19-delete-note {
+  color: var(--color-signal-bad);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.acc19-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
+  border-bottom: 1px solid var(--color-surface-app);
+  animation: acc-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.acc19-confirm-label {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.acc19-delete-btn {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 26px;
+  padding-inline: var(--spacing-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-inset);
+  color: var(--color-signal-bad);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  transition: background-color var(--motion-hover) var(--ease-motion);
+}
+.acc19-delete-btn:hover:not(:disabled) {
+  background: var(--color-surface-app);
+}
+.acc19-delete-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.acc19-confirm-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  white-space: nowrap;
+}
+
+/* Narrow windows (1280 to 1440): the left column gives way, its long labels wrap onto two lines. */
+@container acc19left (max-width: 520px) {
+  .acc19-label.is-wide {
+    width: 150px;
+    white-space: normal;
+  }
+  .acc19-suffix {
+    display: none;
+  }
+}

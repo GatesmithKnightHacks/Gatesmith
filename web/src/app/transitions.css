@@ -1,0 +1,61 @@
+/*
+ * Screen change (DS-08 Navigation card, M10): the main column fades in over 400 ms; the top bar,
+ * rail, tab strip and inspector hold still. Identical chrome pixels stay put and changed chrome
+ * (a new tab, the next screen's inspector) swaps at 0 ms under the fade. No shared-element morphs,
+ * no slides, no per-screen choreography. Reduced motion keeps the fade (it is not a transform).
+ */
+
+/* ── Layers ──────────────────────────────────────────────────────────── */
+.topbar {
+  view-transition-name: topbar;
+}
+.rail {
+  view-transition-name: rail;
+}
+.tabstrip {
+  view-transition-name: tabstrip;
+}
+.shell-inspector {
+  view-transition-name: inspector;
+}
+/* The whole main column under the tab strip, whatever a screen puts there. */
+.shell-main {
+  view-transition-name: main;
+}
+
+/* ── Nothing morphs ──────────────────────────────────────────────────── */
+/* Groups never tween position or size; each layer takes the new geometry at once. */
+::view-transition-group(*) {
+  animation: none;
+}
+/* The outgoing picture of every named layer leaves at 0 ms. */
+::view-transition-old(*) {
+  animation: none;
+  opacity: 0;
+}
+/* Anything named inside the main column (older screens still tag a canvas or a card) fades with it. */
+::view-transition-new(*) {
+  animation: motion-fade-in var(--motion-load) var(--ease-motion) both;
+}
+
+/* ── Chrome holds still ──────────────────────────────────────────────── */
+::view-transition-new(topbar),
+::view-transition-new(rail),
+::view-transition-new(tabstrip),
+::view-transition-new(inspector),
+::view-transition-new(primary-action) {
+  animation: none;
+}
+
+/*
+ * The root carries the ground and any screen without the shell (PR comment, sign in, the gate).
+ * Ground on ground is invisible, so a plain 400 ms crossfade keeps the ground under the fading
+ * column and fades whole screens that have no shell.
+ */
+::view-transition-old(root) {
+  opacity: 1;
+  animation: motion-fade-out var(--motion-load) var(--ease-motion) both;
+}
+::view-transition-new(root) {
+  animation: motion-fade-in var(--motion-load) var(--ease-motion) both;
+}

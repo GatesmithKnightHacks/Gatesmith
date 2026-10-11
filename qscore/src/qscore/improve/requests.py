@@ -38,7 +38,14 @@ from qscore.schemas.improvement import (
     REQUEST_SCHEMA,
     ImprovementRequest,
 )
-from qscore.schemas.manifest import Budget, Invariants, Objective, Permitted, PermittedChange
+from qscore.schemas.manifest import (
+    Budget,
+    Invariants,
+    Objective,
+    Permitted,
+    PermittedChange,
+    Privacy,
+)
 from qscore.schemas.scorecard import Finding, Region, Scorecard
 
 # 04 §2.3: permitted change -> strategy ids.
@@ -101,6 +108,7 @@ class RequestContext:
     budget: Budget
     served_strategies: frozenset[str]
     max_region_qubits: int
+    privacy: Privacy = field(default_factory=Privacy)
 
 
 @dataclass(frozen=True)
@@ -381,6 +389,8 @@ def build_requests(scorecard: Scorecard, ctx: RequestContext, policy: Policy) ->
                     "max_proposals": budget.max_proposals,
                     "timeout_s": budget.layer_timeout_s,
                 },
+                "permitted_strategies": strategies,
+                "privacy": ctx.privacy,
                 "proposal_schema": PROPOSAL_SCHEMA,
             }
         )

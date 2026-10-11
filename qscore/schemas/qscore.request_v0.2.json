@@ -79,6 +79,26 @@
       "title": "FindingSeverity",
       "type": "string"
     },
+    "Privacy": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "external_inference": {
+          "default": false,
+          "title": "External Inference",
+          "type": "boolean"
+        },
+        "send_region_only": {
+          "default": true,
+          "title": "Send Region Only",
+          "type": "boolean"
+        }
+      },
+      "title": "Privacy",
+      "type": "object"
+    },
     "Region": {
       "additionalProperties": false,
       "patternProperties": {
@@ -395,6 +415,17 @@
     "permitted": {
       "$ref": "#/$defs/RequestPermitted"
     },
+    "permitted_strategies": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Permitted Strategies",
+      "type": "array"
+    },
+    "privacy": {
+      "$ref": "#/$defs/Privacy"
+    },
     "proposal_schema": {
       "const": "qscore.proposal/v0.2",
       "title": "Proposal Schema",
@@ -424,6 +455,8 @@
     "permitted",
     "invariants",
     "budget",
+    "permitted_strategies",
+    "privacy",
     "proposal_schema"
   ],
   "title": "ImprovementRequest",

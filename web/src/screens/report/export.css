@@ -1,0 +1,335 @@
+/* S-10 · Export, measured from board 1NPN-0 and its states board 1RNK-0. */
+
+/* ── Files ─────────────────────────────────────────────────────────────── */
+.ex-files-body {
+  gap: var(--spacing-3);
+  padding: var(--spacing-1) var(--spacing-3) var(--spacing-3);
+}
+.ex-stage {
+  padding-top: var(--spacing-2);
+}
+.ex-files {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.ex-file {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  height: 46px;
+  padding-left: 10px;
+  border-bottom: 1px solid var(--color-surface-app);
+  cursor: pointer;
+}
+.ex-file.is-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 2px;
+  height: 32px;
+  background: var(--color-signal-select);
+}
+.ex-file.is-loading {
+  cursor: default;
+}
+.ex-file-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  width: 158px;
+}
+.ex-file-title {
+  color: var(--color-text-primary);
+  line-height: 16px;
+  white-space: nowrap;
+}
+.ex-file-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ex-file-name > * + * {
+  margin-top: -2px;
+}
+.ex-file-size {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  width: 54px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.ex-file-hash {
+  flex-shrink: 0;
+  width: 104px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ex-file-flag {
+  animation: rp-fade-in var(--rp-tile) ease both;
+}
+.ex-file-flag.is-saved {
+  color: var(--color-text-primary) !important;
+}
+.ex-file-action {
+  display: flex;
+  flex-shrink: 0;
+}
+/* Retry keeps its width while it works: the spinner takes a reserved slot (DS-08 R6) */
+.ex-retry {
+  gap: var(--spacing-1);
+  width: 84px;
+}
+.ex-retry:disabled {
+  color: var(--color-text-primary);
+}
+.ex-retry-slot {
+  display: flex;
+}
+.ex-retry-slot:empty {
+  display: none;
+}
+.ex-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.ex-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 16px;
+}
+.ex-preview-meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* ── Qiskit code ───────────────────────────────────────────────────────── */
+.ex-qiskit-body {
+  gap: 10px;
+  padding: var(--spacing-3);
+}
+.ex-convert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  height: 24px;
+}
+.ex-convert-meta {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ex-convert-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ex-convert-estimate {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+
+/* ── GitHub Action ─────────────────────────────────────────────────────── */
+.ex-action {
+  flex: 0 0 364px;
+}
+.ex-action-body {
+  flex-direction: row;
+  padding: var(--spacing-3);
+}
+.ex-card {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-surface-selected);
+  background: var(--color-surface-raised);
+}
+.ex-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+  width: var(--container-inspector);
+  padding: 14px var(--spacing-4);
+}
+.ex-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+  white-space: nowrap;
+}
+.ex-card-title .rp-mark {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-primary) !important;
+}
+.ex-card-desc {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.ex-facts {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding-top: var(--spacing-1);
+}
+.ex-fact {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 24px;
+  border-bottom: 1px solid var(--color-surface-selected);
+}
+.ex-fact-label {
+  flex-shrink: 0;
+  width: 72px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.ex-fact-value {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.ex-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.ex-card-hint {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ex-add:disabled {
+  opacity: 0.3;
+  color: var(--color-text-primary);
+}
+.ex-card-code {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) 0;
+}
+.ex-repo {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+}
+.ex-repo-input {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 26px;
+  padding-inline: var(--spacing-2);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-control);
+  color: var(--color-text-primary);
+  transition: border-color var(--rp-hover) ease;
+}
+.ex-repo-input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+/* ── Inspector: upload opt-in and the saved line ───────────────────────── */
+.ex-check {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 16px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ex-check input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.ex-check-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-control);
+}
+.ex-check input:focus-visible + .ex-check-box {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.ex-check input:disabled ~ * {
+  opacity: 0.3;
+}
+.ex-saved {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 16px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  animation: rp-fade-in var(--rp-tile) ease both;
+}
+.ex-saved-handle {
+  color: var(--color-text-primary);
+}
+.ex-pr {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+}
+.ex-pr-label {
+  color: var(--color-text-secondary);
+}
+.ex-pr-title {
+  color: var(--color-text-primary);
+  line-height: 18px;
+  white-space: nowrap;
+}
+.ex-facts.is-added .ex-fact-label {
+  width: 96px;
+}
+.ex-card.is-no-repo .ex-card-main {
+  flex: 1 1 0;
+  width: auto;
+}

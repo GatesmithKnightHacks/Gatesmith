@@ -241,6 +241,24 @@ def test_commuting_run_is_cut_by_a_non_diagonal_gate() -> None:
     assert runs == [[0], [2, 3]]
 
 
+def test_d03_fires_when_a_leaf_wire_ends_before_the_rest_of_the_run() -> None:
+    from qiskit import QuantumCircuit
+
+    from qscore.metrics.opportunities.structure import commuting_runs
+
+    qc = QuantumCircuit(7)
+    qc.cz(0, 1)
+    qc.cz(1, 2)
+    qc.h(0)
+    for q in range(2, 6):
+        qc.cz(q, q + 1)
+    ms = metrics(structure={"value": {"commuting_runs": commuting_runs(qc)}})
+    d03 = next(f for f in evaluate(ms, effective_policy(None)).findings if f.rule == "D03")
+    assert d03.region is not None
+    assert d03.region.qubits == list(range(7))
+    assert d03.region.layers == (0, 5)
+
+
 def _block(n_qubits: int, start: int = 0) -> dict[str, Any]:
     return {
         "qubits": list(range(n_qubits)),
