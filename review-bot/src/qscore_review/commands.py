@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from qscore.errors import PlatformError
 
 from qscore_review.github import GitHub
 from qscore_review.settings import AllowedRepository
+from qscore_review.state import State
+from qscore_review.validation import SECRET
 
 
 @dataclass(frozen=True)
@@ -29,12 +33,116 @@ def parse_command(body: str) -> Command | None:
     return Command(match[1], (match[2] or "").strip())
 
 
+def _display(value: Any, limit: int = 1200) -> str:
+    # Artifact strings remain quoted data; prevent fences, mentions and embedded markup.
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if SECRET.search(text):
+        return "[credential-like content omitted]"
+    text = text.replace("`", "'").replace("@", "&#64;").replace("<", "&lt;")
+    return text if len(text) <= limit else text[:limit] + "… (truncated)"
+
+
+def explain_recorded(
+    command: Command,
+    allowed: AllowedRepository,
+    pr: dict[str, Any],
+    state: State | None,
+    definitions_path: Path,
+) -> str:
+    try:
+        pack = json.loads(definitions_path.read_text())
+    except (OSError, ValueError) as exc:
+        raise PlatformError("Committed engine definition pack is missing or invalid") from exc
+    if pack["engine_revision"] != allowed.engine_revision:
+        return "The committed definition pack does not match this repository's pinned engine."
+    key = command.argument
+    if command.name == "explain":
+        if key not in pack["rules"]:
+            return "Use `/gatesmith explain D03` with a rule from D01-D10."
+        entry = pack["rules"][key]
+        source = pack["sources"]["specs/07-diagnostics.md"]["url"]
+        lines = [
+            f"**{key}: {entry['title']}**",
+            "Starting rule condition: " + entry["condition"],
+            "Expected evidence: " + entry["evidence"],
+            "Suggested strategies: " + entry["strategies"],
+            "Profiles and explicit diagnostic policy may override starting thresholds; "
+            "the recorded finding threshold and severity describe this run.",
+        ]
+        evidence_prefix = "finding:"
+    else:
+        if key not in pack["metrics"]:
+            return "Unknown metric id. Use `/gatesmith why two_qubit_count` with a defined metric."
+        entry = pack["metrics"][key]
+        source = pack["sources"]["specs/06-metrics.md"]["url"]
+        lines = [
+            f"**Metric `{key}`** ({entry['kind']}; unit: {entry['unit']})",
+            entry["definition"],
+        ]
+        if entry["notes"]:
+            lines.append("Requirements or notes: " + entry["notes"])
+        evidence_prefix = "metric:"
+    lines.append(f"[Committed engine definition]({source}) · pack `{pack['version']}`.")
+    comparison = f"{allowed.repository_id}:{pr['number']}:{pr['base']['sha']}:{pr['head']['sha']}"
+    saved = state.current_evidence(comparison) if state else None
+    if saved is None:
+        lines.append(
+            "Current PR evidence is unavailable: no completed evaluation for this exact "
+            "base/head and latest workflow generation is stored. Request `/gatesmith rescore`."
+        )
+        return "\n\n".join(lines)
+    lines.append(
+        f"Current base `{pr['base']['sha'][:12]}` → head `{pr['head']['sha'][:12]}`; "
+        f"workflow run `{saved['run_id']}`, attempt `{saved['run_attempt']}`."
+    )
+    if saved.get("evaluation") == "failed":
+        lines.append(
+            "The current evaluation failed; no metric values or resolved findings are claimed."
+        )
+    elif (
+        saved["score_version"] != pack["score_version"]
+        or saved["engine_revision"] != pack["engine_revision"]
+    ):
+        lines.append(
+            "Saved evidence and the committed definitions have incompatible engine versions."
+        )
+    else:
+        matches = [
+            (identity, value)
+            for identity, value in sorted(saved["evidence"].items())
+            if identity.startswith(evidence_prefix) and identity.endswith(":" + key)
+        ]
+        if matches:
+            lines.append("Recorded evidence (values and statuses, without new inference):")
+            lines.extend(
+                f"- `{_display(identity, 150)}`: `{_display(value)}`"
+                for identity, value in matches[:5]
+            )
+            if len(matches) > 5:
+                lines.append(
+                    f"Showing 5 of {len(matches)} item records; see the PR summary for more."
+                )
+        else:
+            lines.append(
+                "This metric or rule has no stored current comparison evidence. A rule's absence "
+                "does not prove it was evaluated; required metrics may be unavailable "
+                "or suppressed."
+            )
+        if saved.get("omitted_evidence_records", 0):
+            lines.append("Credential-like evidence records were omitted from stored explanations.")
+    lines.append("This explanation does not change the score, check, or source.")
+    return "\n\n".join(lines)
+
+
 async def execute_command(
     command: Command,
     payload: dict[str, Any],
     allowed: AllowedRepository,
     github: GitHub,
     token: str,
+    *,
+    state: State | None = None,
+    definitions_path: Path | None = None,
 ) -> str:
     repo, number = allowed.repository, payload["issue"]["number"]
     login = payload["comment"]["user"]["login"]
@@ -83,9 +191,9 @@ async def execute_command(
         if not match:
             return "Use `/gatesmith ignore D05 <reason>` to draft a manifest suppression."
         rule, reason = match.groups()
+        if SECRET.search(reason):
+            return "Suppression draft omitted because the reason contains credential-like content."
         # JSON quoting is valid YAML and prevents injected keys/lines.
-        import json
-
         return (
             "Suggested manifest edit; review it before applying:\n```yaml\n"
             "diagnose:\n  ignore:\n    - rule: "
@@ -94,22 +202,13 @@ async def execute_command(
             + json.dumps(reason)
             + "\n```"
         )
-    if command.name == "explain":
-        if not re.fullmatch(r"D0[1-9]|D10", command.argument):
-            return "Use `/gatesmith explain D03` with a rule from D01-D10."
-        return (
-            f"Rule `{command.argument}`: see the [engine diagnostic definition]"
-            "(https://github.com/GatesmithKnightHacks/Gatesmith/blob/github-app/"
-            "specs/07-diagnostics.md) and this PR's recorded finding evidence above. "
-            "The explanation does not change the score or check."
-        )
-    if command.name == "why":
-        if not re.fullmatch(r"[a-z][a-z0-9_]{1,60}", command.argument):
-            return "Use `/gatesmith why two_qubit_count` with a metric id."
-        return (
-            f"Metric `{command.argument}`: see the [engine metric definition]"
-            "(https://github.com/GatesmithKnightHacks/Gatesmith/blob/github-app/"
-            "specs/06-metrics.md). Values in the PR summary come from its saved scorecards."
+    if command.name in {"explain", "why"}:
+        return explain_recorded(
+            command,
+            allowed,
+            pr,
+            state,
+            definitions_path or Path(__file__).parents[2] / "knowledge/engine-definitions.json",
         )
     return (
         "Full-file model review is unavailable in this pass: privacy requires a separately "

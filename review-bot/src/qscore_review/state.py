@@ -28,6 +28,9 @@ class State:
           review_id INTEGER, check_id INTEGER, result TEXT);
         CREATE TABLE IF NOT EXISTS latest_generations (
           comparison TEXT PRIMARY KEY, run_id INTEGER NOT NULL, run_attempt INTEGER NOT NULL);
+        CREATE TABLE IF NOT EXISTS evidence (
+          comparison TEXT PRIMARY KEY, run_id INTEGER NOT NULL, run_attempt INTEGER NOT NULL,
+          data TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS commands (identity TEXT PRIMARY KEY);
         CREATE TABLE IF NOT EXISTS model_calls (
           identity TEXT PRIMARY KEY, comparison TEXT NOT NULL, cost REAL NOT NULL,
@@ -120,6 +123,32 @@ class State:
             (comparison,),
         ).fetchone()
         return row is not None and tuple(row) == (run_id, run_attempt)
+
+    def save_evidence(
+        self, comparison: str, run_id: int, run_attempt: int, data: dict[str, Any]
+    ) -> None:
+        """Record deterministic evidence only for the latest authenticated generation."""
+        self.db.execute(
+            """
+            INSERT INTO evidence SELECT ?,?,?,?
+            WHERE EXISTS (SELECT 1 FROM latest_generations
+                          WHERE comparison=? AND run_id=? AND run_attempt=?)
+            ON CONFLICT(comparison) DO UPDATE SET
+              run_id=excluded.run_id,run_attempt=excluded.run_attempt,data=excluded.data
+        """,
+            (comparison, run_id, run_attempt, json.dumps(data), comparison, run_id, run_attempt),
+        )
+
+    def current_evidence(self, comparison: str) -> dict[str, Any] | None:
+        row = self.db.execute(
+            """
+            SELECT evidence.data FROM evidence JOIN latest_generations USING(comparison)
+            WHERE comparison=? AND evidence.run_id=latest_generations.run_id
+              AND evidence.run_attempt=latest_generations.run_attempt
+        """,
+            (comparison,),
+        ).fetchone()
+        return json.loads(row["data"]) if row else None
 
     def claim_command(self, identity: str) -> bool:
         return (

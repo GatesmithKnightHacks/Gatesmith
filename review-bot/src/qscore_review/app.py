@@ -136,7 +136,15 @@ class Service:
                 return
             if not self.state.claim_command(f"{allowed.repository_id}:{payload['comment']['id']}"):
                 return
-            result = await execute_command(command, payload, allowed, self.github, token)
+            result = await execute_command(
+                command,
+                payload,
+                allowed,
+                self.github,
+                token,
+                state=self.state,
+                definitions_path=self.settings.knowledge_path.with_name("engine-definitions.json"),
+            )
             await self.github.request(
                 "POST",
                 f"/repos/{allowed.repository}/issues/{payload['issue']['number']}/comments",
@@ -233,6 +241,32 @@ class Service:
             (run["id"], run["run_attempt"]),
         ):
             return
+        evidence = {
+            key: value
+            for key, value in summary.evidence.items()
+            if not SECRET.search(json.dumps({key: value}))
+        }
+        self.state.save_evidence(
+            comparison,
+            run["id"],
+            run["run_attempt"],
+            {
+                "run_id": run["id"],
+                "run_attempt": run["run_attempt"],
+                "engine_revision": p.engine_revision,
+                "score_version": p.score_version,
+                "evaluation": "recorded"
+                if all(
+                    side in loaded.runs
+                    and getattr(loaded.envelope, side).exit_code in (0, 1)
+                    and all(card.status != "failed" for card in loaded.cards[side].values())
+                    for side in ("base", "head")
+                )
+                else "failed",
+                "evidence": evidence,
+                "omitted_evidence_records": len(summary.evidence) - len(evidence),
+            },
+        )
         comment_id = await self.github.sticky(allowed.repository, p.pull_request, token, body)
         self.state.save_review(identity, summary_id=comment_id)
         check_id = await self.github.check(
@@ -253,11 +287,7 @@ class Service:
                 f"/repos/{allowed.repository}/pulls/{p.pull_request}/files", token
             )
             diff = prepare_diff(files, config)
-            evidence = {
-                key: value
-                for key, value in summary.evidence.items()
-                if not SECRET.search(json.dumps(value))
-            }
+            evidence = dict(evidence)
             evidence.update(diff.code_evidence)
             knowledge = self.knowledge(loaded.envelope.detected_versions, diff.hunks)
             for entry in knowledge["entries"]:
@@ -418,6 +448,17 @@ class Service:
                 repo, number, run["head_sha"], token, comparison, (run["id"], run["run_attempt"])
             ):
                 continue
+            self.state.save_evidence(
+                comparison,
+                run["id"],
+                run["run_attempt"],
+                {
+                    "run_id": run["id"],
+                    "run_attempt": run["run_attempt"],
+                    "evaluation": "failed",
+                    "evidence": {},
+                },
+            )
             body = (
                 "<!-- gatesmith:qscore-summary -->\n## Gatesmith could not evaluate this PR\n"
                 + reason

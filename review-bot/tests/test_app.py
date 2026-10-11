@@ -280,6 +280,9 @@ def test_newer_failure_blocks_older_success_and_uses_current_generation(tmp_path
     asyncio.run(service.process("workflow_run", github.generation(4)))
     assert github.posts == failed_publication
     assert state.generation_current(f"1:5:{BASE}:{HEAD}", 7, 1)
+    evidence = state.current_evidence(f"1:5:{BASE}:{HEAD}")
+    assert evidence["run_id"] == 7 and evidence["evaluation"] == "failed"
+    assert not evidence["evidence"]
 
 
 def test_older_attempt_of_same_run_cannot_overwrite_rescore(tmp_path):
@@ -290,3 +293,43 @@ def test_older_attempt_of_same_run_cannot_overwrite_rescore(tmp_path):
     published = list(github.posts)
     asyncio.run(service.process("workflow_run", github.generation(4, 1, count=20)))
     assert github.posts == published
+
+
+def test_service_saves_current_deterministic_evidence_and_excludes_credentials(tmp_path):
+    def credential(envelope, payloads):
+        path = "head/scorecards/demo.json"
+        card = json.loads(payloads[path])
+        card["findings"][0]["evidence"]["untrusted_text"] = "hf_" + "a" * 30
+        payloads[path] = json.dumps(card).encode()
+        envelope["checksums"][path] = hashlib.sha256(payloads[path]).hexdigest()
+        run_path = "head/run.json"
+        run = json.loads(payloads[run_path])
+        run["scorecards"][0]["sha256"] = envelope["checksums"][path]
+        payloads[run_path] = json.dumps(run).encode()
+        envelope["checksums"][run_path] = hashlib.sha256(payloads[run_path]).hexdigest()
+
+    github = FakeGitHub(fixture_bundle(mutate=credential))
+    state = State(tmp_path / "state.db")
+    service = Service(settings(tmp_path), state, github, FailedGemini())
+    asyncio.run(service.process("workflow_run", payload()))
+    saved = state.current_evidence(f"1:5:{BASE}:{HEAD}")
+    assert saved["run_id"] == 4 and saved["score_version"] == "qscore-2026.2"
+    assert saved["evidence"]["metric:demo:two_qubit_count"]["head"] == 20
+    assert saved["evidence"]["metric:demo:two_qubit_count"]["head_status"] == "computed"
+    assert "finding:demo:D01" not in saved["evidence"]
+    assert saved["omitted_evidence_records"] == 1
+    assert "hf_" not in json.dumps(saved)
+    assert "hf_" not in "\n".join(body for kind, body in github.posts if kind == "summary")
+
+
+def test_invalid_scoring_result_cannot_be_explained_as_completed_evaluation(tmp_path):
+    def invalid_head(envelope, payloads):
+        envelope["head"]["exit_code"] = 2
+
+    github = FakeGitHub(fixture_bundle(mutate=invalid_head))
+    state = State(tmp_path / "state.db")
+    service = Service(settings(tmp_path), state, github, FailedGemini())
+    asyncio.run(service.process("workflow_run", payload()))
+    saved = state.current_evidence(f"1:5:{BASE}:{HEAD}")
+    assert saved["evaluation"] == "failed"
+    assert github.posts[-1] == ("check", "failure")

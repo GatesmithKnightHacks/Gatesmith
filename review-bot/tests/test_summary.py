@@ -84,3 +84,33 @@ def test_removed_manifest_discovery_never_passes_gate():
     assert "resolved D01" not in result.body
     assert "Draft manifest" in result.body
     assert "<required>" in result.body
+
+
+@pytest.mark.parametrize("credential", ["hf_" + "a" * 30, "AQ." + "a" * 48])
+def test_credential_like_finding_text_is_omitted_without_changing_values_or_failure(credential):
+    loaded = load_bundle(fixture_bundle())
+    loaded.cards["head"]["demo"].findings[0].evidence["untrusted_text"] = credential
+    result = build_summary(loaded, RepoConfig(fail_on="new_high"), run_url="url", docs_url="url")
+    assert credential not in result.body
+    assert "credential-like content omitted" in result.body
+    assert "| 10 | 20 |" in result.body and "new D01" in result.body
+    assert result.conclusion == "failure"
+
+
+def test_credential_like_manifest_draft_is_visibly_omitted():
+    loaded = load_bundle(fixture_bundle())
+    loaded.discoveries["head"] = {"candidates": []}
+    credential = "ghp_" + "a" * 30
+    loaded.payloads["head/qscore.suggested.yaml"] = f"project: {credential}\n".encode()
+    result = build_summary(loaded, RepoConfig(), run_url="url", docs_url="url")
+    assert credential not in result.body
+    assert "credential-like draft content omitted" in result.body
+
+
+def test_quoted_credential_keys_are_filtered_from_diagnostic_evidence():
+    loaded = load_bundle(fixture_bundle())
+    loaded.cards["head"]["demo"].findings[0].evidence["api_key"] = "synthetic-private-value"
+    result = build_summary(loaded, RepoConfig(fail_on="new_high"), run_url="url", docs_url="url")
+    assert "synthetic-private-value" not in result.body
+    assert "credential-like content omitted" in result.body
+    assert result.conclusion == "failure"

@@ -12,6 +12,7 @@ from qscore.schemas.scorecard import Scorecard
 
 from qscore_review.bundle import LoadedBundle
 from qscore_review.contracts import RepoConfig
+from qscore_review.validation import SECRET
 
 METRICS = (
     "two_qubit_count",
@@ -36,7 +37,10 @@ class Summary:
 
 
 def _safe(text: Any) -> str:
-    return str(text).replace("`", "'").replace("|", "\\|").replace("@", "&#64;")[:1500]
+    value = str(text)
+    if SECRET.search(value):
+        return "[credential-like content omitted]"
+    return value.replace("`", "'").replace("|", "\\|").replace("@", "&#64;")[:1500]
 
 
 def _groups(card: Scorecard | None) -> dict[str, list[Any]]:
@@ -180,6 +184,8 @@ def build_summary(
                 "numbers": vals,
                 "base": bv,
                 "head": hv,
+                "base_status": str(b.status) if b else "not recorded",
+                "head_status": str(h.status) if h else "not recorded",
                 "comparison": context,
                 "error": False,
             }
@@ -203,6 +209,9 @@ def build_summary(
                 numbers.extend(v for v in finding.evidence.values() if _numeric(v))
             ev = {
                 "findings": [f.model_dump(mode="json") for f in findings],
+                "base": [f.model_dump(mode="json") for f in bg.get(rule, [])],
+                "head": [f.model_dump(mode="json") for f in hg.get(rule, [])],
+                "comparison": status,
                 "numbers": numbers,
                 "error": False,
             }
@@ -244,7 +253,9 @@ def build_summary(
                     "",
                     "Draft manifest (review placeholders before using):",
                     "```yaml",
-                    draft.replace("```", "'''")[:12000],
+                    "[credential-like draft content omitted]"
+                    if SECRET.search(draft)
+                    else draft.replace("```", "'''")[:12000],
                     "```",
                 ]
             )

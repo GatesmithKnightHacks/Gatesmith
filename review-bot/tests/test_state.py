@@ -44,3 +44,20 @@ def test_workflow_generation_order_is_atomic_and_durable(tmp_path):
     state = State(path)
     assert state.generation_current("comparison", 7, 1)
     assert not state.accept_generation("comparison", 4, 1)
+
+
+def test_explanation_evidence_survives_restart_but_never_a_newer_generation(tmp_path):
+    path = tmp_path / "state.db"
+    state = State(path)
+    assert state.accept_generation("comparison", 4, 1)
+    state.save_evidence("comparison", 4, 1, {"head": 20})
+    state.close()
+    state = State(path)
+    assert state.current_evidence("comparison") == {"head": 20}
+    assert state.accept_generation("comparison", 4, 2)
+    assert state.current_evidence("comparison") is None
+    state.save_evidence("comparison", 4, 1, {"head": 99})
+    assert state.current_evidence("comparison") is None
+    state.save_evidence("comparison", 4, 2, {"evaluation": "failed"})
+    assert state.current_evidence("comparison") == {"evaluation": "failed"}
+    assert state.current_evidence("different-head") is None

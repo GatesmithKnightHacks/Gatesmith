@@ -16,9 +16,9 @@ from qscore_review.contracts import DetectedVersion, RepoConfig, ReviewComment, 
 
 SECRET = re.compile(
     r"(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
-    r"AIza[A-Za-z0-9_-]{20,}|hf_[A-Za-z0-9]{20,}|"
+    r"AIza[A-Za-z0-9_-]{20,}|AQ\.[A-Za-z0-9_-]{40,}|hf_[A-Za-z0-9]{20,}|"
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
-    r"(?i:api[_-]?key|password|secret|token)\s*[:=]\s*['\"][^'\"]{8,}['\"])"
+    r"(?i:api[_-]?key|password|secret|token)['\"]?\s*[:=]\s*['\"][^'\"]{8,}['\"])"
 )
 NUMBER = re.compile(
     r"(?<![\w.])[-+]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d*)?|\.\d+)"

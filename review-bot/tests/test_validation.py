@@ -82,6 +82,21 @@ def test_sensitive_diff_is_never_sent():
     assert len(result.skipped) == 3
 
 
+def test_new_google_key_shape_is_filtered_from_diff_and_model_output():
+    from qscore_review.validation import SECRET
+
+    credential = "AQ." + "a" * 48
+    assert SECRET.search(credential)
+    diff = prepare_diff(
+        [{"filename": "circuit.py", "patch": "@@ -0,0 +1 @@\n+key = '" + credential + "'"}],
+        RepoConfig(),
+    )
+    assert not diff.hunks and not diff.anchors
+    assert len(diff.skipped) == 1
+    result = validate([comment(body="Credential " + credential)])
+    assert not result.comments
+
+
 def test_ambiguous_version_text_cannot_be_treated_as_an_exact_version():
     from qscore_review.validation import _version_valid
 

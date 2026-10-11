@@ -1,0 +1,209 @@
+{
+  "version": "engine-definitions/v1",
+  "engine_revision": "6b42f722730f19a5c3d9b72e1a19cf8d54a0fedd",
+  "score_version": "qscore-2026.2",
+  "sources": {
+    "specs/06-metrics.md": {
+      "url": "https://github.com/GatesmithKnightHacks/Gatesmith/blob/6b42f722730f19a5c3d9b72e1a19cf8d54a0fedd/specs/06-metrics.md",
+      "sha256": "4ffbfbefedacfe85845e1ee6a68a0c6dcc241cf99b7b8e0c87b605c38be0cea6"
+    },
+    "specs/07-diagnostics.md": {
+      "url": "https://github.com/GatesmithKnightHacks/Gatesmith/blob/6b42f722730f19a5c3d9b72e1a19cf8d54a0fedd/specs/07-diagnostics.md",
+      "sha256": "274888e0425e4f285741da13a177e58f0ae2a952177a1cf93e69d4eb7c8f7f94"
+    }
+  },
+  "metrics": {
+    "width": {
+      "kind": "deterministic",
+      "definition": "Number of active qubits (touched by ≥1 non-directive operation) in the compiled circuit; evidence `logical`",
+      "unit": "qubits",
+      "notes": "Physical qubits after layout."
+    },
+    "size": {
+      "kind": "deterministic",
+      "definition": "`circuit.size()` of the compiled circuit (directives excluded; measurements and resets included); evidence `logical`",
+      "unit": "ops |",
+      "notes": ""
+    },
+    "depth": {
+      "kind": "deterministic",
+      "definition": "`circuit.depth()` of the compiled circuit; evidence `logical`",
+      "unit": "layers |",
+      "notes": ""
+    },
+    "two_qubit_count": {
+      "kind": "deterministic",
+      "definition": "Number of instructions with `operation.num_qubits == 2` in the compiled circuit; evidence `logical` and `logical_multi_qubit_ops` (≥3-qubit ops)",
+      "unit": "gates",
+      "notes": "Primary default objective."
+    },
+    "two_qubit_depth": {
+      "kind": "deterministic",
+      "definition": "`circuit.depth(filter_function=lambda i: i.operation.num_qubits == 2 and not directive)` on the compiled circuit; evidence `logical`",
+      "unit": "layers |",
+      "notes": ""
+    },
+    "measurement_count": {
+      "kind": "deterministic",
+      "definition": "Number of `measure` instructions (logical)",
+      "unit": "ops |",
+      "notes": ""
+    },
+    "toffoli_count": {
+      "kind": "deterministic",
+      "definition": "Number of `ccx` instructions (and `mcx` with exactly 2 controls) in the **logical** circuit",
+      "unit": "gates",
+      "notes": "Objective for reversible items."
+    },
+    "routing_overhead": {
+      "kind": "deterministic",
+      "definition": "`(R − A) / R` where `R` = `two_qubit_count` of the representative compile and `A` = the minimum two-qubit count over the all-to-all reference compiles (same basis, same seeds). `R = 0` → value 0.0. May be slightly negative (stochastic compiles); report as is. Evidence: `R`, `A`, `swaps_inserted`, the five qubit pairs with the most SWAPs",
+      "unit": "ratio",
+      "notes": "COMPILED, ALL_TO_ALL, ROUTING_STAGE"
+    },
+    "swaps_inserted": {
+      "kind": "deterministic",
+      "definition": "Number of `swap` instructions in the `route_only` output for the representative seed; evidence: per-pair counts",
+      "unit": "gates",
+      "notes": "ROUTING_STAGE"
+    },
+    "compile_ratio": {
+      "kind": "deterministic",
+      "definition": "`R / L0` where `L0` = two-qubit count of the RAW_TRANSLATION. `L0 = 0` → `unavailable` (\"no two-qubit operations\")",
+      "unit": "ratio",
+      "notes": "COMPILED, RAW_TRANSLATION"
+    },
+    "reliability_heuristic": {
+      "kind": "heuristic",
+      "definition": "`exp(Σ log(1 − e_op))` over compiled gates and measurements with error data (`target[op_name][qargs].error`; `None` or 0 for virtual `rz` contributes nothing). An operation with `e ≥ 1` is faulty (the backend calibration marks it unusable): the value is exactly 0; faulty operations are listed in evidence `faulty_ops` (`[{op, qargs, error, count}]`, sorted by qargs, then op) and left out of the per-qubit/per-edge contributions, and `total_neg_log` is `null`. `e > 1` is not a valid error rate: the metric fails with `ValueError` naming the op and qargs (ChP-0041). Evidence: per-qubit and per-edge contributions of `−log(1 − e)`, the five largest contributors, `ops_without_error`, `faulty_ops`. Label everywhere: **\"calibration-based reliability heuristic, not a success probability\"**",
+      "unit": "probability-like [0, 1] (0 only with faulty ops)",
+      "notes": "COMPILED, CALIBRATION"
+    },
+    "scheduled_duration": {
+      "kind": "heuristic",
+      "definition": "Critical-path duration of the compiled circuit from ALAP scheduling with the target's durations; evidence `ratio_to_median_t2` = duration ÷ median T2 of the active physical qubits, `median_t2_s`",
+      "unit": "s",
+      "notes": "COMPILED, DURATIONS"
+    },
+    "seed_spread": {
+      "kind": "deterministic",
+      "definition": "`(max − min) / median` of `two_qubit_count` across seeds; evidence: min, median, max, per-seed table",
+      "unit": "ratio",
+      "notes": "COMPILED"
+    },
+    "supermarq_profile": {
+      "kind": "context",
+      "definition": "SupermarQ's six features on the logical circuit: program communication, critical depth, entanglement ratio, parallelism, liveness, measurement. Port the published formulas (cite the SupermarQ paper/source in `docs/metrics.md`). Shown, never scored. Where a feature's formula divides by zero (program communication with < 2 qubits; entanglement ratio with no gates; liveness or measurement with depth 0), the feature is 0.0 and the case is listed in `evidence.undefined_as_zero` (ChP-0026)",
+      "unit": "dict of 6 values in [0, 1]",
+      "notes": ""
+    },
+    "entanglement_variance": {
+      "kind": "deterministic",
+      "definition": "Population variance of `c_i`, the number of two-qubit operations touching logical qubit `i`, over active logical qubits. Evidence: per-qubit counts, mean, `cv = std / mean` (0 when mean = 0). Inspired by QASMBench's entanglement variance; not identical, and `docs/metrics.md` says so",
+      "unit": "gates²",
+      "notes": ""
+    },
+    "structure": {
+      "kind": "context",
+      "definition": "On the logical circuit: (a) **commuting runs**: maximal connected DAG runs of two-qubit gates diagonal in the computational basis (`cz`, `cp`, `crz`, `rzz`), where one-qubit diagonal gates (`rz`, `p`, `z`, `s`, `sdg`, `t`, `tdg`) do not break a run; (b) **Clifford blocks** via `CollectCliffords`; (c) **linear-function blocks** via `CollectLinearFunctions`. Each with qubits, layer range and gate indices",
+      "unit": "dict of lists",
+      "notes": ""
+    },
+    "resynthesis_potential": {
+      "kind": "deterministic",
+      "definition": "Σ over two-qubit blocks of the compiled circuit (`Collect2qBlocks` + `ConsolidateBlocks`) of `current two-qubit gates in the block − (two-qubit gates in TwoQubitBasisDecomposer(<target's 2q gate>)(block unitary))`, i.e. the count of the exact KAK synthesis (basis fidelity 1). (`num_basis_gates` is not used: in Qiskit 2.5.2 it returns 0 for SWAP-class blocks at some global phases; ChP-0043.) Evidence: top blocks with locations, and the same sum on the RAW_TRANSLATION (`raw_potential`, informational: level 3 usually realizes it)",
+      "unit": "gates",
+      "notes": ""
+    },
+    "scalability": {
+      "kind": "deterministic (fit)",
+      "definition": "For each `size_sweep` value: rebuild through `intake/loaders.py` (sandbox), compile with the first 3 seeds, record logical (RAW_TRANSLATION) and compiled two-qubit counts and `routing_overhead`. Fit `y = a·n^b` by least squares on `log y` vs `log n`, where `n` = qubit count of the built circuit. Value `{b_logical, b_compiled, r2_logical, r2_compiled}`; evidence: per-size table (arg value, qubits, counts, overhead). No `size_sweep` → `unavailable`. MVP caps the sweep at three sizes after G2 (cut list)",
+      "unit": "dict",
+      "notes": "BUILDER"
+    },
+    "simulated_task_score": {
+      "kind": "statistical",
+      "definition": "Noisy simulation of the **representative compiled circuit** under the target's noise model (`AerSimulator.from_backend(...)` or a noise model from the calibration snapshot), compared with the ideal result. Higher is better, in [0, 1]: `known_output` → P(bitstring) noisy; `distribution` → `hellinger_fidelity(ideal_probs, noisy_counts)`; `expectation` → `1 − |E_noisy − E_ideal| / Σ|coeff|`. Evidence always includes the intent's own criterion (`p`, `fidelity`, or `abs_error = |E_noisy − E_ideal|`, plus `E_ideal`, `E_noisy`). ≥ 5 trials (seeds derived from item hash and trial index); `value` = mean; `uncertainty.ci95` = mean ± t₀.₉₇₅,ₙ₋₁·s/√n. Method chosen by the planner (`09-gpu-and-simulation.md`). No task → `unavailable` (\"intent has no task\")",
+      "unit": "score",
+      "notes": "COMPILED, TASK, SIMULATION"
+    },
+    "mirror_score": {
+      "kind": "statistical",
+      "definition": "Probability of returning to `|0…0⟩` after the compiled circuit followed by its inverse, under noise; same trials/CI rules. **Label: \"noise accumulation (mirror circuit), not task quality.\"** Selected by default only for items whose intent has no task; never substituted into `simulated_task_score`",
+      "unit": "probability",
+      "notes": "COMPILED, SIMULATION"
+    }
+  },
+  "rules": {
+    "D01": {
+      "title": "Routing-dominated",
+      "condition": "`routing_overhead ≥ 0.30`",
+      "evidence": "`R`, `A`, SWAPs inserted, the qubit pairs that needed them",
+      "region": "Compiled: layers/qubits where SWAPs were inserted (from `route_only`, mapped to the representative compile via layout)",
+      "strategies": "`layout_search`, `routing_search`; plus `commutation_aware_routing` when D03 also fires"
+    },
+    "D02": {
+      "title": "Seed-sensitive",
+      "condition": "`seed_spread ≥ 0.15`",
+      "evidence": "Per-seed table",
+      "region": "None (whole circuit)",
+      "strategies": "More seeds; always report best of N (no request is built)"
+    },
+    "D03": {
+      "title": "Commuting block",
+      "condition": "A commuting run with `≥ 6` two-qubit ops on `≥ 4` qubits",
+      "evidence": "Run location and size",
+      "region": "Logical: the run's qubits/layers",
+      "strategies": "`commutation_aware_routing`"
+    },
+    "D04": {
+      "title": "Resynthesizable blocks",
+      "condition": "`resynthesis_potential ≥ 1`",
+      "evidence": "Each block's current vs minimum two-qubit gates",
+      "region": "Compiled: the top block",
+      "strategies": "`block_resynthesis`"
+    },
+    "D05": {
+      "title": "Clifford or linear block",
+      "condition": "A Clifford or linear-function block of `3–9` qubits (AI synthesis handles Clifford and linear blocks up to 9 qubits)",
+      "evidence": "Block location, type, size",
+      "region": "Logical: the block",
+      "strategies": "`block_resynthesis` (with AI synthesis when available)"
+    },
+    "D06": {
+      "title": "Reliability hot spot",
+      "condition": "One qubit or edge carries `≥ 25 %` of total `−log reliability`, or the compiled circuit uses a faulty operation (`faulty_ops` non-empty; severity high, or info under `info_rules`; threshold `faulty_ops` 0 with margin = number of distinct faulty ops; evidence lists every faulty op with its count; region: the faulty qubits/edges) (ChP-0041)",
+      "evidence": "Top contributors with error rates",
+      "region": "Compiled: that qubit/edge's gates",
+      "strategies": "`noise_aware_layout`"
+    },
+    "D07": {
+      "title": "Decoherence risk",
+      "condition": "`scheduled_duration` evidence `ratio_to_median_t2 ≥ 0.5`",
+      "evidence": "Duration and T2 values",
+      "region": "None",
+      "strategies": "Strategies that cut two-qubit depth (`routing_search`, `commutation_aware_routing`)"
+    },
+    "D08": {
+      "title": "Uneven entanglement",
+      "condition": "`entanglement_variance` evidence `cv ≥ 0.5`",
+      "evidence": "Per-qubit two-qubit counts",
+      "region": "Logical: the busiest qubits",
+      "strategies": "`layout_search` (place busy qubits on well-connected sites)"
+    },
+    "D09": {
+      "title": "Poor scaling",
+      "condition": "Routing overhead rises monotonically across ≥3 sweep sizes, or `b_compiled − b_logical ≥ 0.3`",
+      "evidence": "Per-size table and fit",
+      "region": "None",
+      "strategies": "Routing strategies; flag for the researcher"
+    },
+    "D10": {
+      "title": "Low task score",
+      "condition": "Intent criterion fails: `known_output` p < `task.min_probability`; `distribution` fidelity < `1 − task.tolerance`; `expectation` abs_error > `task.tolerance`",
+      "evidence": "CI and per-size scores",
+      "region": "None",
+      "strategies": "\"Work the other findings first\"; report plainly (no request)"
+    }
+  }
+}

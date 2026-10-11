@@ -40,7 +40,7 @@ language: en
 
 ## Commands
 
-Repository collaborators with write, maintain or admin permission can use `/gatesmith rescore` (also `@qscore-review rescore`), `/gatesmith explain D03`, `/gatesmith why two_qubit_count`, and `/gatesmith ignore D05 <reason>`. The latter posts a suggested manifest change without writing code. Rescore reruns only the allowed completed workflow for the current head.
+Repository collaborators with write, maintain or admin permission can use `/gatesmith rescore` (also `@qscore-review rescore`), `/gatesmith explain D03`, `/gatesmith why two_qubit_count`, and `/gatesmith ignore D05 <reason>`. Explain and why use committed engine definitions plus saved deterministic evidence for the exact current base/head and latest authenticated workflow generation. They make no model calls, display at most five item records, and explicitly report absent or failed evaluation evidence. Definitions are bound to the immutable engine revision and score version. The definition pack, `engine-definitions.json`, must be installed alongside the file configured by `QSCORE_BOT_KNOWLEDGE_PATH`; the Docker image includes both. Ignore posts a suggested manifest change without writing code. Rescore reruns only the allowed completed workflow for the current head.
 
 `/gatesmith improve` explicitly reports unavailable until the engine verifier and approved platform handoff are connected. HF proposer integration is separate from Gemini review; generating a candidate is not proof of correctness or improvement. Full-file model review is also explicitly unavailable in this pass. No command makes commits, merges or applies suggestions.
 
