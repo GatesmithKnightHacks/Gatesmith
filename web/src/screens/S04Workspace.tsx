@@ -53,7 +53,6 @@ export function S04Workspace() {
   const [budgetOpen, setBudgetOpen] = useState(false)
   const [findingsOpen, setFindingsOpen] = useState(true)
   const [highlight, setHighlight] = useState<number | null>(null)
-  const [retrying, setRetrying] = useState(false)
   const [auto, setAuto] = useState<boolean>(RUN.autoMode)
 
   /* ── Which frame are we in ─────────────────────────────────────────── */
@@ -295,6 +294,8 @@ export function S04Workspace() {
   return (
     <Shell
       rail="runs"
+      // The Runs chip counts runs in progress: this one, until the engine stops it (never run: none).
+      railBadges={neverRun || loading || stopped ? undefined : { runs: 1 }}
       status={
         neverRun ? (
           <GpuStatus online />
@@ -304,17 +305,13 @@ export function S04Workspace() {
               <span className="gpu-dot" style={{ background: 'var(--color-text-disabled)' }} />
               {GPU_OFF_MESSAGE}
             </span>
-            <button
-              className={`btn-editor ws-retry${retrying ? ' is-busy' : ''}`}
-              onClick={() => {
-                setRetrying(true)
-                window.setTimeout(() => setRetrying(false), 1200)
-              }}
-              aria-busy={retrying}
+            <EditorButton
+              className="ws-retry"
+              loadingLabel="Retrying"
+              onClick={() => new Promise((done) => window.setTimeout(done, 1200))}
             >
-              <span className="ws-retry-slot">{retrying && <SpinnerRing size={14} />}</span>
-              {retrying ? 'Retrying' : 'Retry'}
-            </button>
+              Retry
+            </EditorButton>
             <span className="mono topbar-job">job {RUN.job}</span>
           </>
         ) : undefined

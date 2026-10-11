@@ -440,27 +440,6 @@
   color: var(--color-text-primary);
   white-space: nowrap;
 }
-/* Retry keeps its width while it works: both labels share one grid cell, the idle one is hidden. */
-.btn-editor.est-retry {
-  display: inline-grid;
-  background: var(--color-surface-panel);
-}
-.btn-editor.est-retry:hover:not(:disabled) {
-  background: var(--color-editor-hover, var(--color-surface-raised));
-}
-.btn-editor.est-retry:disabled {
-  color: var(--color-text-primary);
-}
-.est-retry-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  grid-area: 1 / 1;
-}
-.est-retry-label.is-hidden {
-  visibility: hidden;
-}
 @keyframes est-fade {
   from {
     opacity: 0;
@@ -539,21 +518,3 @@
   white-space: nowrap;
 }
 
-/* spinner: one turn per 1000 ms, linear; reduced motion keeps a static ring */
-.est-spinner {
-  flex-shrink: 0;
-  animation: est-spin var(--motion-spin) linear infinite;
-}
-@keyframes est-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .est-spinner {
-    animation: none;
-  }
-}
-:root[data-reduce-motion] .est-spinner {
-  animation: none;
-}

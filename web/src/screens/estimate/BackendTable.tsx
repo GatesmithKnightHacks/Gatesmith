@@ -6,7 +6,7 @@
 import { useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { Sk, SkRegion } from '../../ui/Skeleton'
 import { BACKENDS, CAVEAT, barWidth, sec, usd, type Backend } from './data'
-import { Spinner } from './Spinner'
+import { SpinnerRing } from '../../ui/Spinner'
 
 /** How a row looks right now. */
 export type RowMode = 'estimated' | 'running' | 'queued' | 'unavailable'
@@ -118,7 +118,7 @@ function RowBody({ backend: b, mode }: { backend: Backend; mode: RowMode }) {
     return (
       <>
         <div className="est-col-rel est-stage">
-          <Spinner size={14} />
+          <SpinnerRing size={14} />
           <span className="est-stage-word">running</span>
           <span className="mono est-stage-note">routing · seed 4 of 8</span>
         </div>

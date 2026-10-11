@@ -1307,20 +1307,7 @@
   flex-shrink: 0;
 }
 
-/* Top bar: Retry keeps its width while retrying (R6); the spinner takes a reserved slot. */
+/* Top bar: Retry sits between the GPU message and the job id (it keeps its width while retrying). */
 .ws-retry {
-  gap: 0;
-  min-width: 80px;
   margin-inline: 4px 12px;
-}
-.ws-retry-slot {
-  display: flex;
-  width: 0;
-  overflow: hidden;
-}
-.ws-retry.is-busy .ws-retry-slot {
-  width: 20px;
-}
-.ws-retry.is-busy {
-  pointer-events: none;
 }

@@ -6,16 +6,15 @@
  *
  * States (?state=…): selected, error (Q904, alias unavailable), loading, focus, empty, offline.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
 import { RUN, TWO_QUBIT } from '../data/demo'
-import { actions } from '../data/run'
+import { actions, useRun } from '../data/run'
 import { EditorButton, ModeBlock, ModeTabs, Section, TileHeader } from '../ui/parts'
 import { Content, Shell, TabStrip } from '../ui/Shell'
 import { BackendTable, type RowMode } from './estimate/BackendTable'
 import { CostChart } from './estimate/CostChart'
 import { BACKENDS, SNAPSHOT_DATE, perRound, saving, sec, signedPct, usd } from './estimate/data'
-import { Spinner } from './estimate/Spinner'
 import './estimate/estimate.css'
 
 type StateParam = 'selected' | 'error' | 'unavailable' | 'loading' | 'focus' | 'empty' | 'offline' | null
@@ -27,6 +26,9 @@ const MARRAKESH = BACKENDS.findIndex((b) => b.name === 'FakeMarrakesh')
 const BRISBANE = BACKENDS.findIndex((b) => b.name === 'FakeBrisbane')
 
 export function S05Estimate() {
+  const run = useRun()
+  // The Runs chip: "1" while the run is in progress (and on the board's snapshot); none once it stopped.
+  const runsInProgress = !run.live || !['stopped', 'report', 'export'].includes(run.phase)
   const raw = (useHashParams().get('state') as StateParam) ?? null
   const state = raw === 'unavailable' ? 'error' : raw
   const [mode, setMode] = useState<'laptop' | 'platform'>('laptop')
@@ -109,6 +111,7 @@ export function S05Estimate() {
   return (
     <Shell
       rail="runs"
+      railBadges={runsInProgress ? { runs: 1 } : undefined}
       tabs={
         <TabStrip
           tabs={[
@@ -217,9 +220,6 @@ function AssumeRow({ label, children, last }: { label: string; children: ReactNo
  * its width while it works: "Retrying" with the 14 px spinner sits in the same reserved slot (R6).
  */
 function Banner({ word, children, onRetry }: { word: string; children: ReactNode; onRetry: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const timer = useRef<number | undefined>(undefined)
-  useEffect(() => () => window.clearTimeout(timer.current), [])
   return (
     <div className="est-banner" role="status">
       <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden style={{ flexShrink: 0 }}>
@@ -229,24 +229,9 @@ function Banner({ word, children, onRetry }: { word: string; children: ReactNode
       <span className="est-banner-word">{word}</span>
       <span className="est-banner-text">{children}</span>
       <span className="est-spacer" />
-      <button
-        className="btn-editor est-retry"
-        aria-busy={busy}
-        disabled={busy}
-        onClick={() => {
-          setBusy(true)
-          timer.current = window.setTimeout(() => {
-            setBusy(false)
-            onRetry()
-          }, 1200)
-        }}
-      >
-        <span className={`est-retry-label${busy ? ' is-hidden' : ''}`}>Retry</span>
-        <span className={`est-retry-label${busy ? '' : ' is-hidden'}`}>
-          <Spinner size={14} />
-          Retrying
-        </span>
-      </button>
+      <EditorButton onInset loadingLabel="Retrying" onClick={() => new Promise<void>((done) => window.setTimeout(done, 1200)).then(onRetry)}>
+        Retry
+      </EditorButton>
     </div>
   )
 }
