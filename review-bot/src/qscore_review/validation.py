@@ -20,7 +20,10 @@ SECRET = re.compile(
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
     r"(?i:api[_-]?key|password|secret|token)\s*[:=]\s*['\"][^'\"]{8,}['\"])"
 )
-NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?%?")
+NUMBER = re.compile(
+    r"(?<![\w.])[-+]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d*)?|\.\d+)"
+    r"(?:[eE][-+]?\d+)?%?"
+)
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 QUANTUM_EXTENSIONS = {".py", ".qasm", ".ipynb"}
 
@@ -160,36 +163,64 @@ def _version_valid(assumptions: dict[str, str], detected: list[DetectedVersion])
 
 def _numbers_valid(comment: ReviewComment, evidence: dict[str, dict[str, Any]]) -> bool:
     text = comment.body
-    for version in comment.assumes_versions.values():
-        text = text.replace(version, "VERSION")
+    # Version text is exempt only in an explicitly named, validated package assumption.
+    # Replacing a bare version value globally could erase an invented metric value.
+    for package, version in comment.assumes_versions.items():
+        version_pattern = (
+            r"\b"
+            + re.escape(package)
+            + r"\s*(?:version\s*)?(?:==|~=)?\s*"
+            + re.escape(version)
+            + r"(?![\w.*])"
+        )
+        text = re.sub(version_pattern, "VERSION", text, flags=re.I)
     text = re.sub(r"\b[QD]\d{2,3}\b", "RULE", text)
-    allowed = [
-        float(value)
-        for key in comment.evidence
-        for value in evidence[key].get("numbers", [])
-        if isinstance(value, (int, float)) and not isinstance(value, bool)
-    ]
-    for match in NUMBER.finditer(text):
-        raw = match[0]
-        value = float(raw.rstrip("%")) / (100 if raw.endswith("%") else 1)
-        if not any(math.isclose(value, known, rel_tol=1e-8, abs_tol=1e-10) for known in allowed):
-            return False
-    # Metric-bound numbers must belong to that metric, not an unrelated cited line number.
+    # Locations can authorize only explicit file:line references, never metric numbers.
     for key in comment.evidence:
-        if not key.startswith("metric:"):
-            continue
-        metric = key.rsplit(":", 1)[1]
-        pattern = re.escape(metric) + r"[^\n\d]{0,24}([-+]?\d+(?:\.\d+)?)"
-        values = evidence[key].get("numbers", [])
-        for match in re.finditer(pattern, text):
-            if not any(
-                math.isclose(float(match[1]), float(v), rel_tol=1e-8, abs_tol=1e-10) for v in values
-            ):
-                return False
-        if evidence[key].get("comparison") == "within seed spread" and re.search(
+        if key.startswith("code:"):
+            path, line = key[len("code:") :].rsplit(":", 1)
+            text = re.sub(re.escape(path + ":" + line) + r"(?!\d)", "LOCATION", text)
+    metrics = {key: evidence[key] for key in comment.evidence if key.startswith("metric:")}
+    patterns = {
+        key: re.compile(r"(?<![A-Za-z_])" + re.escape(key.rsplit(":", 1)[1]) + r"(?=$|[^A-Za-z_])")
+        for key in metrics
+    }
+    for data in metrics.values():
+        if data.get("comparison") == "within seed spread" and re.search(
             r"\b(better|worse|improv\w*|regress\w*)\b", text, re.I
         ):
             return False
+    # A semicolon or newline explicitly separates claims. When a numeric clause mentions
+    # several metrics, reject it rather than guess which number belongs to which metric.
+    for clause in re.split(r"[;\n]", text):
+        named = [key for key, pattern in patterns.items() if pattern.search(clause)]
+        numeric_text = clause
+        for pattern in patterns.values():
+            numeric_text = pattern.sub(" METRIC ", numeric_text)
+        matches = list(NUMBER.finditer(numeric_text))
+        if not matches:
+            continue
+        if len(named) == 1:
+            sources = [metrics[named[0]]]
+        elif len(named) > 1 or len(metrics) > 1:
+            return False
+        elif metrics:
+            sources = list(metrics.values())
+        else:
+            sources = [evidence[key] for key in comment.evidence if not key.startswith("code:")]
+        allowed = [
+            float(value)
+            for data in sources
+            for value in data.get("numbers", [])
+            if isinstance(value, (int, float)) and not isinstance(value, bool)
+        ]
+        for match in matches:
+            raw = match[0].replace(",", "")
+            value = float(raw.rstrip("%")) / (100 if raw.endswith("%") else 1)
+            if not any(
+                math.isclose(value, known, rel_tol=1e-8, abs_tol=1e-10) for known in allowed
+            ):
+                return False
     return True
 
 
@@ -247,7 +278,7 @@ def validate_review(
     comments = quantum + general[:cap]
     # Summary prose has no per-claim citations in the schema: only number-free prose is allowed.
     note = draft.summary_note
-    if SECRET.search(note) or NUMBER.search(note):
+    if SECRET.search(note) or re.search(r"\d", note):
         dropped.append("summary note contains uncited numbers or possible credential")
         note = ""
     return ValidatedReview(comments, dropped, note)

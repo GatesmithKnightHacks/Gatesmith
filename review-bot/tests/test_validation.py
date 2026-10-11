@@ -90,3 +90,70 @@ def test_ambiguous_version_text_cannot_be_treated_as_an_exact_version():
         {"qiskit": value},
         [DetectedVersion(package="qiskit", value=value, source="uv.lock", line=1)],
     )
+
+
+def test_code_line_cannot_authorize_fabricated_second_metric_number():
+    result = validate(
+        [
+            comment(
+                body="two_qubit_count10→2 is outside seed spread",
+                evidence=["metric:demo:two_qubit_count", "code:circuit.py:2"],
+            )
+        ]
+    )
+    assert not result.comments
+    assert result.dropped == ["number or seed-spread claim is unsupported"]
+
+
+def test_other_metric_numbers_cannot_contaminate_metric_claim():
+    from qscore_review.contracts import ReviewComment
+    from qscore_review.validation import _numbers_valid
+
+    evidence = {
+        "metric:demo:two_qubit_count": {"numbers": [10, 20]},
+        "metric:demo:depth": {"numbers": [2, 5]},
+        "code:circuit.py:2": {"numbers": [2]},
+    }
+    draft = ReviewComment.model_validate(
+        comment(
+            body="two_qubit_count10→2 is outside seed spread",
+            evidence=list(evidence),
+        )
+    )
+    assert not _numbers_valid(draft, evidence)
+    draft.body = "two_qubit_count10→20; depth2→5"
+    assert _numbers_valid(draft, evidence)
+    draft.body = "two_qubit_count10→20 and depth2→5"
+    assert not _numbers_valid(draft, evidence)
+
+
+def test_only_explicit_code_location_is_exempt_from_metric_number_checks():
+    result = validate(
+        [
+            comment(
+                body="two_qubit_count10→20 (see circuit.py:2)",
+                evidence=["metric:demo:two_qubit_count", "code:circuit.py:2"],
+            ),
+            comment(
+                body="two_qubit_count10→20; this metric actually becomes 2",
+                evidence=["metric:demo:two_qubit_count", "code:circuit.py:2"],
+            ),
+        ]
+    )
+    assert len(result.comments) == 1 and len(result.dropped) == 1
+
+
+def test_valid_version_assumption_does_not_erase_bare_metric_number():
+    from qscore_review.contracts import ReviewComment
+    from qscore_review.validation import _numbers_valid
+
+    evidence = {"metric:demo:two_qubit_count": {"numbers": [10, 20]}}
+    draft = ReviewComment.model_validate(
+        comment(
+            body="Qiskit 2: two_qubit_count10→2",
+            assumes_versions={"qiskit": "2"},
+        )
+    )
+    assert not _numbers_valid(draft, evidence)
+    draft.body = "Qiskit 2: two_qubit_count10→20"
+    assert _numbers_valid(draft, evidence)
