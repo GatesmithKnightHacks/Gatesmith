@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install (CPU Aer)
-        run: uv sync --frozen
+        run: uv sync --frozen --extra hf --extra ui
       - name: Lint and format
         run: uv run ruff check . && uv run ruff format --check .
       - name: Types
