@@ -22,19 +22,6 @@
   white-space: nowrap;
 }
 
-/* ── Spinner ─────────────────────────────────────────────────────────── */
-.ws-spinner {
-  flex-shrink: 0;
-  animation: motion-spin var(--motion-spin) linear infinite;
-}
-/* Reduced motion: a static whole ring in the arc color. */
-:root[data-reduce-motion] .ws-spinner {
-  animation: none;
-}
-:root[data-reduce-motion] .ws-spinner circle {
-  stroke: var(--color-spinner-arc);
-}
-
 /* Scoring waits as solid blocks (DS-06 scoring frame): #354348 at .7, radius 2. */
 .ws-wait {
   display: block;
@@ -42,11 +29,6 @@
   border-radius: var(--radius-xs);
   background: var(--color-surface-selected);
   opacity: 0.7;
-}
-/* Shimmer blocks on a panel-colored header strip: block #243237, band #2A383D (R2). */
-.sk.ws-sk-strip {
-  --sk-base: var(--color-skeleton-strip-block, var(--color-surface-panel));
-  --sk-hi: var(--color-skeleton-strip-band, var(--color-surface-raised));
 }
 
 /* ── Tab band with the partial banner ────────────────────────────────── */
@@ -208,19 +190,6 @@
   justify-content: center;
   gap: 10px;
   flex: 1 1 0;
-}
-.ws-canvas-loading-words {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-}
-.ws-canvas-loading-est {
-  color: var(--color-text-tertiary);
-  font-size: var(--text-label);
-  line-height: 14px;
 }
 .ws-diff-note {
   display: flex;
@@ -1001,15 +970,9 @@
 
 /* ── Inspector ───────────────────────────────────────────────────────── */
 .ws-stage-line {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   height: 16px;
   color: var(--color-text-primary);
   white-space: nowrap;
-}
-.ws-stage-line > .ws-spinner {
-  margin-right: 2px;
 }
 .ws-stage-id {
   font-size: var(--text-label);

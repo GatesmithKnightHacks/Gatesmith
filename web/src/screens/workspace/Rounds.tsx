@@ -124,7 +124,7 @@ export function Rounds({ mode, attempts, elapsed, round, twoQubit, running, gpuO
           <Zoom idx={zoomIdx} positions={ROUNDS_ZOOM_POS} onChange={setZoomIdx} label="Rounds zoom" />
           <span className="ws-readout">
             {mode === 'loading' ? (
-              <Sk w={80} h={12} className="ws-sk-strip" />
+              <Sk w={80} h={12} strip />
             ) : (
               <>
                 {viewRound != null ? `R${viewRound} · ` : ''}

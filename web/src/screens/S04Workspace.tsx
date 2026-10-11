@@ -15,6 +15,7 @@ import { SectionIcons } from '../ui/icons'
 import { EditorButton, Field, FieldRow, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Section } from '../ui/parts'
 import { Content, GpuStatus, Shell, TabStrip } from '../ui/Shell'
 import { Sk } from '../ui/Skeleton'
+import { Spinner, SpinnerRing } from '../ui/Spinner'
 import { Chevron } from '../ui/icons'
 import { Circuit } from './workspace/Circuit'
 import { FindingPlaceholders, FindingSkeletons, NotEvaluatedRow, WsFindingCard, type CardView } from './workspace/Findings'
@@ -24,7 +25,6 @@ import { Qasm } from './workspace/Qasm'
 import { Rounds, Zoom, type RoundsMode, type Shown } from './workspace/Rounds'
 import { ScorecardEmpty, ScorecardLoading, ScorecardRows, ScorecardScoring, SeedsChart } from './workspace/Scorecard'
 import { baselineScoreRows, lineMarks } from './workspace/data'
-import { Spinner } from './workspace/Spinner'
 import './workspace/workspace.css'
 
 type StateParam = 'never-run' | 'loading' | 'scoring' | 'partial' | 'gpu-off' | 'focus' | 'seeds'
@@ -179,13 +179,15 @@ export function S04Workspace() {
           {primary.label}
         </PrimaryButton>
         {loading && (
-          <div className="ws-stage-line" role="status">
-            <Spinner />
-            <span>Loading run</span>
-            <span className="mono ws-stage-id">{RUN.job}</span>
-            <span>from your account ·</span>
-            <span className="mono ws-stage-est">about 2 s</span>
-          </div>
+          <Spinner
+            className="ws-stage-line"
+            stage={
+              <>
+                Loading run <span className="mono ws-stage-id">{RUN.job}</span> from your account ·
+              </>
+            }
+            estimate="about 2 s"
+          />
         )}
         <PoweredBy />
         {scoring && <StageList stage={scoreStage} />}
@@ -277,7 +279,7 @@ export function S04Workspace() {
   const scoreMeta = neverRun ? (
     'not scored yet'
   ) : loading ? (
-    <Sk w={150} h={12} className="ws-sk-strip" />
+    <Sk w={150} h={12} strip />
   ) : scoring ? (
     <span className="ws-wait" style={{ width: 150, height: 12 }} />
   ) : partial ? (
@@ -310,7 +312,7 @@ export function S04Workspace() {
               }}
               aria-busy={retrying}
             >
-              <span className="ws-retry-slot">{retrying && <Spinner />}</span>
+              <span className="ws-retry-slot">{retrying && <SpinnerRing size={14} />}</span>
               {retrying ? 'Retrying' : 'Retry'}
             </button>
             <span className="mono topbar-job">job {RUN.job}</span>
@@ -350,18 +352,14 @@ export function S04Workspace() {
               </div>
               <div className="ws-tile-meta ws-circuit-meta">
                 <Zoom idx={zoomIdx} positions={CIRCUIT_ZOOM_POS} onChange={setZoomIdx} label="Circuit zoom" />
-                <span className="ws-circuit-dims">{loading ? <Sk w={104} h={12} className="ws-sk-strip" /> : `${RUN.qubits} q · ${RUN.layers} layers`}</span>
+                <span className="ws-circuit-dims">{loading ? <Sk w={104} h={12} strip /> : `${RUN.qubits} q · ${RUN.layers} layers`}</span>
               </div>
             </div>
             <div className="ws-tile-pad">
               <div className="ws-canvas">
                 {loading ? (
-                  <div className="ws-canvas-loading" role="status">
-                    <Spinner size={28} />
-                    <span className="ws-canvas-loading-words">
-                      <span>Drawing the circuit</span>
-                      <span className="mono ws-canvas-loading-est">about 2 s</span>
-                    </span>
+                  <div className="ws-canvas-loading">
+                    <Spinner size={28} stage="Drawing the circuit" estimate="about 2 s" />
                   </div>
                 ) : circuitTab === 'diff' ? (
                   <DiffNote selected={selected} block2={block2} onOpen={() => actions.requestFix('D03-2')} onBack={() => setCircuitTab('circuit')} />
@@ -410,7 +408,7 @@ export function S04Workspace() {
               <div className="tile-tabs" role="tablist">
                 <TileTab label="QASM" active />
               </div>
-              <div className="ws-tile-meta">{loading ? <Sk w={150} h={12} className="ws-sk-strip" /> : `OpenQASM 2.0 · ${RUN.qasmLines} lines`}</div>
+              <div className="ws-tile-meta">{loading ? <Sk w={150} h={12} strip /> : `OpenQASM 2.0 · ${RUN.qasmLines} lines`}</div>
             </div>
             {loading ? (
               <QasmLoading />
@@ -488,7 +486,7 @@ function StageList({ stage }: { stage: RunState['scoreStage'] }) {
             {state === 'running' ? (
               <>
                 <span className="ws-stage-word is-running">
-                  <Spinner size={14} />
+                  <SpinnerRing size={14} />
                   running
                 </span>
                 <span className="ws-grow" />
