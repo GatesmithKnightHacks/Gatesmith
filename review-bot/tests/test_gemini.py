@@ -50,9 +50,14 @@ def test_exact_high_thinking_schema_no_tools_accounting_and_one_call(tmp_path):
     assert call["model"] == MODEL
     assert call["config"].thinking_config.thinking_level == "HIGH"
     assert call["config"].automatic_function_calling.disable is True
+    instruction = call["config"].system_instruction
+    assert "Use exact metric IDs verbatim" in instruction
+    assert "exactly one metric ID" in instruction and "semicolons or newlines" in instruction
+    assert "that metric's own" in instruction and "one actionable remedy" in instruction
     record = state.model("head")
     assert record["cost"] == pytest.approx((100 * 2 + 250 * 12) / 1_000_000)
     assert json.loads(record["usage"])["thinking_tokens"] == 200
+    assert json.loads(record["usage"])["prompt_version"] == "review-prompt/v2"
 
 
 def test_schema_failure_cannot_trigger_second_call(tmp_path):
