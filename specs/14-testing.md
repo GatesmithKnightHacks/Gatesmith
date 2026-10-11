@@ -16,7 +16,7 @@ qscore/tests/
   differential/      CPU vs GPU, single vs double, Aer vs exact Operator          (marker gpu)
   snapshots/         example scorecards compared field by field with tolerances
   conformance/       layers vs the compatibility kit (recorded responses in CI)
-  queue/             worker kill/requeue, idempotent replay                         (marker neon)
+  queue/             worker kill/requeue, idempotent replay                         (marker platform, against a local fake job API)
   e2e/               CLI end to end on the examples (CPU)                          (marker slow)
 ```
 
@@ -25,7 +25,7 @@ qscore/tests/
 | (none) | CPU only | CI on every push, laptop |
 | `slow` | CPU, > 30 s | CI nightly or before merge to `main` |
 | `gpu` | W7900 with the ROCm Aer build | Start and end of each GPU session (`pytest -m gpu`) |
-| `neon` | `QSCORE_TEST_NEON_DSN` (dev branch) | Laptop before merging queue changes |
+| `platform` | a local fake job API (fixture) | Laptop before merging queue changes |
 | `hub` | `HF_TOKEN` with write to a test repo | Before merging Hub changes |
 | `llm` | A running model endpoint | GPU session (local) / manual (hf) |
 
@@ -43,7 +43,7 @@ A test whose marker's requirement is missing is **skipped by marker selection**,
 | Snapshot regression | Example scorecards compared field by field; statistical metrics within their CI; structural exactly | Unintended changes |
 | Determinism | Same inputs twice → identical structural scorecards (excluding timestamps/durations) | Hidden randomness |
 | Compatibility kit | `reference-qiskit` and a recorded-response model layer pass; a broken layer fails | A standard that cannot catch bad layers |
-| Queue faults (neon) | Kill a worker mid-job → requeued, attempts+1, third loss → failed; replay a write twice → no duplicates; content mismatch on replay → `RecordError` | Lost or doubled results |
+| Queue faults (platform) | Kill a worker mid-job → requeued, attempts+1, third loss → failed; replay a write twice → no duplicates; content mismatch on replay → `RecordError` | Lost or doubled results |
 | CLI | Exit codes 0/1/2/3/4 on fixtures; `--json` outputs validate against schemas | Interface regressions |
 | Fallback discipline | With `profile=ci`, every FB code path raises `FallbackRefused`; with the FB enabled, the use is recorded in `fallbacks_used` | Silent fallbacks |
 
@@ -77,7 +77,7 @@ On every push and PR, on `ubuntu-latest`, with `defaults.run.working-directory: 
 2. `uv run ruff check . && uv run ruff format --check .`
 3. `uv run mypy src`
 4. `uv run lint-imports`
-5. `uv run pytest -m "not gpu and not neon and not hub and not llm and not slow" -W error::DeprecationWarning:qiskit -n auto`
+5. `uv run pytest -m "not gpu and not platform and not hub and not llm and not slow" -W error::DeprecationWarning:qiskit -n auto`
 6. `uv run pytest tests/contract` (schema drift) — part of step 5, listed for clarity.
 
 Free CI runners have no AMD GPU; `gpu` tests run in GPU sessions and their outputs are attached to `progress.md`.

@@ -1,0 +1,402 @@
+{
+  "$defs": {
+    "Confirmation": {
+      "additionalProperties": false,
+      "description": "How the run was confirmed before compute (05 §5); modes as stored with a job (11 §3).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "interactive",
+            "yes_flag",
+            "stored"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "at",
+        "manifest_sha256"
+      ],
+      "title": "Confirmation",
+      "type": "object"
+    },
+    "ProjectSource": {
+      "additionalProperties": false,
+      "description": "Git state of `project.root` at score time (ChP-0035 §2.1 D).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "commit": {
+          "title": "Commit",
+          "type": "string"
+        },
+        "dirty": {
+          "title": "Dirty",
+          "type": "boolean"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Url"
+        }
+      },
+      "required": [
+        "url",
+        "commit",
+        "dirty"
+      ],
+      "title": "ProjectSource",
+      "type": "object"
+    },
+    "ProjectSourceError": {
+      "additionalProperties": false,
+      "description": "Why the git state could not be read, e.g. \"git not installed\" (ChP-0035 §2.1 D).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "title": "ProjectSourceError",
+      "type": "object"
+    },
+    "RunCompiledRef": {
+      "additionalProperties": false,
+      "description": "One exported compiled circuit (ChP-0034): `<out>/compiled/<item_id>.qasm`.",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "item_id": {
+          "title": "Item Id",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "path",
+        "sha256",
+        "seed"
+      ],
+      "title": "RunCompiledRef",
+      "type": "object"
+    },
+    "RunCompiledSkip": {
+      "additionalProperties": false,
+      "description": "An item without an exported compiled circuit, and why (ChP-0034).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "item_id": {
+          "title": "Item Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "reason"
+      ],
+      "title": "RunCompiledSkip",
+      "type": "object"
+    },
+    "RunProvenance": {
+      "additionalProperties": false,
+      "description": "Run-wide versions; per-item seeds and settings stay in each scorecard's provenance.",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "git_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Git Commit"
+        },
+        "git_dirty": {
+          "title": "Git Dirty",
+          "type": "boolean"
+        },
+        "lock_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lock Sha256"
+        },
+        "python": {
+          "title": "Python",
+          "type": "string"
+        },
+        "qiskit": {
+          "title": "Qiskit",
+          "type": "string"
+        },
+        "qscore": {
+          "title": "Qscore",
+          "type": "string"
+        },
+        "score_version": {
+          "title": "Score Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "qscore",
+        "score_version",
+        "git_commit",
+        "git_dirty",
+        "lock_sha256",
+        "python",
+        "qiskit"
+      ],
+      "title": "RunProvenance",
+      "type": "object"
+    },
+    "RunScorecardRef": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "item_id": {
+          "title": "Item Id",
+          "type": "string"
+        },
+        "item_sha256": {
+          "title": "Item Sha256",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "item_sha256",
+        "path",
+        "sha256"
+      ],
+      "title": "RunScorecardRef",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.run/v0.3",
+  "additionalProperties": false,
+  "description": "One scoring run, written last as `<out>/run.json` (04 §13).",
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "command": {
+      "title": "Command",
+      "type": "string"
+    },
+    "compiled": {
+      "items": {
+        "$ref": "#/$defs/RunCompiledRef"
+      },
+      "title": "Compiled",
+      "type": "array"
+    },
+    "compiled_skipped": {
+      "items": {
+        "$ref": "#/$defs/RunCompiledSkip"
+      },
+      "title": "Compiled Skipped",
+      "type": "array"
+    },
+    "confirmation": {
+      "$ref": "#/$defs/Confirmation"
+    },
+    "exit_code": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Exit Code"
+    },
+    "fallbacks_enabled": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Fallbacks Enabled",
+      "type": "array"
+    },
+    "fallbacks_used": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Fallbacks Used",
+      "type": "array"
+    },
+    "finished_at": {
+      "format": "date-time",
+      "title": "Finished At",
+      "type": "string"
+    },
+    "interpretation": {
+      "title": "Interpretation",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "job_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Job Id"
+    },
+    "manifest_sha256": {
+      "title": "Manifest Sha256",
+      "type": "string"
+    },
+    "project_source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProjectSource"
+        },
+        {
+          "$ref": "#/$defs/ProjectSourceError"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Project Source"
+    },
+    "provenance": {
+      "$ref": "#/$defs/RunProvenance"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema": {
+      "const": "qscore.run/v0.3",
+      "title": "Schema",
+      "type": "string"
+    },
+    "scorecards": {
+      "items": {
+        "$ref": "#/$defs/RunScorecardRef"
+      },
+      "title": "Scorecards",
+      "type": "array"
+    },
+    "settings_profile": {
+      "title": "Settings Profile",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "partial",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "run_id",
+    "command",
+    "manifest_sha256",
+    "items",
+    "confirmation",
+    "interpretation",
+    "settings_profile",
+    "fallbacks_enabled",
+    "fallbacks_used",
+    "started_at",
+    "finished_at",
+    "status",
+    "scorecards",
+    "compiled",
+    "compiled_skipped",
+    "project_source",
+    "provenance"
+  ],
+  "title": "RunRecord",
+  "type": "object"
+}

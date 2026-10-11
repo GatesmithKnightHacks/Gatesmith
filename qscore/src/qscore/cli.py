@@ -11,7 +11,7 @@ import sys
 import traceback
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import typer
 from rich.console import Console
@@ -19,7 +19,9 @@ from rich.console import Console
 from qscore import services
 from qscore.config import get_settings, log_startup
 from qscore.errors import ConfigError, InvalidInput, QscoreError
+from qscore.intake.draft import PromptSpec
 from qscore.logging import setup_logging
+from qscore.schemas.run import Event
 
 app = typer.Typer(
     name="qscore",
@@ -29,6 +31,38 @@ app = typer.Typer(
 )
 err = Console(stderr=True)
 SEVERITY_ORDER = {"info": 0, "warning": 1, "high": 2}
+
+
+def _disabled(values: list[str] | None, allowed: set[str]) -> set[str]:
+    disabled = {name.strip() for value in (values or []) for name in value.split(",")}
+    unknown = disabled - allowed
+    if unknown:
+        raise typer.BadParameter(
+            f"unknown/empty name(s) {', '.join(repr(n) for n in sorted(unknown))}; "
+            f"valid names: {', '.join(sorted(allowed))}",
+            param_hint="--not",
+        )
+    return disabled
+
+
+def _complete_not(ctx: typer.Context, incomplete: str) -> list[str]:
+    allowed = {
+        "discover": ["input", "confirm"],
+        "score": ["confirm"],
+        "deps": ["confirm"],
+        "bench": ["fusion"],
+    }
+    prefix, separator, tail = incomplete.rpartition(",")
+    before = prefix + separator
+    return [before + name for name in allowed[str(ctx.command.name)] if name.startswith(tail)]
+
+
+def _legacy_input(value: bool) -> bool:
+    if value:
+        # Keep this copyable hint intact under Typer's coloured error formatting.
+        typer.echo("--no-input was removed; use --not input", err=True)
+        raise typer.Exit(2)
+    return value
 
 
 class FailOn(StrEnum):
@@ -50,10 +84,184 @@ def main() -> None:
 
 
 @app.command()
+def discover(
+    path: Annotated[
+        str,
+        typer.Argument(
+            help="Repository link (https://, ssh://, git@host:owner/repo, file://), or a "
+            "repository, Python, QASM or notebook path."
+        ),
+    ] = ".",
+    draft: Annotated[
+        bool, typer.Option("--draft", help="Write a manifest draft after showing its diff.")
+    ] = False,
+    pick: Annotated[
+        str | None, typer.Option(help="Candidate numbers or names, comma-separated.")
+    ] = None,
+    values: Annotated[Path | None, typer.Option(help="qscore.values/v0.1 YAML file.")] = None,
+    disable: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--not",
+            autocompletion=_complete_not,
+            help="Disable input prompts or score confirmation: input,confirm (repeatable).",
+        ),
+    ] = None,
+    legacy_no_input: Annotated[
+        bool, typer.Option("--no-input", hidden=True, callback=_legacy_input, is_eager=True)
+    ] = False,
+    ref: Annotated[
+        str | None, typer.Option(help="Branch, tag or full commit SHA of a repository link.")
+    ] = None,
+    into: Annotated[
+        Path | None, typer.Option(help="Clone destination (default ./<repo-name>).")
+    ] = None,
+    subdir: Annotated[
+        Path | None, typer.Option("--path", help="Limit discovery to this subdirectory.")
+    ] = None,
+    score_after: Annotated[
+        bool, typer.Option("--score", help="Score the draft right after writing it.")
+    ] = False,
+    out: Annotated[
+        Path | None, typer.Option(help="Output directory for --score (default <root>/qscore-out).")
+    ] = None,
+    yes: Annotated[bool, typer.Option("--yes", help="With --score: do not ask.")] = False,
+    allow_partial: Annotated[
+        bool, typer.Option("--allow-partial", help="With --score: exit 0 on partial cards.")
+    ] = False,
+    fail_on: Annotated[
+        FailOn | None, typer.Option(help="With --score: exit 1 on findings at/above this.")
+    ] = None,
+) -> None:
+    """Find circuits without executing code; optionally draft their manifest entries."""
+    disabled = _disabled(disable, {"input", "confirm"} if score_after else {"input"})
+    no_input = "input" in disabled
+    yes = yes or "confirm" in disabled
+    if not draft and (pick is not None or values is not None or no_input or score_after):
+        err.print("--pick, --values, --not input and --score require --draft")
+        raise typer.Exit(2)
+    if not score_after and (out is not None or yes or allow_partial or fail_on is not None):
+        err.print("--out, --yes, --allow-partial and --fail-on require --score")
+        raise typer.Exit(2)
+
+    def prompt(spec: PromptSpec) -> str:
+        for suggestion in spec.suggestions:
+            typer.echo(f"  Suggested: {suggestion.value!r} from {suggestion.where}")
+        return str(typer.prompt(spec.message, default="", show_default=False))
+
+    def on_event(event: Event) -> None:
+        typer.echo(event.message)
+
+    def confirm(summary: str) -> bool:
+        err.print(summary, markup=False)
+        return typer.confirm("Continue?", err=True)
+
+    result: services.ScoreResult | None = None
+    try:
+        found = services.discover_candidates(
+            path,
+            on_event,
+            draft=draft,
+            pick=pick,
+            values=values,
+            no_input=no_input,
+            prompt=None if no_input else prompt,
+            ref=ref,
+            into=into,
+            subdir=subdir,
+        )
+        if score_after:
+            assert found.draft_path is not None and found.root is not None  # --draft wrote it
+            result = services.score_project(
+                found.draft_path,
+                out if out is not None else found.root / "qscore-out",
+                on_event,
+                confirm="yes" if yes else confirm,
+                fetched=found.fetched,
+            )
+    except InvalidInput as exc:
+        err.print(f"[red]invalid input:[/red] {exc}")
+        if exc.report is not None:
+            for issue in exc.report.issues:
+                loc = issue.location
+                err.print(
+                    f"  {issue.code} {loc.file}:{loc.line}:{loc.column} "
+                    f"{loc.field or ''} — {issue.message}",
+                    markup=False,
+                )
+                if issue.hint:
+                    err.print(f"    {issue.hint}", markup=False)
+        raise typer.Exit(2) from exc
+    except ConfigError as exc:
+        err.print(f"[red]configuration error:[/red] {exc}")
+        raise typer.Exit(4) from exc
+    except QscoreError as exc:
+        err.print(f"[red]runtime failure:[/red] {type(exc).__name__}: {exc}")
+        raise typer.Exit(3) from exc
+    except typer.Abort:  # Ctrl-C / EOF at a prompt: Typer's own "Aborted!" exit
+        raise
+    except Exception as exc:  # ChP-0017: anything that is not a QscoreError is a bug → exit 3
+        err.print(f"[red]unexpected error (a bug):[/red]\n{traceback.format_exc()}")
+        raise typer.Exit(3) from exc
+    if result is not None:  # --score ran: same output and exit codes as `qscore score`
+        _finish_run(result, allow_partial=allow_partial, fail_on=fail_on)
+
+
+def _finish_run(
+    result: services.ScoreResult,
+    *,
+    allow_partial: bool,
+    fail_on: FailOn | None,
+    as_json: bool = False,
+    pasted: bool = False,
+) -> None:
+    """Status lines and exit code after a scoring run; shared by `score` and `discover --score`
+    (ChP-0042)."""
+    if not result.scorecards:
+        err.print("not confirmed; nothing scored")
+        return
+    if as_json:
+        sys.stdout.write(
+            json.dumps([c.model_dump(mode="json") for c in result.scorecards], indent=2) + "\n"
+        )
+    for card, p in zip(result.scorecards, result.paths, strict=True):
+        live = [f for f in card.findings if f.suppressed is None]
+        err.print(
+            f"{card.item.id}: {card.status} · {len(live)} finding(s) "
+            f"({', '.join(f'{f.rule}:{f.severity}' for f in live) or 'none'}) → {p}",
+            markup=False,
+            highlight=False,
+            soft_wrap=True,
+        )
+    for compiled in result.compiled_paths:
+        err.print(f"compiled → {compiled}", markup=False, highlight=False, soft_wrap=True)
+    err.print(f"report → {result.report_path}", markup=False, highlight=False, soft_wrap=True)
+    if pasted and not as_json:
+        sys.stdout.write(result.report_path.read_text(encoding="utf-8"))
+    if any(c.status == "partial" for c in result.scorecards) and not allow_partial:
+        raise typer.Exit(3)
+    if fail_on is not None:
+        worst = max(
+            (
+                SEVERITY_ORDER[f.severity]
+                for c in result.scorecards
+                for f in c.findings
+                if f.suppressed is None
+            ),
+            default=-1,
+        )
+        if worst >= SEVERITY_ORDER[fail_on]:
+            raise typer.Exit(1)
+
+
+@app.command()
 def score(
     path: Annotated[
         Path | None,
-        typer.Argument(help="A single OpenQASM file to score, or - to paste QASM on stdin."),
+        typer.Argument(
+            help="A manifest (*.yaml/*.yml), a project directory (its qscore.yaml), a single "
+            "OpenQASM file, or - to paste QASM on stdin."
+        ),
     ] = None,
     manifest: Annotated[Path | None, typer.Option(help="qscore.yaml manifest.")] = None,
     target: Annotated[
@@ -61,6 +269,14 @@ def score(
     ] = None,
     out: Annotated[Path, typer.Option(help="Output directory.")] = Path("qscore-out"),
     yes: Annotated[bool, typer.Option("--yes", help="Do not ask for confirmation.")] = False,
+    disable: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--not",
+            autocompletion=_complete_not,
+            help="Disable confirmation: confirm (repeatable).",
+        ),
+    ] = None,
     allow_partial: Annotated[bool, typer.Option("--allow-partial")] = False,
     fail_on: Annotated[
         FailOn | None, typer.Option(help="Exit 1 on findings at/above this severity.")
@@ -68,10 +284,24 @@ def score(
     as_json: Annotated[bool, typer.Option("--json", help="Print scorecards as JSON.")] = False,
 ) -> None:
     """Score circuits: compile across seeds, compute metrics, run diagnostics."""
+    disabled = _disabled(disable, {"confirm"})
+    yes = yes or "confirm" in disabled
     if (path is None) == (manifest is None):
-        err.print("give exactly one of PATH (an OpenQASM file) or --manifest")
+        err.print("give exactly one of PATH or --manifest")
         raise typer.Exit(2)
+    # PATH routing (ChP-0036): a manifest or a directory's qscore.yaml means manifest mode.
+    if path is not None and (path.suffix in (".yaml", ".yml") or path.is_dir()):
+        manifest, path = (path / "qscore.yaml" if path.is_dir() else path), None
     pasted = path == Path("-")
+    # The mode PATH resolved to is named before anything runs (ChP-0036).
+    err.print(
+        f"Input: manifest {manifest}"
+        if manifest is not None
+        else "Input: pasted OpenQASM (stdin)"
+        if pasted
+        else f"Input: single file {path}",
+        markup=False,
+    )
     if pasted and not yes:
         err.print("reading QASM from stdin needs --yes (stdin cannot also answer the prompt)")
         raise typer.Exit(2)
@@ -101,6 +331,8 @@ def score(
                 err.print(
                     f"  {i.code} {loc.file}:{loc.line}:{loc.column} {loc.field or ''} — {i.message}"
                 )
+                if i.hint:
+                    err.print(f"    {i.hint}", markup=False)
         raise typer.Exit(2) from exc
     except ConfigError as exc:
         err.print(f"[red]configuration error:[/red] {exc}")
@@ -108,36 +340,169 @@ def score(
     except QscoreError as exc:
         err.print(f"[red]runtime failure:[/red] {type(exc).__name__}: {exc}")
         raise typer.Exit(3) from exc
+    except typer.Abort:  # Ctrl-C / EOF at a prompt: Typer's own "Aborted!" exit
+        raise
     except Exception as exc:  # ChP-0017: anything that is not a QscoreError is a bug → exit 3
         err.print(f"[red]unexpected error (a bug):[/red]\n{traceback.format_exc()}")
         raise typer.Exit(3) from exc
-    if not result.scorecards:
-        err.print("not confirmed; nothing scored")
-        return
-    if as_json:
-        sys.stdout.write(
-            json.dumps([c.model_dump(mode="json") for c in result.scorecards], indent=2) + "\n"
+    _finish_run(
+        result, allow_partial=allow_partial, fail_on=fail_on, as_json=as_json, pasted=pasted
+    )
+
+
+reference_app = typer.Typer(help="Build the pinned public reference corpus.", no_args_is_help=True)
+app.add_typer(reference_app, name="reference")
+
+models_app = typer.Typer(help="Check the pinned HF inference panel.", no_args_is_help=True)
+app.add_typer(models_app, name="models")
+
+
+@models_app.command("check")
+def models_check() -> None:
+    """Check every pinned provider without generating proposals (10 §5)."""
+    try:
+        from qscore.improve.hf_layer import HfJobContext, HfLayer, load_model_entries
+    except ModuleNotFoundError as exc:
+        if exc.name != "openai":
+            raise
+        err.print("HF model checks require the qscore[hf] extra; no check was performed.")
+        raise typer.Exit(3) from exc
+    try:
+        entries = load_model_entries()
+        job = HfJobContext()
+        failed = False
+        for entry in entries:
+            try:
+                HfLayer(entry, job=job).check_catalog()
+            except QscoreError as exc:
+                err.print(f"{entry.routed_id}: unavailable ({exc})", markup=False)
+                failed = True
+            else:
+                typer.echo(f"{entry.routed_id}: live; structured output supported")
+    except QscoreError as exc:
+        err.print(f"HF panel check failed: {exc}", markup=False)
+        raise typer.Exit(3) from exc
+    raise typer.Exit(3 if failed else 0)
+
+
+@reference_app.command("build")
+def reference_build(
+    out: Annotated[
+        Path, typer.Option(help="Source checkouts, runs and derived corpus output.")
+    ] = Path("qscore-reference-src"),
+) -> None:
+    """Maintainer command: clone pinned sources and score them in the builder sandbox."""
+    try:
+        result = services.build_reference(out, on_event=lambda event: typer.echo(event.message))
+    except ConfigError as exc:
+        err.print(f"configuration error: {exc}")
+        raise typer.Exit(4) from exc
+    except InvalidInput as exc:
+        err.print(str(exc))
+        raise typer.Exit(2) from exc
+    except QscoreError as exc:
+        err.print(str(exc))
+        raise typer.Exit(3) from exc
+    except Exception as exc:
+        traceback.print_exc()
+        raise typer.Exit(3) from exc
+    raise typer.Exit(result.exit_code)
+
+
+@app.command()
+def deps(
+    path: Annotated[Path, typer.Argument(help="Project directory or qscore manifest.")] = Path("."),
+    disable: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--not",
+            autocompletion=_complete_not,
+            help="Disable confirmation: confirm (repeatable).",
+        ),
+    ] = None,
+) -> None:
+    """Prepare an isolated builder environment with the engine's exact Qiskit version."""
+    disabled = _disabled(disable, {"confirm"})
+
+    def confirm(summary: str) -> bool:
+        err.print(summary, markup=False)
+        return typer.confirm("Install these project dependencies?", err=True)
+
+    try:
+        result = services.prepare_dependencies(
+            path,
+            on_event=lambda e: typer.echo(e.message),
+            confirm="yes" if "confirm" in disabled else confirm,
         )
-    for card, p in zip(result.scorecards, result.paths, strict=True):
-        live = [f for f in card.findings if f.suppressed is None]
-        err.print(
-            f"{card.item.id}: {card.status} · {len(live)} finding(s) "
-            f"({', '.join(f'{f.rule}:{f.severity}' for f in live) or 'none'}) → {p}"
+    except ConfigError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(4) from exc
+    except InvalidInput as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(2) from exc
+    except QscoreError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(3) from exc
+    except typer.Abort:
+        raise
+    except Exception as exc:
+        traceback.print_exc()
+        raise typer.Exit(3) from exc
+    if not result.installed:
+        typer.echo("not confirmed; no dependencies installed")
+
+
+class BenchDevice(StrEnum):
+    both = "both"
+    cpu = "cpu"
+    gpu = "gpu"
+
+
+@app.command()
+def bench(
+    out: Annotated[Path, typer.Option(help="Output directory for the benchmark files.")] = Path(
+        "qscore-bench"
+    ),
+    device: Annotated[BenchDevice, typer.Option(help="Devices to time.")] = BenchDevice.both,
+    sizes: Annotated[
+        str | None, typer.Option(help="Comma-separated qubit counts (default: the suite's).")
+    ] = None,
+    reps: Annotated[int, typer.Option(min=1, help="Measured repetitions per row.")] = 3,
+    disable: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--not",
+            autocompletion=_complete_not,
+            help="Disable steps: fusion (the GPU fusion sweep). Repeatable.",
+        ),
+    ] = None,
+) -> None:
+    """EXPERIMENTAL: CPU vs AMD GPU (ROCm Aer) statevector benchmark with an evidence report."""
+    try:
+        size_list = [int(s) for s in sizes.split(",")] if sizes else None
+    except ValueError as exc:
+        err.print(f"--sizes must be comma-separated integers: {sizes!r}", markup=False)
+        raise typer.Exit(2) from exc
+    devices: list[Literal["cpu", "gpu"]] = (
+        ["cpu", "gpu"] if device is BenchDevice.both else [device.value]  # type: ignore[list-item]
+    )
+    try:
+        result = services.run_bench(
+            out,
+            devices,
+            size_list,
+            reps,
+            1,
+            "fusion" not in _disabled(disable, {"fusion"}),
+            on_event=lambda e: typer.echo(e.message),
         )
-    err.print(f"report → {result.report_path}")
-    if pasted and not as_json:
-        sys.stdout.write(result.report_path.read_text(encoding="utf-8"))
-    if any(c.status == "partial" for c in result.scorecards) and not allow_partial:
-        raise typer.Exit(3)
-    if fail_on is not None:
-        worst = max(
-            (
-                SEVERITY_ORDER[f.severity]
-                for c in result.scorecards
-                for f in c.findings
-                if f.suppressed is None
-            ),
-            default=-1,
-        )
-        if worst >= SEVERITY_ORDER[fail_on]:
-            raise typer.Exit(1)
+    except ConfigError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(4) from exc
+    except InvalidInput as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(2) from exc
+    except QscoreError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(3) from exc
+    typer.echo(f"report: {result.report_path}")

@@ -30,9 +30,13 @@ services:
       - ${QSCORE_ENV_FILE:-/opt/qscore/.env}
     environment:
       API_ROOT_PATH: /api   # Caddy strips /api; this keeps the API's /docs page working behind it
+      QSCORE_PLATFORM_DB_PATH: /var/lib/qscore/platform.sqlite3
+    volumes:
+      - platform_data:/var/lib/qscore
     expose:
       - "8080"
 
 volumes:
   caddy_data:    # TLS certificates; keep it, or Let's Encrypt rate limits can bite on rebuilds
   caddy_config:
+  platform_data: # Persistent SQLite queue; back up before migrating or replacing the server

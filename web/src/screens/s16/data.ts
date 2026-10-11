@@ -1,117 +1,114 @@
-/* S-16 data: block D04 on q9–q10, three proposers, the bench table and the bench set. */
+/*
+ * S-16 · Model bench: three in-house gate-group layers benched on fixture subsets with qscore conform
+ * (12 fixtures × 20 attempts). Rates use S-14's definitions verbatim; every rate carries ±CI95 and n.
+ * Values as on Paper 1CJS-0 and its states board 1LWU-0.
+ */
 
-export type ModelId = 'inhouse' | 'granite' | 'base'
-
-export type Box = { x: number; y: number; label: 'RZ' | 'RX'; changed?: boolean }
-
-export type Rewrite = {
-  title: string
-  meta: string
-  /** CX positions on the q9 → q10 pair */
-  cx: number[]
-  boxes: Box[]
-  status: { word: string; kind: 'rewrite' | 'passes'; text: string }
-  target: string
-  whole: string
-  depth: string
-  equivalence: string
-  replay: { status: 'accepted' | 'rejected'; value: string }
-}
-
-const RX: Box[] = [
-  { x: 258, y: 47, label: 'RX' },
-  { x: 258, y: 79, label: 'RX' },
-]
-
-export const INPUT = {
-  cx: [44, 112, 172, 238],
-  boxes: [
-    { x: 62, y: 47, label: 'RZ' },
-    { x: 62, y: 79, label: 'RZ' },
-    { x: 130, y: 47, label: 'RZ' },
-    { x: 190, y: 79, label: 'RZ' },
-    ...RX,
-  ] as Box[],
-}
-
-export const REWRITES: Record<ModelId, Rewrite> = {
-  inhouse: {
-    title: 'Output · in-house model',
-    meta: '6 gates · 2 two-qubit',
-    cx: [44, 238],
-    boxes: [{ x: 62, y: 47, label: 'RZ', changed: true }, { x: 62, y: 79, label: 'RZ', changed: true }, ...RX],
-    status: { word: 'rewrite', kind: 'rewrite', text: 'CX pair removed, RZs merged' },
-    target: '4 → 2',
-    whole: '36 → 34 gates',
-    depth: '8 → 4 layers',
-    equivalence: 'up to global phase',
-    replay: { status: 'accepted', value: '−2 gates' },
-  },
-  granite: {
-    title: 'Output · granite-8b-qiskit',
-    meta: '8 gates · 3 two-qubit',
-    cx: [44, 112, 238],
-    boxes: [{ x: 62, y: 47, label: 'RZ' }, { x: 62, y: 79, label: 'RZ' }, { x: 148, y: 79, label: 'RZ', changed: true }, ...RX],
-    status: { word: 'rewrite', kind: 'rewrite', text: 'one CX removed, RZ moved' },
-    target: '4 → 3',
-    whole: '36 → 35 gates',
-    depth: '8 → 6 layers',
-    equivalence: 'up to global phase',
-    replay: { status: 'accepted', value: '−1 gate' },
-  },
-  base: {
-    title: 'Output · reference-qiskit passes',
-    meta: '9 gates · 4 two-qubit',
-    cx: [44, 112, 172, 238],
-    boxes: [{ x: 62, y: 47, label: 'RZ' }, { x: 62, y: 79, label: 'RZ' }, { x: 142, y: 47, label: 'RZ', changed: true }, ...RX],
-    status: { word: 'passes', kind: 'passes', text: 'two RZs merged, no CX removed' },
-    target: '4 → 4',
-    whole: '36 → 36 gates',
-    depth: '8 → 7 layers',
-    equivalence: 'exact',
-    replay: { status: 'rejected', value: '0 gates' },
-  },
-}
+/** The three rate definitions, verbatim from S-14 "How rates are counted". */
+export const RATE_DEFINITIONS = [
+  'Parse rate: proposals that parse ÷ proposals returned',
+  'Verified rate: passed ÷ parsed',
+  'Verified-improvement rate: accepted ÷ requests attempted, the headline',
+] as const
 
 export type BenchRow = {
-  id: ModelId
-  rank: string
-  name: string
-  sub: string
-  dot: string
-  rate: number
-  gain: string
-  invalid: string
+  id: string
+  model: string
+  size: string
+  fixtures: string[]
+  proposals: number
+  subsets: number
+  parse: { rate: string; ci: string; n: number }
+  verified: { rate: string; ci: string; n: number }
+  /** verified-improvement rate; bar is the share of the 60 px track, tick the reference's share */
+  vir: { rate: string; ci: string; n: number; ref: string; bar: number; tick: number }
   latency: string
+  tokens: string
+  cost: string
 }
 
 export const BENCH: BenchRow[] = [
-  { id: 'inhouse', rank: '#1', name: 'in-house block model', sub: 'local · 0.3B · stretch', dot: '#867BFA', rate: 47, gain: '−1.9 gates', invalid: '2%', latency: '0.4 s' },
-  { id: 'granite', rank: '#2', name: 'granite-8b-qiskit', sub: 'local · 8B', dot: '#867BFA', rate: 31, gain: '−1.1 gates', invalid: '9%', latency: '6.8 s' },
-  { id: 'base', rank: 'base', name: 'reference-qiskit passes', sub: 'reference-qiskit · no model', dot: '#2EA3F8', rate: 22, gain: '−0.8 gates', invalid: '0%', latency: '0.1 s' },
+  {
+    id: 'clifford',
+    model: 'gategroup-clifford-0.2',
+    size: '0.3B',
+    fixtures: ['ghz_8 · bv_10'],
+    proposals: 40,
+    subsets: 2,
+    parse: { rate: '97.5%', ci: '±4.8', n: 40 },
+    verified: { rate: '92.3%', ci: '±8.4', n: 39 },
+    vir: { rate: '55.0%', ci: '±15.4', n: 40, ref: '47.5%', bar: 33, tick: 28 },
+    latency: '0.6 s',
+    tokens: '0.02 M',
+    cost: '0.00 $',
+  },
+  {
+    id: 'linear',
+    model: 'gategroup-linear-0.2',
+    size: '0.3B',
+    fixtures: ['ghz_8 · bv_10 · maxcut_6', 'packing_qaoa_p2'],
+    proposals: 80,
+    subsets: 4,
+    parse: { rate: '98.8%', ci: '±2.4', n: 80 },
+    verified: { rate: '81.0%', ci: '±8.6', n: 79 },
+    vir: { rate: '45.0%', ci: '±10.9', n: 80, ref: '42.5%', bar: 27, tick: 25 },
+    latency: '0.7 s',
+    tokens: '0.05 M',
+    cost: '0.00 $',
+  },
+  {
+    id: 'reversible',
+    model: 'gategroup-reversible-0.1',
+    size: '0.6B',
+    fixtures: ['sbox_oracle · adder_4', 'grover_5q'],
+    proposals: 60,
+    subsets: 3,
+    parse: { rate: '93.3%', ci: '±6.3', n: 60 },
+    verified: { rate: '67.9%', ci: '±12.2', n: 56 },
+    vir: { rate: '26.7%', ci: '±11.2', n: 60, ref: '30.0%', bar: 16, tick: 18 },
+    latency: '1.1 s',
+    tokens: '0.04 M',
+    cost: '0.00 $',
+  },
 ]
 
-/** 120 recorded blocks across 14 circuits; the eight largest. */
-export const BENCH_SET = [
-  { circuit: 'sidechain_qaoa', blocks: 18, widths: '2–4 q', inhouse: '52%', granite: '33%' },
-  { circuit: 'maxcut_6', blocks: 14, widths: '2–3 q', inhouse: '57%', granite: '36%' },
-  { circuit: 'qft_8', blocks: 12, widths: '2–5 q', inhouse: '41%', granite: '30%' },
-  { circuit: 'adder_4', blocks: 11, widths: '3–5 q', inhouse: '36%', granite: '27%' },
-  { circuit: 'grover_5q', blocks: 9, widths: '2–5 q', inhouse: '44%', granite: '29%' },
-  { circuit: 'packing_qaoa_p2', blocks: 8, widths: '2–4 q', inhouse: '50%', granite: '31%' },
-  { circuit: 'qpe_6', blocks: 7, widths: '2–4 q', inhouse: '43%', granite: '28%' },
-  { circuit: 'vqe_h2_4q', blocks: 6, widths: '2–4 q', inhouse: '50%', granite: '33%' },
+/** Loss per epoch, as plotted on the board (x = epoch, y = px on the 340-tall chart). */
+export const TRAIN: [number, number][] = [
+  [0, 49.3], [2, 105.1], [4, 155.2], [6, 192.3], [8, 215], [10, 232.9], [12, 248.9], [14, 261.3], [16, 268],
+  [18, 273], [20, 278.7], [24, 285.6], [28, 287], [32, 290.9], [34, 290.8], [36, 290.8], [40, 291.9],
+]
+export const VALIDATION: [number, number][] = [
+  [0, 50.3], [2, 119.3], [4, 146.6], [6, 178.9], [8, 203.2], [10, 222.1], [12, 236.5], [14, 247.5], [16, 256],
+  [18, 262.5], [20, 267.3], [24, 274], [28, 278], [32, 280.1], [34, 281.1], [36, 280.9], [40, 279.9],
 ]
 
-export const BY_WIDTH = [
-  { label: '2 qubits', a: 58, b: 34 },
-  { label: '3 qubits', a: 52, b: 33 },
-  { label: '4 qubits', a: 47, b: 31 },
-  { label: '5 qubits', a: 29, b: 27 },
+/** qscore conform kit: 12 fixtures, each run 20 times (240 requests). */
+export const KIT = [
+  { label: 'Parses as OpenQASM', value: '6 checks' },
+  { label: 'Equivalent to the input block', value: '8 checks' },
+  { label: 'Stays inside its block', value: '6 checks' },
+  { label: 'Within token and time budget', value: '4 checks' },
 ]
 
-export const INVALID: [string, string, string][] = [
-  ['Could not parse the rewrite', '0', '41'],
-  ['Not equivalent to the input', '11', '38'],
-  ['Touched qubits outside the block', '8', '7'],
+export type HistoryRow = { at: string; job: string; word: 'passed' | 'failed'; note: string }
+export const HISTORY: HistoryRow[] = [
+  { at: '11:20', job: '7f3d·2a10', word: 'passed', note: '12 of 12 fixtures' },
+  { at: '10:02', job: '7f3c·91b2', word: 'failed', note: 'Q403 ×2 · Q404' },
+  { at: '09:15', job: '7f3b·4e70', word: 'passed', note: '12 of 12 fixtures' },
+  { at: 'Oct 9', job: '7f37·0d21', word: 'passed', note: '12 of 12 fixtures' },
+]
+
+/** The failed conform run 7f3c·91b2: Q403 twice, Q404 once (error-codes.md). */
+export const CONFORM_FAILURES = [
+  { what: 'outside allowed region', code: 'Q403', fixture: 'adder_4', where: 'block 2 is q0 to q2, lines 31 to 38 · the rewrite changed a cx on q3' },
+  { what: 'outside allowed region', code: 'Q403', fixture: 'sbox_oracle', where: 'block 5 ends at line 112 · a ccx on q7 q8 q12 moved past the block edge' },
+  { what: 'added qubit', code: 'Q404', fixture: 'grover_5q', where: 'block 1, lines 9 to 22 · the rewrite added ancilla q5, the input has 5 qubits' },
+]
+
+export const THROUGHPUT = 'M28 70L40 66L52 40L64 34L76 31L88 36L100 30L112 33L124 29L136 35L148 31L160 28L172 33L184 30L196 34L208 29L220 32L232 31L244 28L256 33L268 30L274 31'
+
+export const FIXTURE_SUBSETS = [
+  { layer: 'gategroup-clifford-0.2', fixtures: 'ghz_8 · bv_10' },
+  { layer: 'gategroup-linear-0.2', fixtures: 'ghz_8 · bv_10 · maxcut_6 · packing_qaoa_p2' },
+  { layer: 'gategroup-reversible-0.1', fixtures: 'sbox_oracle · adder_4 · grover_5q' },
 ]

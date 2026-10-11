@@ -29,7 +29,7 @@ two-qubit depth, then seed order), and computes the metrics below. Every metric 
   with a 95 % interval; `context` values describe the circuit and are never scored.
 - **Scope.** `logical` = the circuit as submitted; `compiled` = the representative compile.
   Counts exclude directives (barriers) everywhere.
-- **Score version.** These definitions are score version `qscore-2026.1`; changing one is a
+- **Score version.** These definitions are score version `qscore-2026.2`; changing one is a
   class A change and bumps the version. The source of truth is `specs/06-metrics.md`.
 
 This file is generated from the metric class docstrings (`src/qscore/metrics/`); do not edit it
@@ -71,7 +71,8 @@ def render() -> str:
             f"{d.definition}\n\n"
             f"| Kind | Scope | Unit | Requires | Version |\n|---|---|---|---|---|\n"
             f"| {' | '.join(row)} |\n\n"
-            f"Reference: {d.reference}\n"
+            f"Reference: {d.reference}\n\n"
+            "[Published convention and differences](standard.md#measurement-conventions).\n"
         )
     return "\n".join(parts)
 

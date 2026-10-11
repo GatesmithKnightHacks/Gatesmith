@@ -1,242 +1,753 @@
-/* S-06 Fix review and S-07 Loop view: values measured on their Paper boards. */
+/*
+ * Shared by S-06 Fix review and S-07 Loop view: status marks and words, canvas strokes, inspector
+ * blocks (feed cards, stop card, finding cards, ladder, fact rows), banners and loading blocks.
+ * Values are the boards'; colors come from design/tokens.css only.
+ */
 
-.im-tertiary {
-  color: var(--color-text-tertiary);
-}
-.im-secondary {
-  color: var(--color-text-secondary);
-}
-.im-primary {
-  color: var(--color-text-primary);
-}
-.im-disabled {
-  color: var(--color-text-disabled);
+.im-grow {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
-/* ── Marks, words, chips ─────────────────────────────────────────────── */
-.im-dot {
+/* ── Marks and words ─────────────────────────────────────────────────── */
+.im-mark {
   display: block;
   flex-shrink: 0;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
 }
+.mk-good,
+.mk-bad,
+.mk-warn,
+.mk-dis,
+.mk-sec,
+.mk-ter,
+.mk-white,
+.mk-ai {
+  fill: none;
+}
+.mk-good {
+  stroke: var(--color-signal-good);
+}
+.mk-bad {
+  stroke: var(--color-signal-bad);
+}
+.mk-warn {
+  stroke: var(--color-signal-warn);
+}
+.mk-dis {
+  stroke: var(--color-text-disabled);
+}
+.mk-sec {
+  stroke: var(--color-text-secondary);
+}
+.mk-ter {
+  stroke: var(--color-text-tertiary);
+}
+.mk-white {
+  stroke: var(--color-text-primary);
+}
+.mk-ai {
+  stroke: var(--color-signal-ai);
+}
+.mk-fill-info {
+  fill: var(--color-signal-info);
+}
+
 .im-word {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+}
+.im-word.is-12 {
   font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.im-word.is-11 {
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.im-word.is-14 {
+  font-size: var(--text-base);
+  line-height: 18px;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Spinner: 2 px ring, 270° arc, one turn per second (linear), beside a stage word. */
+.im-spinner {
+  display: block;
+  flex-shrink: 0;
+  animation: im-spin var(--motion-spin, 1000ms) linear infinite;
+}
+.im-spinner-track {
+  fill: none;
+  stroke: var(--color-surface-selected);
+}
+.im-spinner-arc {
+  fill: none;
+  stroke: var(--color-text-secondary);
+}
+@keyframes im-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Header tools: zoom and meta ─────────────────────────────────────── */
+.im-tile-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.im-tile-meta-text {
+  padding-left: var(--spacing-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.im-zoom-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 90px;
+  height: 16px;
+}
+.im-zoom-rule {
+  width: 90px;
+  height: 2px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--color-white) 30%, transparent);
+}
+.im-zoom-knob {
+  position: absolute;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--color-text-secondary);
+}
+
+/* ── Canvas strokes and text (inline SVG) ────────────────────────────── */
+.cv-wire,
+.cv-grey,
+.cv-white,
+.cv-sec,
+.cv-ground,
+.cv-ter,
+.cv-faint,
+.cv-pending {
+  fill: none;
+}
+.cv-wire {
+  stroke: color-mix(in srgb, var(--color-white) 22%, transparent);
+}
+.cv-grey {
+  stroke: var(--color-text-disabled);
+}
+.cv-white {
+  stroke: var(--color-text-primary);
+}
+.cv-sec {
+  stroke: var(--color-text-secondary);
+}
+.cv-ground {
+  stroke: var(--color-surface-app);
+}
+.cv-ter {
+  stroke: var(--color-text-tertiary);
+}
+.cv-faint {
+  stroke: color-mix(in srgb, var(--color-white) 4%, transparent);
+}
+.cv-pending {
+  stroke: color-mix(in srgb, var(--color-white) 35%, transparent);
+}
+.cv-fill-sec {
+  fill: var(--color-text-secondary);
+}
+.cv-fill-ground {
+  fill: var(--color-surface-app);
+}
+.cv-fill-white {
+  fill: var(--color-text-primary);
+}
+.cv-fill-info {
+  fill: var(--color-signal-info);
+}
+.cv-fill-ai {
+  fill: var(--color-signal-ai);
+}
+.cv-measure {
+  fill: var(--color-surface-inset);
+  stroke: var(--color-text-secondary);
+}
+.cv-region-ai {
+  fill: color-mix(in srgb, var(--color-signal-ai) 10%, transparent);
+  stroke: var(--color-signal-ai);
+  stroke-dasharray: 3 2;
+}
+.cv-region-good {
+  fill: none;
+  stroke: var(--color-signal-good);
+}
+.cv-region-bad {
+  fill: none;
+  stroke: var(--color-signal-bad);
+}
+.cv-region-warn {
+  fill: none;
+  stroke: var(--color-signal-warn);
+  stroke-dasharray: 3 2;
+}
+.cv-text {
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  fill: var(--color-text-tertiary);
+}
+.cv-text.is-11 {
+  font-size: var(--text-label);
+}
+.cv-text-white {
+  fill: var(--color-text-primary);
+}
+.cv-text-sec {
+  fill: var(--color-text-secondary);
+}
+.cv-text-ai {
+  fill: var(--color-signal-ai);
+}
+.cv-text-good {
+  fill: var(--color-signal-good);
+}
+.cv-text-bad {
+  fill: var(--color-signal-bad);
+}
+.cv-text-warn {
+  fill: var(--color-signal-warn);
+}
+
+/* Group header rows inside insets: 18 tall, 11 px label with 0.08em tracking, note at the right */
+.lp-group {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 18px;
+  padding-bottom: 2px;
+}
+.lp-group-title {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+  letter-spacing: var(--tracking-label);
+  white-space: nowrap;
+}
+.lp-group-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-axis);
   line-height: var(--leading-ui);
   white-space: nowrap;
 }
-.im-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.lp-group-note.is-11 {
+  font-size: var(--text-label);
+}
+/* ── Inspector blocks ────────────────────────────────────────────────── */
+.im-mode-line {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.im-run {
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
-  height: 20px;
-  padding-inline: 6px;
-  border-radius: var(--radius-xs);
+  gap: var(--spacing-3);
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.im-run.is-stop {
+  gap: 10px;
+  padding: 14px 16px 12px;
+}
+.im-status-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 16px;
+  gap: 6px;
+}
+.im-caption {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.im-action-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--spacing-2);
+}
+.im-status-line {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 18px;
+  gap: 6px;
+}
+.im-status-text,
+.im-status-word {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.im-status-text.is-sec {
+  color: var(--color-text-secondary);
+}
+.im-status-value {
+  padding-left: var(--spacing-1);
+  color: var(--color-text-primary);
   font-size: var(--text-label);
   line-height: 14px;
   white-space: nowrap;
 }
 
-/* ── Rows ─────────────────────────────────────────────────────────────── */
-.im-rows {
+/* Feed card */
+.im-feed {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--spacing-1);
+  padding: 8px 10px;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
 }
-.im-row {
+.im-feed.is-proposed {
+  border: 1px dashed var(--color-signal-ai);
+}
+.im-feed.is-queued {
+  border: 1px dashed var(--color-border-control);
+}
+.im-feed-head {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 14px;
+  gap: 6px;
+}
+.im-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.im-dot.is-model {
+  background: var(--color-signal-ai);
+}
+.im-dot.is-engine {
+  background: var(--color-signal-info);
+}
+.im-feed-who,
+.im-feed-role,
+.im-feed-at {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.im-feed-who {
+  color: var(--color-text-primary);
+}
+.im-feed-role,
+.im-feed-at {
+  color: var(--color-text-tertiary);
+}
+.im-feed-text {
+  color: var(--color-text-primary);
+}
+.im-feed-means {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+
+/* Error block: "<what failed> (<code>) · <where> · <fix>" */
+.im-error {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  min-height: 28px;
+  gap: var(--spacing-2);
+  padding: 7px 8px 7px 10px;
+  border-left: 2px solid var(--color-signal-bad);
+  background: var(--color-surface-inset);
+}
+.im-error.is-inconclusive {
+  border-left-color: var(--color-signal-warn);
+}
+.im-error-icon {
+  display: flex;
+  align-items: center;
+  height: 14px;
+}
+.im-error-word {
+  color: var(--color-signal-bad);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.im-error.is-inconclusive .im-error-word {
+  color: var(--color-signal-warn);
+}
+.im-error-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 2px;
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.im-error-what {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-1);
+  white-space: nowrap;
+}
+
+/* Verification ladder */
+.im-ladder {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--spacing-2);
+  padding: 8px 10px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+}
+.im-rung {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  gap: var(--spacing-1);
+}
+.im-rung-bar {
+  height: 3px;
+  flex-shrink: 0;
+  background: var(--color-text-secondary);
+}
+.im-rung-bar.is-running {
+  background: var(--color-signal-info);
+}
+.im-rung-bar.is-warn {
+  background: var(--color-signal-warn);
+}
+.im-rung-bar.is-bad {
+  background: var(--color-signal-bad);
+}
+.im-rung-bar.is-off {
+  background: var(--color-surface-selected);
+}
+.im-rung-label {
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.im-rung-label.is-off {
+  color: var(--color-text-tertiary);
+}
+
+/* Fact rows */
+.im-facts {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.im-fact {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 24px;
+  border-top: 1px solid var(--color-surface-app);
+}
+.im-fact.is-last {
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.im-fact-label {
+  width: 132px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.im-fact-value {
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.im-fact-status {
+  display: flex;
+  min-width: 84px;
+  flex-shrink: 0;
+}
+.im-fact-note {
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* Finding card (inspector) */
+.im-finding {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--spacing-1);
+  padding: 10px;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+.im-finding-top,
+.im-finding-bottom {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.im-finding-rank,
+.im-finding-rule {
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.im-finding-rank {
+  color: var(--color-text-tertiary);
+}
+.im-finding-rule {
+  color: var(--color-text-secondary);
+}
+.im-finding-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+  white-space: nowrap;
+}
+.im-finding-evidence {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.im-finding-evidence.is-word {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+.im-finding.is-loading {
+  gap: var(--spacing-2);
+}
+.im-not-evaluated {
   display: flex;
   align-items: center;
   flex-shrink: 0;
   height: 28px;
-  border-top: 1px solid var(--color-surface-app);
-}
-.im-row:last-child {
-  border-bottom: 1px solid var(--color-surface-app);
-}
-.im-cell {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+  gap: var(--spacing-2);
+  padding-inline: var(--spacing-3);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-tertiary);
   white-space: nowrap;
 }
-.im-label {
-  color: var(--color-text-secondary);
+.im-not-evaluated .mono {
+  font-size: var(--text-label);
+  line-height: 14px;
 }
-.im-group-title {
+
+/* Stop card */
+.im-stop {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+.im-stop.is-warn {
+  padding-left: 9px;
+  border-left: 2px solid var(--color-signal-warn);
+}
+.im-stop-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-shrink: 0;
   height: 16px;
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-medium);
+  gap: 6px;
 }
-.im-group-meta {
-  color: var(--color-text-tertiary);
-  font-family: var(--font-mono);
-  font-size: var(--text-label);
-  font-weight: var(--font-weight-regular);
-}
-
-/* ── Inspector ───────────────────────────────────────────────────────── */
-.im-decision {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
-  flex-shrink: 0;
-  padding: var(--spacing-4);
-  border-bottom: 1px solid var(--color-surface-app);
-}
-.im-decision-line {
-  color: var(--color-text-primary);
-}
-.im-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-}
-.im-caption {
+.im-stop-who {
   color: var(--color-text-secondary);
-  text-align: center;
+  white-space: nowrap;
 }
-.im-primary-busy {
-  cursor: default;
+.im-stop-at {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
 }
-.im-primary-busy:hover,
-.im-primary-busy:active {
-  background: var(--color-action-primary);
-}
-
-.im-section {
+.im-stop-copy {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  gap: 2px;
 }
-.im-section.has-border {
-  border-top: 1px solid var(--color-surface-app);
-}
-.im-section-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  width: 100%;
-  height: 40px;
-  padding-inline: var(--spacing-4);
-}
-.im-section-title {
-  flex: 1 1 0;
+.im-stop-title {
   color: var(--color-text-primary);
   font-size: var(--text-base);
   font-weight: var(--font-weight-medium);
   line-height: 18px;
 }
-.im-section-meta {
-  color: var(--color-text-tertiary);
+.im-stop-text {
+  color: var(--color-text-primary);
+}
+.im-stop-rows {
+  display: flex;
+  flex-direction: column;
+}
+.im-stop-row {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  border-top: 1px solid var(--color-surface-app);
+  color: var(--color-text-primary);
   font-size: var(--text-label);
   line-height: 14px;
   white-space: nowrap;
 }
-.im-chevron {
-  transition: transform var(--motion-fast) var(--ease-standard);
+.im-stop-row:last-child {
+  border-bottom: 1px solid var(--color-surface-app);
 }
-.im-section-header[aria-expanded='false'] .im-chevron {
-  transform: rotate(180deg);
-}
-.im-collapse {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows var(--motion-base) var(--ease-standard), opacity var(--motion-base) var(--ease-standard);
-}
-.im-collapse[data-open='false'] {
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition-timing-function: var(--ease-exit);
-  transition-duration: var(--motion-fast);
-}
-.im-collapse-inner {
-  min-height: 0;
-  overflow: hidden;
-}
-.im-section-body {
-  display: flex;
-  flex-direction: column;
-  padding: 0 16px 16px;
+.im-stop-key {
+  width: 122px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
 }
 
-.im-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: var(--spacing-3);
-  border-radius: var(--radius-base);
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-raised);
-}
-
-.im-switch {
+/* ── Banner: 28 tall, 2 px rail in the signal color ──────────────────── */
+.im-banner {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 28px;
+  min-height: 28px;
+  gap: var(--spacing-2);
+  padding: 6px 8px 6px 10px;
+  border-left: 2px solid var(--color-signal-bad);
+  background: var(--color-surface-inset);
+  animation: im-fade-in var(--motion-tile, 200ms) ease both;
+}
+.im-banner.is-queued {
+  border-left-color: var(--color-text-disabled);
+}
+.im-banner.is-warning,
+.im-banner.is-inconclusive {
+  border-left-color: var(--color-signal-warn);
+}
+.im-banner.is-tall {
+  align-items: flex-start;
+}
+.im-banner-icon {
+  display: flex;
+  align-items: center;
   height: 16px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--color-border-control);
-  transition: background-color var(--motion-fast) var(--ease-standard);
 }
-.im-switch-knob {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--color-text-secondary);
-  transition: transform var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard);
+.im-banner-word {
+  color: var(--color-signal-bad);
+  white-space: nowrap;
 }
-.im-switch.is-on {
-  background: var(--color-text-primary);
+.im-banner.is-queued .im-banner-word {
+  color: var(--color-text-tertiary);
 }
-.im-switch.is-on .im-switch-knob {
-  transform: translateX(12px);
-  background: var(--color-surface-app);
+.im-banner-text {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.im-banner.is-tall .im-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.im-banner-title {
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.im-banner .btn-editor {
+  background: var(--color-surface-panel);
+}
+.im-banner .btn-editor:hover {
+  background: var(--color-surface-raised);
+}
+@keyframes im-fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
-/* ── Arrivals (DS-07): rise 8px and fade in on the enter curve ───────── */
-@keyframes im-rise {
+/* Top-bar banner (GPU off): the shared banner where the top bar has room */
+.im-topbar-banner {
+  max-width: 760px;
+}
+
+/* ── Loading blocks: inset on a panel, one step up on an inset; the band sweeps 1200 ms linear ── */
+.im-block {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface-inset);
+  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-panel) 50%, transparent 100%);
+  background-size: 24% 100%;
+  background-repeat: no-repeat;
+  animation: im-shimmer var(--motion-shimmer, 1200ms) linear infinite;
+}
+.im-block.is-on-inset {
+  background-color: var(--color-surface-panel);
+  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-raised) 50%, transparent 100%);
+}
+@keyframes im-shimmer {
   from {
-    opacity: 0;
-    transform: translateY(8px);
+    background-position: -32% 0;
+  }
+  to {
+    background-position: 132% 0;
   }
 }
-@keyframes im-drop {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
+@keyframes im-pulse {
+  50% {
+    opacity: 0.6;
   }
-}
-@keyframes im-fade {
-  from {
-    opacity: 0;
-  }
-}
-.im-arrive {
-  animation: im-rise var(--motion-base) var(--ease-enter) both;
-}
-.im-fade-in {
-  animation: im-fade var(--motion-base) var(--ease-enter) both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .im-arrive {
-    animation-name: im-fade;
+  .im-block {
+    background-image: none;
+    animation: im-pulse 1.2s ease infinite;
+  }
+  .im-spinner {
+    animation: none;
   }
 }
-
-/* The only loop: a working indicator while the engine runs. */
-@keyframes fr-spin {
-  to {
-    transform: rotate(360deg);
-  }
+:root[data-reduce-motion] .im-block {
+  background-image: none;
+  animation: im-pulse 1.2s ease infinite;
+}
+:root[data-reduce-motion] .im-spinner {
+  animation: none;
 }

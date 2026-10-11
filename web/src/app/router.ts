@@ -19,6 +19,11 @@ export const ROUTES = {
   leaderboard: '/leaderboard',
   screening: '/screening',
   bench: '/bench',
+  signIn: '/signin',
+  signUp: '/signup',
+  account: '/account',
+  /** The small-screen gate (S-20/S-21) on its own, for previewing it on a desktop. */
+  gate: '/gate',
 } as const
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]

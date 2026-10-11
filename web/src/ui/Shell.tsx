@@ -1,19 +1,29 @@
 /*
- * The workbench shell (S-00 · Shell template), measured from Paper:
- * top bar 52 (2px ground border) · rail 50 · tab strip 36 with 28-tall tabs · inspector 380 · 4px ground gutters.
+ * The workbench shell, measured from the master MVN-0 (DS-06):
+ * top bar 52 (2px ground border) · rail 52 incl. its 2px ground border · tab band 42 with 31-tall r4
+ * tiles and a 3px mint underline · inspector 380 · 4px ground gutters.
+ *
+ * The rail (fix round 3, DS-08 "Rail navigation"): New run, Runs, Repo, Leaderboard, Help; Settings,
+ * Account and Expand at the foot. 24px icons on a 70px pitch, the whole 52 × 70 row is the hit area.
+ * Hover brightens the icon in 150 ms and shows the label chip at once; the current item carries the
+ * 2px yellow bar and a yellow icon and snaps on click. Expand widens the rail to 200 (remembered).
+ * Keyboard: Tab reaches the rail as one stop, ↑ ↓ move the yellow outline, Enter or Space opens,
+ * Esc returns to the main column, g then n / r / p / l / a jumps from anywhere.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { navigate, redo, ROUTES, undo, useHistoryPosition, type RoutePath } from '../app/router'
+import { accountActions, useAccount } from '../data/account'
 import { actions } from '../data/run'
 import { useReducedMotion, setReducedMotion } from './motionPreference'
-import { Switch } from './parts'
+import { usePresence } from './presence'
+import { isTyping, railFocus, setRailExpanded, useRailExpanded } from './railState'
 import {
   IconAccount,
-  IconDocs,
   IconHelp,
   IconLeaderboard,
   IconNewRun,
   IconPlus,
+  IconRailChevron,
   IconRedo,
   IconRepo,
   IconRuns,
@@ -23,28 +33,47 @@ import {
 } from './icons'
 import './shell.css'
 
-export type RailItem = 'new' | 'runs' | 'repo' | 'docs' | 'help' | 'leaderboard'
+export type RailItem = 'new' | 'runs' | 'repo' | 'leaderboard' | 'help' | 'settings' | 'account'
+
+/** One badge per item at most: the Runs count while runs are in progress, the Repo dot after a CI regression. */
+export type RailBadges = {
+  /** Runs in progress; the 16px count chip shows when above 0. */
+  runs?: number
+  /** The last CI check regressed: the 6px pink dot on Repo. */
+  repoRegressed?: boolean
+}
 
 type ShellProps = {
   /** Second word in the top bar: Workbench, Repo, Report… */
   context?: string
+  /** The current rail item (D6): new on intake, runs on the workbench screens, repo, leaderboard, account. */
   rail: RailItem
+  /** Rail badges, e.g. `{ runs: 1 }` on S-04 to S-07 while a run is in progress. */
+  railBadges?: RailBadges
   tabs?: ReactNode
   inspector: ReactNode
   children: ReactNode
   /** Right side of the top bar. Defaults to GPU online + job id. */
   status?: ReactNode
+  /** GPU dot and word when `status` is not given. */
+  gpu?: 'online' | 'off'
+  /** Job id beside the GPU word on the workbench screens; the account mark shows otherwise. */
+  job?: string
+  /** A Toast, floated at the main column's foot. */
+  toast?: ReactNode
 }
 
-export function Shell({ context = 'Workbench', rail, tabs, inspector, children, status }: ShellProps) {
+export function Shell({ context = 'Workbench', rail, railBadges, tabs, inspector, children, status, toast, gpu, job }: ShellProps) {
+  const main = useRef<HTMLElement>(null)
   return (
     <div className="shell">
-      <TopBar context={context} status={status} />
+      <TopBar context={context} status={status} gpu={gpu} job={job} />
       <div className="shell-body">
-        <Rail active={rail} />
-        <main className="shell-main">
+        <Rail active={rail} badges={railBadges} main={main} />
+        <main className="shell-main" ref={main} tabIndex={-1}>
           {tabs}
           {children}
+          {toast != null && <div className="shell-toast">{toast}</div>}
         </main>
         <aside className="shell-inspector" aria-label="Inspector">
           {inspector}
@@ -54,7 +83,17 @@ export function Shell({ context = 'Workbench', rail, tabs, inspector, children, 
   )
 }
 
-export function TopBar({ context, status }: { context: string; status?: ReactNode }) {
+export function TopBar({
+  context,
+  status,
+  gpu = 'online',
+  job,
+}: {
+  context: string
+  status?: ReactNode
+  gpu?: 'online' | 'off'
+  job?: string
+}) {
   return (
     <header className="topbar">
       <button className="topbar-brand" onClick={() => navigate(ROUTES.newRun)} aria-label="Gatesmith home">
@@ -65,8 +104,8 @@ export function TopBar({ context, status }: { context: string; status?: ReactNod
       <div className="topbar-status">
         {status ?? (
           <>
-            <GpuStatus online />
-            <span className="mono topbar-job">job 7f3a·0412</span>
+            <GpuStatus online={gpu === 'online'} />
+            {job ? <span className="mono topbar-job">job {job}</span> : <AccountMark />}
           </>
         )}
       </div>
@@ -74,54 +113,317 @@ export function TopBar({ context, status }: { context: string; status?: ReactNod
   )
 }
 
+const PERSON = (
+  <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden>
+    <path d="M7 7.2a2.4 2.4 0 100-4.8a2.4 2.4 0 000 4.8zM2.8 12.2c.6-2 2.2-3.1 4.2-3.1s3.6 1.1 4.2 3.1" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * The account mark (S-19 top bar): a #354348 chip with the disc and the handle. Clicking it opens
+ * the account menu under it (M6 menu open: in 200, Esc out 150 and focus back on the mark).
+ * `signedIn` overrides the store for the states boards.
+ */
+export function AccountMark({ signedIn }: { signedIn?: boolean }) {
+  const { session } = useAccount()
+  const on = signedIn ?? !!session
+  const handle = session?.handle ?? 'qlab-dev'
+  const [open, setOpen] = useState(false)
+  const [view, setView] = useState<'main' | 'settings'>('main')
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      ref.current?.querySelector<HTMLButtonElement>('.account-mark')?.focus()
+    }
+    window.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const go = (path: RoutePath) => {
+    setOpen(false)
+    navigate(path)
+  }
+  return (
+    <div className="topbar-account" ref={ref}>
+      <button
+        className={`account-mark${on ? '' : ' is-out'}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => {
+          setView('main')
+          setOpen((v) => !v)
+        }}
+      >
+        {on ? (
+          <>
+            <span className="account-disc">{PERSON}</span>
+            <span className="mono">{handle}</span>
+          </>
+        ) : (
+          'Not signed in'
+        )}
+      </button>
+      <Menu open={open} label="Account" className="topbar-menu">
+        {view === 'settings' ? (
+          <SettingsRows />
+        ) : on ? (
+          <>
+            <div className="menu-title">
+              Signed in as <span className="mono">{handle}</span>
+            </div>
+            <div className="menu-rule" />
+            <button className="menu-row is-action" role="menuitem" onClick={() => go(ROUTES.account)}>
+              <span>Account</span>
+              <span className="mono menu-value">g a</span>
+            </button>
+            <button className="menu-row is-action" role="menuitem" onClick={() => setView('settings')}>
+              <span>Settings</span>
+            </button>
+            <div className="menu-rule" />
+            <button
+              className="menu-row is-action"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                void accountActions.signOut()
+              }}
+            >
+              <span>Sign out</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="menu-title">Not signed in</div>
+            <div className="menu-rule" />
+            <button className="menu-row is-action" role="menuitem" onClick={() => go(ROUTES.signIn)}>
+              <span>Sign in</span>
+              <span className="mono menu-value">g a</span>
+            </button>
+            <button className="menu-row is-action" role="menuitem" onClick={() => go(ROUTES.signUp)}>
+              <span>Create an account</span>
+            </button>
+            <div className="menu-rule" />
+            <button className="menu-row is-action" role="menuitem" onClick={() => setView('settings')}>
+              <span>Settings</span>
+            </button>
+          </>
+        )}
+      </Menu>
+    </div>
+  )
+}
+
 export function GpuStatus({ online }: { online: boolean }) {
   return (
     <span className="gpu-status">
-      <span className="gpu-dot" style={{ background: online ? 'var(--color-signal-good)' : 'var(--color-text-disabled)' }} />
+      <span className="gpu-dot" style={{ background: online ? 'var(--color-text-primary)' : 'var(--color-text-disabled)' }} />
       {online ? 'GPU online' : 'GPU offline'}
     </span>
   )
 }
 
-const RAIL: { id: RailItem; label: string; to: RoutePath; icon: (c: string) => ReactNode }[] = [
-  { id: 'new', label: 'New run', to: ROUTES.newRun, icon: (c) => <IconNewRun color={c} /> },
-  { id: 'runs', label: 'Runs', to: ROUTES.runs, icon: (c) => <IconRuns color={c} /> },
-  { id: 'repo', label: 'Repo', to: ROUTES.repo, icon: (c) => <IconRepo color={c} /> },
-  { id: 'docs', label: 'Docs', to: ROUTES.template, icon: (c) => <IconDocs color={c} /> },
-  { id: 'help', label: 'Help', to: ROUTES.template, icon: (c) => <IconHelp color={c} /> },
-  { id: 'leaderboard', label: 'Leaderboard', to: ROUTES.leaderboard, icon: (c) => <IconLeaderboard color={c} /> },
-]
+/* ── Rail ────────────────────────────────────────────────────────────── */
+type RailEntry = {
+  id: RailItem | 'expand'
+  label: string
+  /** g then this key jumps here */
+  key?: string
+  /** a screen, or a popover that opens in place */
+  to?: RoutePath
+  menu?: 'settings' | 'help'
+  icon: ReactNode
+  /** a rule above it in the expanded rail */
+  rule?: boolean
+}
 
-export function Rail({ active }: { active: RailItem }) {
+const TOP: RailEntry[] = [
+  { id: 'new', label: 'New run', key: 'n', to: ROUTES.newRun, icon: <IconNewRun /> },
+  { id: 'runs', label: 'Runs', key: 'r', to: ROUTES.runs, icon: <IconRuns /> },
+  { id: 'repo', label: 'Repo', key: 'p', to: ROUTES.repo, icon: <IconRepo /> },
+  { id: 'leaderboard', label: 'Leaderboard', key: 'l', to: ROUTES.leaderboard, icon: <IconLeaderboard />, rule: true },
+  { id: 'help', label: 'Help', menu: 'help', icon: <IconHelp /> },
+]
+const BOTTOM: RailEntry[] = [
+  { id: 'settings', label: 'Settings', menu: 'settings', icon: <IconSettings /> },
+  { id: 'account', label: 'Account', key: 'a', to: ROUTES.account, icon: <IconAccount /> },
+]
+const JUMPS: Record<string, { id: RailItem; to: RoutePath }> = Object.fromEntries(
+  [...TOP, ...BOTTOM].filter((e) => e.key && e.to).map((e) => [e.key, { id: e.id as RailItem, to: e.to! }]),
+)
+/** g, then the letter within this window */
+const CHORD_MS = 1200
+
+export function Rail({
+  active,
+  badges,
+  main,
+}: {
+  active: RailItem
+  badges?: RailBadges
+  /** where Esc sends focus; defaults to the shell's main column */
+  main?: RefObject<HTMLElement | null>
+}) {
+  const expanded = useRailExpanded()
+  const [menu, setMenu] = useState<'settings' | 'help' | null>(null)
+  const entries: RailEntry[] = [
+    ...TOP,
+    ...BOTTOM,
+    { id: 'expand', label: expanded ? 'Collapse' : 'Expand', icon: <IconRailChevron collapse={expanded} /> },
+  ]
+  const refs = useRef<(HTMLButtonElement | null)[]>([])
+  const currentIndex = Math.max(
+    0,
+    entries.findIndex((e) => e.id === active),
+  )
+  const [stop, setStop] = useState(currentIndex)
+  const nav = useRef<HTMLElement>(null)
+
+  // A rail that navigated with focus hands it to the new screen's rail.
+  useEffect(() => {
+    if (railFocus.take()) refs.current[currentIndex]?.focus()
+  }, [currentIndex])
+
+  // g then n / r / p / l / a, from anywhere on a screen with the rail.
+  useEffect(() => {
+    let armed = 0
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return
+      const now = performance.now()
+      if (armed && now - armed < CHORD_MS && JUMPS[e.key]) {
+        armed = 0
+        e.preventDefault()
+        const jump = JUMPS[e.key]
+        if (jump.id !== active) navigate(jump.to)
+        return
+      }
+      armed = e.key === 'g' ? now : 0
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [active])
+
+  const open = (entry: RailEntry) => {
+    if (entry.id === 'expand') return setRailExpanded(!expanded)
+    if (entry.menu) return setMenu((m) => (m === entry.menu ? null : entry.menu!))
+    // The current item does nothing; anything else snaps the marker and fades the main column in.
+    if (entry.id === active || !entry.to) return
+    if (nav.current?.contains(document.activeElement)) railFocus.hand()
+    navigate(entry.to)
+  }
+
+  const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    const last = entries.length - 1
+    const move = (i: number) => {
+      e.preventDefault()
+      setStop(i)
+      refs.current[i]?.focus()
+    }
+    if (e.key === 'ArrowDown') move(stop >= last ? 0 : stop + 1)
+    else if (e.key === 'ArrowUp') move(stop <= 0 ? last : stop - 1)
+    else if (e.key === 'Home') move(0)
+    else if (e.key === 'End') move(last)
+    else if (e.key === 'Escape') {
+      e.preventDefault()
+      if (menu) {
+        setMenu(null)
+        return
+      }
+      ;(main?.current ?? document.querySelector<HTMLElement>('.shell-main'))?.focus()
+    }
+  }
+
+  const item = (entry: RailEntry, i: number) => {
+    const current = entry.id === active
+    const runs = entry.id === 'runs' && badges?.runs ? badges.runs : 0
+    const dot = entry.id === 'repo' && !!badges?.repoRegressed
+    const aria = runs ? `${entry.label}, ${runs} in progress` : dot ? `${entry.label}, last CI check regressed` : entry.label
+    const slot = (
+      <div key={entry.id} className={`rail-slot${entry.rule ? ' has-rule' : ''}`}>
+        <button
+          ref={(el) => {
+            refs.current[i] = el
+          }}
+          className={`rail-item${current ? ' is-current' : ''}`}
+          aria-label={aria}
+          aria-current={current && entry.to ? 'page' : undefined}
+          aria-expanded={entry.menu ? menu === entry.menu : entry.id === 'expand' ? expanded : undefined}
+          aria-keyshortcuts={entry.key ? `g ${entry.key}` : undefined}
+          tabIndex={i === stop ? 0 : -1}
+          onFocus={() => setStop(i)}
+          onClick={() => open(entry)}
+        >
+          <span className="rail-disc">{entry.icon}</span>
+          <span className="rail-label">{entry.label}</span>
+          {current && <span className="rail-marker" />}
+          {runs > 0 && (
+            <span key={runs} className="rail-count mono" aria-hidden>
+              {runs}
+            </span>
+          )}
+          {dot && <span className="rail-dot" aria-hidden />}
+        </button>
+        {!expanded && (
+          <span className="rail-tip" aria-hidden>
+            <span>{entry.label}</span>
+            {entry.key && <span className="rail-tip-key mono">g {entry.key}</span>}
+          </span>
+        )}
+        {entry.menu && (
+          <RailMenu open={menu === entry.menu} label={entry.label} onClose={() => setMenu(null)}>
+            {entry.menu === 'settings' ? <SettingsPanel /> : <HelpPanel />}
+          </RailMenu>
+        )}
+      </div>
+    )
+    return slot
+  }
+
   return (
-    <nav className="rail" aria-label="Main">
-      <div className="rail-nav">
-        {RAIL.map((item) => {
-          const on = item.id === active
-          return (
-            <button
-              key={item.id}
-              className="rail-item"
-              aria-label={item.label}
-              aria-current={on ? 'page' : undefined}
-              title={item.label}
-              onClick={() => navigate(item.to)}
-            >
-              <span className={`rail-disc${on ? ' is-active' : ''}`}>{item.icon(on ? '#FFFFFF' : '#ADC5CA')}</span>
-              {on && <span className="rail-marker" />}
-            </button>
-          )
-        })}
-      </div>
-      <div className="rail-bottom">
-        <RailPopover label="Settings" trigger={(on) => <span className={`rail-disc${on ? ' is-active' : ''}`}><IconSettings color={on ? '#FFFFFF' : '#ADC5CA'} /></span>}>
-          <SettingsPanel />
-        </RailPopover>
-        <RailPopover label="Account" trigger={() => <span className="rail-avatar"><IconAccount /></span>}>
-          <AccountPanel />
-        </RailPopover>
-      </div>
+    <nav ref={nav} className={`rail${expanded ? ' is-expanded' : ''}`} aria-label="Main" onKeyDown={onKeyDown}>
+      <div className="rail-nav">{TOP.map((e, i) => item(e, i))}</div>
+      <div className="rail-bottom">{entries.slice(TOP.length).map((e, i) => item(e, TOP.length + i))}</div>
     </nav>
+  )
+}
+
+/** A rail popover: fades in 200 in place, out 150; outside click or Esc closes it. */
+/** A menu's presence: in 200 in place, out 150 (M6). Position comes from className. */
+function Menu({ open, label, className, children }: { open: boolean; label: string; className: string; children: ReactNode }) {
+  const { mounted, leaving } = usePresence(open)
+  if (!mounted) return null
+  return (
+    <div className={`menu ${className}${leaving ? ' is-leaving' : ''}`} role="menu" aria-label={label}>
+      {children}
+    </div>
+  )
+}
+
+function RailMenu({ open, label, onClose, children }: { open: boolean; label: string; onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      const slot = ref.current?.parentElement
+      if (slot && !slot.contains(e.target as Node)) onClose()
+    }
+    window.addEventListener('pointerdown', onDown)
+    return () => window.removeEventListener('pointerdown', onDown)
+  }, [open, onClose])
+  return (
+    <div ref={ref} className="rail-menu-anchor">
+      <Menu open={open} label={label} className="rail-popover">
+        {children}
+      </Menu>
+    </div>
   )
 }
 
@@ -177,74 +479,71 @@ export function Content({ children, className = '' }: { children: ReactNode; cla
   return <div className={`shell-content ${className}`}>{children}</div>
 }
 
-/* ── Rail popovers: settings and account ─────────────────────────────── */
-function RailPopover({ label, trigger, children }: { label: string; trigger: (open: boolean) => ReactNode; children: ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    window.addEventListener('pointerdown', onDown)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('pointerdown', onDown)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-  return (
-    <div className="rail-popover-anchor" ref={ref}>
-      <button className="rail-item" aria-label={label} title={label} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {trigger(open)}
-      </button>
-      {open && (
-        <div className="rail-popover" role="dialog" aria-label={label}>
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
+/* ── Rail menus ─────────────────────────────────────────────────────── */
+const CHECK = (
+  <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden>
+    <path d="M3 7.5l2.5 2.5L11 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
 
-function SettingsPanel() {
+/** The settings rows, shared by the rail's Settings menu and the account menu's Settings row. */
+function SettingsRows() {
   const reduced = useReducedMotion()
   return (
     <>
-      <div className="popover-title">Settings</div>
-      <label className="popover-row">
+      <div className="menu-title">Settings</div>
+      <div className="menu-rule" />
+      <button className="menu-row is-action" role="menuitemcheckbox" aria-checked={reduced} onClick={() => setReducedMotion(!reduced)}>
         <span>Reduce motion</span>
-        <Switch on={reduced} onChange={setReducedMotion} label="Reduce motion" />
-      </label>
-      <div className="popover-row">
+        <span className="menu-check" aria-hidden>
+          {reduced && CHECK}
+        </span>
+      </button>
+      <div className="menu-row">
         <span>Engine</span>
-        <span className="mono popover-value">qscore-2026.1</span>
+        <span className="mono menu-value">qscore-2026.1</span>
       </div>
-      <div className="popover-row">
+      <div className="menu-row">
         <span>Data</span>
-        <span className="popover-value">scripted demo run</span>
+        <span className="menu-value">scripted demo run</span>
       </div>
-      <button className="btn-editor popover-action" onClick={() => actions.reset()}>
-        Restart the demo
+      <div className="menu-rule" />
+      <button className="menu-row is-action" role="menuitem" onClick={() => actions.reset()}>
+        <span>Restart the demo</span>
       </button>
     </>
   )
 }
 
-function AccountPanel() {
+function SettingsPanel() {
+  return <SettingsRows />
+}
+
+const SHORTCUTS: [string, string][] = [
+  ['New run', 'g n'],
+  ['Runs', 'g r'],
+  ['Repo', 'g p'],
+  ['Leaderboard', 'g l'],
+  ['Account', 'g a'],
+  ['Move in the rail', '↑ ↓'],
+  ['Back to the work', 'Esc'],
+]
+
+function HelpPanel() {
   return (
     <>
-      <div className="popover-title">Local session</div>
-      <div className="popover-note">Laptop mode. Circuits, scores and reports stay on this machine.</div>
-      <div className="popover-row">
-        <span>GitHub</span>
-        <span className="mono popover-value">knighthacks</span>
-      </div>
-      <div className="popover-row">
-        <span>Platform queue</span>
-        <span className="popover-value">not signed in</span>
-      </div>
+      <div className="menu-title">Help · keys work on every screen with the rail</div>
+      <div className="menu-rule" />
+      {SHORTCUTS.map(([what, keys]) => (
+        <div key={what} className="menu-row">
+          <span>{what}</span>
+          <span className="mono menu-value">{keys}</span>
+        </div>
+      ))}
+      <div className="menu-rule" />
+      <button className="menu-row is-action" role="menuitem" onClick={() => navigate(ROUTES.template)}>
+        <span>Open the shell template</span>
+      </button>
     </>
   )
 }

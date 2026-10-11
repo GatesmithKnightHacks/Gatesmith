@@ -11,7 +11,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from qscore.schemas.common import FindingSeverity, QDocument, QModel
-from qscore.schemas.manifest import Ancillas, Intent, PermittedChange
+from qscore.schemas.manifest import Ancillas, Intent, PermittedChange, Privacy
 from qscore.schemas.scorecard import Region
 
 REQUEST_SCHEMA = "qscore.request/v0.2"
@@ -82,6 +82,8 @@ class ImprovementRequest(QDocument):
     permitted: RequestPermitted
     invariants: RequestInvariants
     budget: RequestBudget
+    permitted_strategies: list[str] = Field(min_length=1)
+    privacy: Privacy
     proposal_schema: Literal["qscore.proposal/v0.2"]
 
 
@@ -115,3 +117,4 @@ class Proposal(QDocument):
     candidate: Candidate
     claims: Claims
     rationale: str
+    strategy: str

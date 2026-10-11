@@ -1,0 +1,427 @@
+/* The Rounds tile: transport, time axis, lanes with attempt cards, the primary lane, the needle. */
+
+.lp-rounds {
+  flex: 1 1 0;
+}
+.lp-rounds-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 28px;
+  padding-right: var(--spacing-3);
+  background: var(--color-surface-inset);
+}
+.lp-rounds-tab {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding-inline: 10px;
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+.lp-transport {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.lp-tr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  transition: background-color var(--motion-hover, 150ms) ease;
+}
+.lp-tr.is-on,
+.lp-tr:not(:disabled):hover {
+  background: rgb(0 0 0 / 25%);
+}
+.lp-tr:disabled {
+  cursor: default;
+}
+.lp-rounds-pipe {
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 6px;
+}
+.lp-rounds-pipe > span {
+  width: 1px;
+  height: 14px;
+  background: var(--color-border-control);
+}
+.lp-rounds-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lp-rounds-readout {
+  padding-left: var(--spacing-3);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.lp-rounds-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 6px 12px;
+}
+
+/* time axis */
+.lp-axis {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.lp-axis-row {
+  display: flex;
+  height: 28px;
+}
+.lp-axis-name {
+  width: 44px;
+  flex-shrink: 0;
+  padding-top: 13px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.lp-axis-plot {
+  position: relative;
+  width: 932px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.lp-axis-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 28px;
+  background: var(--color-surface-raised);
+}
+.lp-axis-tick,
+.lp-axis-round {
+  position: absolute;
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.lp-axis-tick {
+  top: 13px;
+  color: var(--color-text-tertiary);
+}
+.lp-axis-tick.is-hot {
+  color: var(--color-signal-select);
+}
+.lp-axis-round {
+  top: 0;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+.lp-axis-round.is-now {
+  color: var(--color-text-primary);
+}
+.lp-axis-round.is-later {
+  color: var(--color-text-tertiary);
+}
+.lp-axis-pipe {
+  position: absolute;
+  top: 1px;
+  width: 1px;
+  height: 12px;
+  background: var(--color-border-control);
+}
+.lp-rule {
+  height: 1px;
+  flex-shrink: 0;
+  background: var(--color-surface-app);
+}
+.lp-sep {
+  height: 2px;
+  flex-shrink: 0;
+  background: var(--color-surface-app);
+}
+
+/* lanes */
+.lp-lane-wrap,
+.lp-lane {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.lp-lane-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 30px;
+  gap: var(--spacing-2);
+}
+.lp-lane-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: var(--radius-base);
+}
+.lp-lane-dot.is-engine {
+  background: var(--color-signal-info);
+}
+.lp-lane-dot.is-model {
+  background: var(--color-signal-ai);
+}
+.lp-lane-dot.is-primary {
+  background: var(--color-text-primary);
+}
+.lp-lane-name {
+  display: flex;
+  align-items: center;
+  width: 120px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.lp-pipe {
+  width: 1px;
+  height: 12px;
+  flex-shrink: 0;
+  background: var(--color-border-control);
+}
+.lp-lane-note,
+.lp-lane-strategies,
+.lp-lane-model,
+.lp-lane-meta,
+.lp-lane-gpu {
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.lp-lane-note,
+.lp-lane-model,
+.lp-lane-gpu {
+  color: var(--color-text-secondary);
+}
+.lp-lane-note.is-ter,
+.lp-lane-strategies,
+.lp-lane-meta {
+  color: var(--color-text-tertiary);
+}
+.lp-lane-gpu {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lp-lane-row {
+  display: flex;
+  flex-shrink: 0;
+  height: 100px;
+}
+.lp-gutter {
+  width: 44px;
+  flex-shrink: 0;
+}
+.lp-lane-plot {
+  position: relative;
+  width: 932px;
+  flex-shrink: 0;
+  overflow: clip;
+  background: var(--color-surface-inset);
+}
+.lp-grid {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.lp-lane-tail {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* attempt card */
+.lp-card {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6px 8px;
+  overflow: clip;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+.lp-card.is-proposed {
+  border: 1px dashed var(--color-signal-ai);
+}
+.lp-card.is-queued {
+  border: 1px dashed var(--color-border-control);
+  background: var(--color-surface-inset);
+}
+.lp-card.is-bad {
+  border-color: var(--color-signal-bad);
+}
+.lp-card-strategy,
+.lp-card-note,
+.lp-card-value,
+.lp-card-foot {
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.lp-card-strategy {
+  color: var(--color-text-primary);
+}
+.lp-card.is-queued .lp-card-strategy {
+  color: var(--color-text-tertiary);
+}
+.lp-card-status {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 16px;
+  gap: var(--spacing-1);
+}
+.lp-card-note {
+  padding-left: var(--spacing-1);
+  color: var(--color-text-secondary);
+}
+.lp-card-bars {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 14px;
+  gap: 6px;
+}
+.lp-bars {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 48px;
+  gap: 2px;
+}
+.lp-bar {
+  display: flex;
+  width: 48px;
+  height: 6px;
+  background: color-mix(in srgb, var(--color-white) 8%, transparent);
+}
+.lp-bar-before,
+.lp-bar-after {
+  height: 6px;
+}
+.lp-bar-before {
+  background: var(--color-border-control);
+}
+.lp-bar-after.is-engine {
+  background: var(--color-signal-info);
+}
+.lp-bar-after.is-model {
+  background: var(--color-signal-ai);
+}
+.lp-bar-pending {
+  width: 48px;
+  height: 6px;
+  border: 1px dashed var(--color-signal-info);
+}
+.lp-bar-pending.is-model {
+  border-color: var(--color-signal-ai);
+}
+.lp-card-value {
+  color: var(--color-text-primary);
+}
+.lp-card-value.is-muted,
+.lp-card-foot {
+  color: var(--color-text-tertiary);
+}
+
+/* compact lanes (a banner sits in the tile) */
+.lp-rounds.is-compact .lp-lane-row:not(.is-primary),
+.lp-rounds.is-compact .lp-lane-plot:not(.is-primary) {
+  height: 86px;
+}
+
+/* primary lane */
+.lp-primary-name {
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  font-weight: var(--font-weight-medium);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.lp-primary-now {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.lp-primary-delta {
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-base);
+}
+.lp-lane-row.is-primary,
+.lp-lane-plot.is-primary {
+  height: 170px;
+}
+.lp-yaxis {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* needle: 2 px, 14 px knob on the axis rule; snaps (no tween) */
+.lp-needle {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--color-signal-select);
+  pointer-events: none;
+}
+.lp-needle-knob {
+  position: absolute;
+  top: 28px;
+  width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--color-signal-select);
+  pointer-events: none;
+}
+
+/* empty: no rounds yet */
+.lp-empty {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 932px;
+  margin-left: 44px;
+  overflow: hidden;
+  background: var(--color-surface-inset);
+}
+.lp-empty-words {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+

@@ -1,171 +1,209 @@
 /*
- * Scorecard tile body: four groups, numbers right-aligned in a fixed lane, units in their own lane,
- * status in a trailing slot (S-04 · Scorecard). Also the scoring, empty, partial and Seeds variants
- * from the states board.
+ * Scorecard tile bodies (MVN-0 20HZ-0 and the DS-06 state frames): rows on the inset, 20 tall; name 150 |
+ * bars 80 (36 px track + 40 px delta or status) | now 40 | unit 42. Group headers 18 tall.
  */
-import { Status } from '../../ui/status'
-import { SBOX_SCORECARD, SCORECARD, SEEDS, type ScoreRow } from './data'
+import { Sk } from '../../ui/Skeleton'
+import { MarkIcon, MarkWord } from './icons'
+import { BASELINE_ROWS, SCORE_ROWS, SEEDS, type ScoreRow } from './data'
 
-export function ScorecardRows({ rows = SCORECARD }: { rows?: ScoreRow[] }) {
-  return (
-    <div className="sc-rows">
-      {rows.map((r) => {
-        if (r.kind === 'group')
-          return (
-            <div key={r.label} className="sc-group">
-              {r.label}
-            </div>
-          )
-        if (r.kind === 'skipped')
-          return (
-            <div key={r.id} className="sc-row-wrap">
-              <div className="sc-row is-skipped">
-                <span className="sc-label">{r.id}</span>
-                <span className="sc-skip">{r.reason}</span>
-              </div>
-            </div>
-          )
-        return (
-          <div key={r.id} className="sc-row-wrap">
-            <div className="sc-row">
-              <span className="sc-label">{r.id}</span>
-              {r.bar && (
-                <span className="sc-bar">
-                  <span className="sc-bar-fill" style={{ width: r.bar.fill }} />
-                  <span className="sc-bar-marker" style={{ left: r.bar.marker }} />
-                </span>
-              )}
-              <span className="sc-value">
-                <span className="sc-num">{r.value}</span>
-                {r.unit && <span className="sc-unit">{r.unit}</span>}
-              </span>
-              <span className="sc-status">
-                {r.status && <Status kind={r.status} />}
-                {r.aside && <span className="sc-aside">{r.aside}</span>}
-              </span>
-            </div>
-            {r.note && <div className="sc-note">{r.note}</div>}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-const STAGES = ['validate', 'confirm', 'compile', 'measure', 'diagnose'] as const
-
-/** Loading · scoring: stage, seed, time left, a 4px blue bar and the stage list. */
-export function ScorecardScoring({ progress, stage }: { progress: number; stage: string }) {
-  const at = STAGES.indexOf(stage as (typeof STAGES)[number])
-  const current = at === -1 ? STAGES.length : at
-  const seed = Math.min(8, Math.max(1, Math.round(progress * 8)))
-  const left = Math.max(1, Math.round((1 - progress) * 37))
-  const name = stage === 'done' ? 'Diagnose' : stage.charAt(0).toUpperCase() + stage.slice(1)
-  return (
-    <div className="sc-scoring">
-      <div className="sc-scoring-head">
-        <span>
-          {name} · seed {seed} of 8
-        </span>
-        <span className="mono sc-scoring-left">about {left} s left</span>
-      </div>
-      <div className="sc-scoring-bar">
-        <span style={{ width: `${Math.round(progress * 100)}%` }} />
-      </div>
-      <div className="sc-stages">
-        {STAGES.map((s, i) => (
-          <span key={s} className={i < current ? 'is-done' : i === current ? 'is-now' : 'is-next'}>
-            {i < current ? '✓' : i === current ? '●' : '○'} {s}
+function Row({ row }: { row: ScoreRow }) {
+  switch (row.kind) {
+    case 'group':
+      return (
+        <div className="ws-sc-group">
+          <span className="ws-sc-group-label">{row.label}</span>
+          {row.note && <span className={`ws-sc-group-note${row.noteSize === 11 ? ' is-11' : ''}`}>{row.note}</span>}
+        </div>
+      )
+    case 'caveat':
+      return <div className="ws-sc-caveat">{row.text}</div>
+    case 'status':
+      return (
+        <div className={`ws-sc-row is-status${row.last ? ' is-last' : ''}`}>
+          <span className="ws-sc-status-name">{row.name}</span>
+          <span className="ws-sc-status-right">
+            <span>{row.note}</span>
+            <MarkWord kind="queued" label={row.status} size={11} tone="var(--color-text-tertiary)" />
           </span>
-        ))}
-      </div>
-      <div className="sc-scoring-note">
-        {current > 2 ? 'Resources ready: width 12 q, depth 58 layers.' : 'Compiling on FakeTorino across 8 seeds.'}
-        <br />
-        {current > 3 ? 'Hardware metrics ready. Ranking findings next.' : 'Hardware metrics arrive after measure.'}
+        </div>
+      )
+    case 'metric':
+      return (
+        <div className={`ws-sc-row${row.open ? ' is-open' : ''}${row.primary ? ' is-primary' : ''}`}>
+          <span className="ws-sc-name">{row.name}</span>
+          {row.aside ? (
+            <span className="ws-sc-aside">{row.aside}</span>
+          ) : row.bars ? (
+            <span className="ws-sc-bars">
+              <span className="ws-sc-track">
+                <span className="ws-sc-bg" />
+                <span className="ws-sc-base" style={{ width: row.bars[0] }} />
+                <span className={`ws-sc-now${row.fires ? ' is-fires' : ''}`} style={{ width: row.bars[1] }} />
+                {row.tick != null && <span className="ws-sc-tick" style={{ left: row.tick }} />}
+              </span>
+              <span className="ws-sc-delta">{row.fires ? <MarkWord kind="high" size={11} /> : row.delta}</span>
+            </span>
+          ) : (
+            <span className="ws-sc-bars" />
+          )}
+          <span className="ws-sc-now-value">{row.now}</span>
+          <span className="ws-sc-unit">{row.unit}</span>
+        </div>
+      )
+  }
+}
+
+/** The scorecard at 400 s. `partial` swaps seed_spread for "pending" (round 3 re-score, 3 of 8 seeds). */
+export function ScorecardRows({ partial, rows = SCORE_ROWS }: { partial?: boolean; rows?: ScoreRow[] }) {
+  return (
+    <div className="ws-tile-pad">
+      <div className="ws-sc-inset">
+        {rows.map((row, i) =>
+          partial && row.kind === 'metric' && row.name === 'seed_spread' ? (
+            <div key={i} className="ws-sc-row is-status">
+              <span className="ws-sc-name">seed_spread</span>
+              <span className="ws-sc-status-right">
+                <MarkWord kind="pending" label="pending" size={11} tone="var(--color-text-tertiary)" />
+              </span>
+            </div>
+          ) : (
+            <Row key={i} row={row} />
+          ),
+        )}
       </div>
     </div>
   )
 }
 
+/** Solid blocks where values will be (scoring: the engine is still measuring). */
+function Wait({ w, h = 12 }: { w: number; h?: number }) {
+  return <span className="ws-wait" style={{ width: w, height: h }} />
+}
+
+const PENDING: ([number, number] | 'gap' | string)[] = [
+  'hardware',
+  [106, 64],
+  [92, 64],
+  [86, 64],
+  [139, 64],
+  'gap',
+  [119, 64],
+  [73, 64],
+  'opportunities',
+  [139, 64],
+  [139, 64],
+  'research',
+  [132, 120],
+  [79, 120],
+]
+
+/** First score: the baseline resource rows land first, the rest waits as solid blocks. */
+export function ScorecardScoring() {
+  return (
+    <div className="ws-tile-pad">
+      <div className="ws-sc-inset" aria-busy="true">
+        {BASELINE_ROWS.map((row, i) => (
+          <Row key={i} row={row} />
+        ))}
+        {PENDING.map((p, i) =>
+          p === 'gap' ? (
+            <div key={i} style={{ height: 19, flexShrink: 0 }} />
+          ) : typeof p === 'string' ? (
+            <div key={i} className="ws-sc-group">
+              <span className="ws-sc-group-label">{p}</span>
+            </div>
+          ) : (
+            <div key={i} className="ws-sc-skrow">
+              <Wait w={p[0]} />
+              <Wait w={p[1]} />
+            </div>
+          ),
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Never run: nothing measured yet. */
 export function ScorecardEmpty() {
   return (
-    <div className="sc-empty">
-      <div>Run the engine to see the scorecard</div>
-      <div className="mono sc-empty-sub">about 40 s on this machine</div>
+    <div className="ws-tile-pad">
+      <div className="ws-sc-inset is-empty">
+        <span>Not scored yet · Run engine to score</span>
+      </div>
     </div>
   )
 }
 
-/** Partial · metrics skipped (states board, 20-qubit circuit). */
-export function ScorecardPartial() {
+const LOADING: (number[] | 'g' | 'g19')[] = [
+  'g',
+  [33, 64],
+  [33, 64],
+  [99, 64, 16],
+  [99, 64],
+  'g',
+  [106, 64],
+  [92, 64],
+  [86, 64],
+  [139, 64],
+  'g19',
+  [119, 64],
+  [73, 64],
+  'g',
+  [139, 64],
+  [139, 64],
+  'g',
+  [132, 120],
+  [79, 120],
+]
+
+/** Opening a saved run: the shimmer holds the scorecard's real shape. */
+export function ScorecardLoading() {
   return (
-    <>
-      <div className="sc-banner">
-        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-          <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.5" strokeLinejoin="round" />
-        </svg>
-        <span className="sc-banner-text">2 metrics skipped, unaffordable at 20 qubits</span>
-        <button className="sc-banner-link">Details</button>
+    <div className="ws-tile-pad">
+      <div className="ws-sc-inset is-loading">
+        {LOADING.map((r, i) =>
+          r === 'g' || r === 'g19' ? (
+            <div key={i} style={{ height: r === 'g' ? 18 : 19, flexShrink: 0 }} />
+          ) : (
+            <div key={i} className="ws-sc-skrow">
+              <Sk w={r[0]} h={12} />
+              <Sk w={r[1]} h={r[2] ?? 12} />
+            </div>
+          ),
+        )}
       </div>
-      <ScorecardRows rows={SBOX_SCORECARD} />
-    </>
+    </div>
   )
 }
 
-/** Seeds tab: two-qubit count per seed, the chosen seed outlined in yellow. */
+/** Seeds tab: two_qubit_count per seed after round 2, best of 8. */
 export function SeedsChart() {
-  const base = 120
-  const scale = 110 / 110
-  const bw = 26
-  const step = 33
-  const x0 = 40
+  const max = 305
+  const min = 275
   return (
-    <div className="sc-seeds">
-      <svg width="306" height="150" viewBox="0 0 306 150" aria-label="two_qubit_count per seed">
-        <path d={`M30 10V${base}M30 ${base}H300`} fill="none" stroke="#354348" />
-        <text x="24" y="24" textAnchor="end" fontFamily="JetBrains Mono" fontSize="10" fill="#ADC5CA">
-          52
-        </text>
-        <text x="24" y={base + 2} textAnchor="end" fontFamily="JetBrains Mono" fontSize="10" fill="#ADC5CA">
-          0
-        </text>
-        {SEEDS.map((s, i) => {
-          const bx = x0 + i * step
-          const h = s.h * scale
+    <div className="ws-tile-pad">
+      <div className="ws-sc-inset ws-seeds">
+        <div className="ws-sc-group">
+          <span className="ws-sc-group-label">two_qubit_count per seed</span>
+          <span className="ws-sc-group-note">after R2 · best of 8</span>
+        </div>
+        {SEEDS.map((s) => {
+          const best = s.seed === 37
           return (
-            <g key={s.seed}>
-              <rect
-                x={bx}
-                y={base - h}
-                width={bw}
-                height={h}
-                fill={s.chosen ? '#C2DADF' : '#496166'}
-                stroke={s.chosen ? '#F8D441' : undefined}
-                strokeWidth={s.chosen ? 2 : undefined}
-              />
-              <text
-                x={bx + bw / 2}
-                y={base + 16}
-                textAnchor="middle"
-                fontFamily="JetBrains Mono"
-                fontSize="10"
-                fill={s.chosen ? '#FFFFFF' : '#ADC5CA'}
-              >
-                {s.seed}
-              </text>
-              {s.label && (
-                <text x={bx + bw / 2} y={base - h - 5} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="10" fill="#FFFFFF">
-                  {s.label}
-                </text>
-              )}
-            </g>
+            <div key={s.seed} className={`ws-seed-row${best ? ' is-best' : ''}`}>
+              <span className="ws-seed-name">seed {s.seed}</span>
+              <span className="ws-seed-track">
+                <span className="ws-seed-bar" style={{ width: `${((s.gates - min) / (max - min)) * 100}%` }} />
+              </span>
+              <span className="ws-sc-now-value">{s.gates}</span>
+              <span className="ws-sc-unit">gates</span>
+              <span className="ws-seed-flag">{best && <MarkIcon kind="accepted" tone="var(--color-text-secondary)" />}</span>
+            </div>
           )
         })}
-      </svg>
-      <p className="sc-seeds-note">
-        Seed 67 compiles to the fewest two-qubit gates, so it is the representative. The spread is 0.18.
-      </p>
+        <div className="ws-sc-caveat">seed_spread 0.071 ratio = (301 − 281) ÷ 281 · n = 8 · seed 37 is the circuit shown</div>
+      </div>
     </div>
   )
 }

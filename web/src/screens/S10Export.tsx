@@ -1,580 +1,495 @@
 /*
- * S-10 · Export (D2). Files, the code preview and the GitHub Action, with real downloads.
- * Micro-interactions (M6): Download swaps to a check and Saved, Convert shows its progress in the
- * label, Copy YAML confirms with Copied, Back to report folds back the way it came.
+ * S-10 · Export. The three files of run 7f3a·0412 with their hashes and a preview, the Qiskit conversion, and the
+ * GitHub Action for qlab/sidechain-packing. The one mint downloads final.qasm; the upload to the account is an
+ * opt-in checkbox above the saved line (fix-round-2 D33). States from the S-10 states board at ?state=:
+ * ready (default), downloaded, converting, converted, added, no-repo, error, loading, offline, empty, focus.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
-import { actions } from '../data/run'
+import { EditorButton, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Section, Tile } from '../ui/parts'
 import { Content, Shell, TabStrip } from '../ui/Shell'
-import { EditorButton, ModeTabs, PrimaryButton, SecondaryPair, Tile } from '../ui/parts'
-import { Collapsible, copyText, downloadText, useFlash } from './report/bits'
-import { ACTION_YAML, FINAL_QASM, MANIFEST_YAML, QISKIT_CODE, reportJson } from './report/files'
+import { Banner, CodeBlock, FactRow, InsetButton, MarkIcon, MarkWord, Shim, Spinner, StageLine } from './report/bits'
+import { copyText, downloadText, useFlash } from './report/helpers'
+import { Icons } from './report/icons'
+import {
+  ACTION_FACTS,
+  ACTION_LINES,
+  EXPORT_FILES,
+  HANDLE,
+  JOB,
+  PR,
+  QASM_PREVIEW,
+  QISKIT_PREVIEW,
+  REPO,
+  RUN_SECTION,
+  type CodeLine,
+  type ExportFile,
+} from './report/data'
+import { FINAL_QASM, MANIFEST_PREVIEW, MANIFEST_YAML, QISKIT_CODE, REPORT_PREVIEW, reportJson } from './report/files'
 import './report/report.css'
 import './report/export.css'
 
-type ExportState =
-  | 'ready'
-  | 'downloaded'
-  | 'converting'
-  | 'added'
-  | 'no-repo'
-  | 'loading'
-  | 'empty'
-  | 'error'
-  | 'offline'
-  | 'focus'
+type S10State = 'ready' | 'downloaded' | 'converting' | 'converted' | 'added' | 'no-repo' | 'error' | 'loading' | 'offline' | 'empty' | 'focus'
+const STATES: S10State[] = ['ready', 'downloaded', 'converting', 'converted', 'added', 'no-repo', 'error', 'loading', 'offline', 'empty', 'focus']
 
-type FileId = 'qasm' | 'yaml' | 'json'
-const FILES: { id: FileId; name: string; note: string; size: string; sha: string; text: () => string; type: string }[] = [
-  {
-    id: 'qasm',
-    name: 'sidechain_qaoa.final.qasm',
-    note: 'OpenQASM 2.0 · 12 q · 33 two-qubit gates',
-    size: '2.6 KB',
-    sha: '8b2d…11fe',
-    text: () => FINAL_QASM,
-    type: 'text/plain',
-  },
-  {
-    id: 'yaml',
-    name: 'qscore.yaml',
-    note: 'manifest of the improved circuit · rebuilds your code',
-    size: '0.9 KB',
-    sha: '3f9a…1c07',
-    text: () => MANIFEST_YAML,
-    type: 'text/yaml',
-  },
-  {
-    id: 'json',
-    name: 'report.json',
-    note: 'scorecards, every attempt and decision, run facts',
-    size: '38.3 KB',
-    sha: 'e07a…5c92',
-    text: reportJson,
-    type: 'application/json',
-  },
-]
-
-const CHECK = (color = '#5FEEA3', size = 12) => (
-  <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden>
-    <path d="M2.5 6.5l2.3 2.3L9.5 3.8" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
+type Convert = 'idle' | 'converting' | 'converted'
+type ActionStep = 'idle' | 'adding' | 'added'
 
 export function S10Export() {
   const params = useHashParams()
-  const forced = (params.get('state') ?? 'ready') as ExportState
-
-  // Live interaction state, seeded from ?state= so each states-board cell can be opened directly.
-  const [saved, setSaved] = useState<Partial<Record<FileId, 'saved' | 'done'>>>(() => (forced === 'downloaded' ? { qasm: 'saved' } : {}))
-  const anySaved = Object.keys(saved).length > 0
-  const [codeTab, setCodeTab] = useState<'qiskit' | 'qasm'>(forced === 'converting' ? 'qasm' : 'qiskit')
-  const [convert, setConvert] = useState<number | null>(forced === 'converting' ? 0.68 : null)
-  const [converted, setConverted] = useState(false)
-  const [action, setAction] = useState<'idle' | 'adding' | 'added' | 'error'>(
-    forced === 'added' ? 'added' : forced === 'error' ? 'error' : 'idle',
-  )
-  const [packing, setPacking] = useState<number | null>(forced === 'loading' ? 0.67 : null)
-  const [yamlCopied, flashYaml] = useFlash()
-  const timers = useRef<number[]>([])
-  useEffect(() => () => timers.current.forEach(clearTimeout), [])
-  const later = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
-
-  const offline = forced === 'offline'
-  const empty = forced === 'empty'
-  const noRepo = forced === 'no-repo'
-
-  const download = (id: FileId) => {
-    const f = FILES.find((x) => x.id === id)!
-    downloadText(f.name, f.text(), f.type)
-    setSaved((s) => ({ ...s, [id]: 'saved' }))
-    later(3000, () => setSaved((s) => ({ ...s, [id]: 'done' })))
-  }
-
-  const downloadAll = () => {
-    setPacking(0.12)
-    ;[0.34, 0.67, 1].forEach((p, i) => later(300 * (i + 1), () => setPacking(p)))
-    later(1100, () => {
-      setPacking(null)
-      FILES.forEach((f, i) => later(i * 120, () => download(f.id)))
-    })
-  }
-
-  const runConvert = () => {
-    if (converted) {
-      downloadText('build_qaoa_final.py', QISKIT_CODE, 'text/x-python')
-      return
-    }
-    setCodeTab('qasm')
-    setConvert(0.05)
-    ;[0.24, 0.47, 0.68, 0.9, 1].forEach((p, i) => later(320 * (i + 1), () => setConvert(p)))
-    later(1900, () => {
-      setConvert(null)
-      setConverted(true)
-      setCodeTab('qiskit')
-    })
-  }
-
-  const addAction = () => {
-    setAction('adding')
-    later(900, () => setAction('added'))
-  }
-
-  const visibleFiles = empty ? FILES.filter((f) => f.id === 'json') : FILES
-
-  return (
-    <Shell
-      context="Report"
-      rail="runs"
-      tabs={
-        <TabStrip
-          tabs={[
-            { id: 'a', label: 'sidechain_qaoa.qasm', active: true },
-            { id: 'b', label: 'sbox_oracle.qasm' },
-          ]}
-        />
-      }
-      inspector={
-        <ExportInspector
-          state={forced}
-          packing={packing}
-          onDownloadFinal={() => download('qasm')}
-          onDownloadAll={downloadAll}
-          finalSaved={saved.qasm}
-        />
-      }
-    >
-      <Content className="ex-content">
-        <div className="ex-left">
-          <Tile
-            className="ex-files"
-            tabs={[{ id: 'f', label: 'Files', active: true }]}
-            meta={<span className="mono">{empty ? '1 file · 38.3 KB' : '3 files · 41.8 KB'}</span>}
-          >
-            <div className="ex-table" role="table">
-              <div className="ex-tr ex-th" role="row">
-                <span className="ex-c-icon" />
-                <span className="ex-c-name">File</span>
-                <span className="ex-c-size">Size</span>
-                <span className="ex-c-sha">sha256</span>
-                <span className="ex-c-action" />
-              </div>
-              {visibleFiles.map((f, i) => {
-                const st = saved[f.id]
-                return (
-                  <div key={f.id} className={`ex-tr ex-file${i === visibleFiles.length - 1 ? ' is-last' : ''}`} role="row">
-                    <span className="ex-c-icon">
-                      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
-                        <path d="M3.5 1.5h6l3 3v10h-9z" fill="none" stroke="#C2DADF" strokeWidth="1.2" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                    <span className="ex-c-name ex-file-name">
-                      <span className="mono">{f.name}</span>
-                      <span className="ex-file-note">
-                        {st ? (st === 'saved' ? 'to ~/Downloads' : 'downloaded to ~/Downloads') : anySaved ? 'not downloaded yet' : f.note}
-                      </span>
-                    </span>
-                    <span className="ex-c-size mono">{f.size}</span>
-                    <span className="ex-c-sha mono">{f.sha}</span>
-                    <span className="ex-c-action">
-                      {st === 'saved' ? (
-                        <span className="ex-saved">{CHECK()}Saved</span>
-                      ) : st === 'done' ? (
-                        <button className="ex-done" onClick={() => download(f.id)}>
-                          {CHECK('#C2DADF')}
-                          Downloaded
-                        </button>
-                      ) : (
-                        <EditorButton onClick={() => download(f.id)}>Download</EditorButton>
-                      )}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </Tile>
-
-          <Tile
-            className="ex-code"
-            tabs={[
-              { id: 'qiskit', label: 'Qiskit code', active: codeTab === 'qiskit', onClick: () => setCodeTab('qiskit') },
-              { id: 'qasm', label: 'OpenQASM', active: codeTab === 'qasm', onClick: () => setCodeTab('qasm') },
-            ]}
-            meta={<span className="mono">{codeTab === 'qiskit' ? 'preview · build_qaoa_final.py' : 'sidechain_qaoa.final.qasm'}</span>}
-          >
-            <div className="ex-code-bar">
-              {convert != null ? (
-                <span className="ex-converting">
-                  <span>Writing Qiskit code · line {Math.max(1, Math.round(convert * 22))} of 22</span>
-                  <span className="mono ex-left-time">about {Math.max(1, Math.round((1 - convert) * 6))} s left</span>
-                </span>
-              ) : (
-                <span className="ex-code-lead">
-                  {codeTab === 'qiskit'
-                    ? 'A Qiskit builder you can drop back into src/packing/qaoa.py.'
-                    : 'The OpenQASM file that goes to the QPU. The preview keeps it until the code is ready.'}
-                </span>
-              )}
-              <EditorButton onClick={runConvert} disabled={convert != null}>
-                {convert != null ? `Converting (${Math.round(convert * 100)}%)` : converted ? 'Download .py' : 'Convert to Qiskit code'}
-              </EditorButton>
-            </div>
-            <CodeBlock text={codeTab === 'qiskit' ? QISKIT_CODE : FINAL_QASM.trimEnd()} />
-          </Tile>
-        </div>
-
-        <ActionTile
-          state={action}
-          noRepo={noRepo}
-          offline={offline}
-          onAdd={addAction}
-          onCopy={() => {
-            void copyText(ACTION_YAML)
-            flashYaml('Copied')
-          }}
-          copied={yamlCopied}
-        />
-      </Content>
-    </Shell>
-  )
+  const raw = params.get('state') as S10State | null
+  const state: S10State = raw && STATES.includes(raw) ? raw : 'ready'
+  // Keyed by state: a forced ?state= starts from a clean interaction state, so it always shows its board cell.
+  return <ExportView key={state} state={state} />
 }
 
-function CodeBlock({ text }: { text: string }) {
-  const lines = text.split('\n')
+function ExportView({ state }: { state: S10State }) {
+  const [upload, setUpload] = useState(true)
+  const [mintDone, flashMint] = useFlash(1200)
+  const [saved, setSaved] = useState<string | null>(state === 'downloaded' ? 'final.qasm' : null)
+  // Q602: cleared by Retry on the row or by choosing another folder in the banner
+  const [written, setWritten] = useState(state !== 'error')
+
+  const disabled = state === 'loading' || state === 'empty'
+  const download = () => {
+    downloadText('final.qasm', FINAL_QASM)
+    flashMint('Downloaded ✓')
+    setSaved('final.qasm')
+  }
+
   return (
-    <div className="ex-code-block">
-      <div className="ex-gutter mono" aria-hidden>
-        {lines.map((_, i) => (
-          <span key={i}>{i + 1}</span>
-        ))}
-      </div>
-      <pre className="ex-code-text mono">{text}</pre>
+    <div className="rp-screen">
+      <Shell
+        context="Report"
+        rail="runs"
+        tabs={
+          <TabStrip
+            tabs={[
+              { id: 'file', label: 'sidechain_qaoa.qasm' },
+              { id: 'report', label: 'Report', onClick: () => navigate(ROUTES.report, { transition: 'back' }) },
+              { id: 'export', label: 'Export', active: true },
+            ]}
+          />
+        }
+        inspector={
+          <>
+            <ModeTabs />
+            <ModeBlock style={{ paddingTop: 18, paddingBottom: 14 }} line={state === 'empty' ? 'Runs on this machine · no finished run' : `Runs on this machine · job ${JOB} · 3 files ready`}>
+              <PrimaryButton
+                name="primary-action"
+                disabled={disabled}
+                onClick={download}
+                style={state === 'focus' ? { outline: '2px solid var(--color-signal-select)', outlineOffset: 2 } : undefined}
+              >
+                {mintDone ?? 'Download final .qasm'}
+              </PrimaryButton>
+              <label className="ex-check">
+                <input type="checkbox" checked={upload} onChange={(e) => setUpload(e.target.checked)} disabled={disabled} />
+                <span className="ex-check-box" aria-hidden>
+                  {upload && (
+                    <svg width="10" height="10" viewBox="0 0 12 12">
+                      <path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="#FFFFFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <span>Upload final.qasm to my account</span>
+              </label>
+              <SavedLine upload={upload} state={state} />
+              <PoweredBy />
+            </ModeBlock>
+            <Section icon={Icons.list} title="Run" meta={`${JOB} · 321 → 270 gates`} bodyStyle={{ gap: 0 }}>
+              {RUN_SECTION.map(([k, v]) => (
+                <FactRow key={k} label={k} value={v} labelWidth={136} />
+              ))}
+              <div className="ex-pr">
+                <span className="ex-pr-label">pull request</span>
+                <span className="ex-pr-title">
+                  <span className="mono">{PR.split(' ')[0]}</span> {PR.slice(PR.indexOf(' ') + 1)}
+                </span>
+              </div>
+            </Section>
+            <Section icon={Icons.facts} title="Manifest" meta="8 seeds · qscore-2026.1 · p-2026.1" open={false} bodyStyle={{ gap: 0 }}>
+              <FactRow label="file" value="qscore.yaml · sha256 7c2b…" labelWidth={96} />
+              <FactRow label="seeds" value="11 23 37 41 53 67 79 97" labelWidth={96} />
+              <FactRow label="score" value="qscore-2026.1" labelWidth={96} />
+              <FactRow label="prompt" value="p-2026.1" labelWidth={96} />
+              <FactRow label="auto" value="false" labelWidth={96} />
+            </Section>
+            <Section icon={Icons.target} title="Target" meta="FakeTorino · 133 q · cz rz sx x" open={false} bodyStyle={{ gap: 0 }}>
+              <FactRow label="backend" value="FakeTorino · 133 q" labelWidth={96} />
+              <FactRow label="basis" value="cz rz sx x" labelWidth={96} />
+              <FactRow label="calibration" value="snapshot Oct 9" labelWidth={96} />
+            </Section>
+          </>
+        }
+      >
+        <Content className="rp-content">
+          {state === 'offline' && (
+            <Banner kind="offline">You are offline · files still download from this machine · Add to repo and sync wait</Banner>
+          )}
+          {state === 'error' && !written && (
+            <Banner kind="failed" action={<InsetButton onClick={() => setWritten(true)}>Choose folder</InsetButton>}>
+              <span>Export could not be written</span>
+              <span className="mono">(Q602)</span>
+              <span className="rp-dot">·</span>
+              <span className="mono rp-path">~/Downloads</span>
+              <span className="rp-dot">·</span>
+              <span>choose another folder</span>
+            </Banner>
+          )}
+          <div className="rp-top">
+            <FilesTile state={state} saved={saved} setSaved={setSaved} failed={!written} setWritten={setWritten} />
+            <QiskitTile state={state} />
+          </div>
+          <ActionTile state={state} />
+        </Content>
+      </Shell>
     </div>
   )
 }
 
-function ActionTile({
+function SavedLine({ upload, state }: { upload: boolean; state: S10State }) {
+  if (state === 'offline')
+    return (
+      <div className="ex-saved">
+        <MarkIcon kind="unavailable" size={12} />
+        <span>not synced</span>
+        <span className="mono ex-saved-handle">{HANDLE}</span>
+        <span>· retries when the network is back</span>
+      </div>
+    )
+  if (!upload || state === 'empty')
+    return (
+      <div className="ex-saved">
+        <span>Stays on this machine · not uploaded</span>
+      </div>
+    )
+  return (
+    <div className="ex-saved">
+      <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
+        <path d="M3 7.5l2.5 2.5L11 4.5" fill="none" stroke="#FFFFFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span>Saved to</span>
+      <span className="mono ex-saved-handle">{HANDLE}</span>
+      <span>· a copy stays on this machine</span>
+    </div>
+  )
+}
+
+/* ── Files ────────────────────────────────────────────────────────────── */
+const PREVIEWS: Record<string, { lines: CodeLine[]; meta: string }> = {
+  'final.qasm': { lines: QASM_PREVIEW, meta: 'lines 1 to 10 of 84 · rail marks accepted lines' },
+  'qscore.yaml': { lines: MANIFEST_PREVIEW, meta: 'lines 1 to 10 of 17' },
+  'report.json': { lines: REPORT_PREVIEW, meta: 'lines 1 to 10 of 46' },
+}
+
+function FilesTile({
   state,
-  noRepo,
-  offline,
-  onAdd,
-  onCopy,
-  copied,
+  saved,
+  setSaved,
+  failed,
+  setWritten,
 }: {
-  state: 'idle' | 'adding' | 'added' | 'error'
-  noRepo: boolean
-  offline: boolean
-  onAdd: () => void
-  onCopy: () => void
-  copied: string | null
+  state: S10State
+  saved: string | null
+  setSaved: (f: string | null) => void
+  failed: boolean
+  setWritten: (v: boolean) => void
 }) {
-  let actions: ReactNode
-  if (state === 'added') {
-    actions = (
-      <div className="ex-added">
-        <span className="ex-added-title">{CHECK('#5FEEA3', 14)}GitHub Action added</span>
-        <p className="ex-muted">
-          Pull request #18 adds .github/workflows/qscore.yml. The first check runs on the next pull request after it merges.
-        </p>
-        <div className="ex-buttons">
-          <EditorButton onClick={() => navigate(ROUTES.prComment, { transition: 'forward' })}>Open pull request #18</EditorButton>
-          <EditorButton onClick={onCopy}>{copied ?? 'Copy YAML'}</EditorButton>
-        </div>
-      </div>
-    )
-  } else if (state === 'error') {
-    actions = (
-      <div className="ex-added">
-        <span className="ex-error-word">
-          <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-            <path d="M7 2v6M7 11v.5" fill="none" stroke="#FF3478" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          failed
-          <span className="mono ex-error-code">· GitHub 403</span>
-        </span>
-        <span className="ex-added-title">No write access to knighthacks/qaoa-packing</span>
-        <p className="ex-muted">Your files are fine. Ask a maintainer for write access, or copy the YAML and open the pull request yourself.</p>
-        <div className="ex-buttons">
-          <EditorButton onClick={onAdd}>Try again</EditorButton>
-          <EditorButton onClick={onCopy}>{copied ?? 'Copy YAML'}</EditorButton>
-        </div>
-      </div>
-    )
-  } else {
-    actions = (
-      <>
-        <div className="ex-bullet">
-          <span className="ex-dot" />
-          Opens a pull request that adds 1 file, 14 lines
-        </div>
-        <div className="ex-bullet">
-          <span className="ex-dot" />
-          Runs on GitHub-hosted CPU, no QPU time
-        </div>
-        <div className="ex-buttons" style={{ paddingTop: 4 }}>
-          <EditorButton onClick={onAdd} disabled={offline || noRepo || state === 'adding'}>
-            {state === 'adding' ? 'Opening pull request…' : 'Add the GitHub Action to this repo'}
-          </EditorButton>
-          <EditorButton onClick={onCopy}>{copied ?? 'Copy YAML'}</EditorButton>
-        </div>
-      </>
-    )
+  const [selected, setSelected] = useState('final.qasm')
+  const [retrying, setRetrying] = useState(false)
+  const [copied, flashCopied] = useFlash(1200)
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  const meta = state === 'loading' ? 'packing' : state === 'empty' ? '0 files' : `3 files · 42.7 KB · job ${JOB}`
+
+  const act = (f: ExportFile) => {
+    if (f.action === 'Copy hash') {
+      void copyText('1f0e9a4c7b2d55e0c3a8f61b94d07e2a')
+      flashCopied('Copied ✓')
+      return
+    }
+    if (f.name === 'qscore.yaml') downloadText('qscore.yaml', MANIFEST_YAML)
+    else downloadText('report.json', reportJson(), 'application/json')
+    setSaved(f.name)
+  }
+  const retry = () => {
+    setRetrying(true)
+    timer.current = window.setTimeout(() => {
+      setRetrying(false)
+      setWritten(true)
+      setSaved('final.qasm')
+    }, 900)
   }
 
   return (
-    <Tile
-      className="ex-action"
-      tabs={[{ id: 'a', label: 'GitHub Action', active: true }]}
-      meta={<span className="mono">.github/workflows/qscore.yml</span>}
-    >
-      <div className="ex-action-head">
-        <h3 className="ex-action-title">{noRepo ? 'Connect a repo to add the Action' : 'Score every pull request that touches a circuit'}</h3>
-        <p className="ex-action-lead">
-          {noRepo
-            ? 'This circuit was uploaded, so there is no repo to add it to. Paste the repo URL, or copy the YAML into .github/workflows yourself.'
-            : 'Comments the score change on the pull request and fails the check when a high finding appears.'}
-        </p>
-        {noRepo ? (
-          <div className="ex-repo-input">
-            <span className="mono">https://github.com/owner/repo</span>
+    <Tile tabs={[{ id: 'files', label: 'Files', active: true }]} meta={<span className="mono">{meta}</span>} bodyClassName="ex-files-body">
+      {state === 'empty' ? (
+        <div className="rp-empty">
+          <div className="rp-empty-title">
+            {Icons.emptyFile}
+            <span>Nothing to export yet</span>
           </div>
-        ) : (
-          <div className="ex-repo">
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
-              <path
-                d="M5 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM5 7v6M11 9a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM11 9V7.5c0-1.5-1-2.5-2.5-2.5H7"
-                fill="none"
-                stroke="#C2DADF"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="mono ex-repo-name">knighthacks/qaoa-packing</span>
-            <span className="mono ex-repo-branch">main</span>
+          <p className="rp-empty-text">Files appear here when the run finishes.</p>
+          <div className="rp-empty-action">
+            <button className="btn-editor" onClick={() => navigate(ROUTES.workspace)}>
+              Open workbench
+            </button>
           </div>
-        )}
-      </div>
-      <pre className="ex-yaml mono">{ACTION_YAML}</pre>
-      <div className="ex-action-list">
-        {noRepo ? (
-          <div className="ex-buttons">
-            <EditorButton>Connect repo</EditorButton>
-            <EditorButton onClick={onCopy}>{copied ?? 'Copy YAML'}</EditorButton>
+        </div>
+      ) : state === 'loading' ? (
+        <>
+          <div className="ex-stage">
+            <StageLine stage="Packing the export" detail="hashing 3 files" estimate="about 2 s" />
           </div>
-        ) : (
-          actions
-        )}
-      </div>
-      <button className="ex-preview" onClick={() => navigate(ROUTES.prComment, { transition: 'forward' })}>
-        <span className="ex-preview-label">The comment it leaves on each pull request</span>
-        <span className="ex-preview-status">
-          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
-            <path d="M3.5 8.5l3 3 6-7" fill="none" stroke="var(--color-action-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="ex-preview-passed">passed</span>
-          <span className="ex-muted">· no high findings</span>
-        </span>
-        <span className="ex-preview-row">
-          <span className="ex-muted">two_qubit_count</span>
-          <span className="mono">44 → 33 gates · −25%</span>
-        </span>
-        <span className="ex-preview-row">
-          <span className="ex-muted">est. cost per run</span>
-          <span className="mono">$6.72 → $5.32</span>
-        </span>
-      </button>
-      <div className="ex-severity">
-        <span className="ex-severity-label">What each severity does with fail-on: high</span>
-        <div className="ex-sev-row">
-          <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-            <path d="M7 2v6M7 11v.5" fill="none" stroke="#FF3478" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <span className="ex-sev-word" style={{ color: '#FF3478' }}>
-            high
-          </span>
-          <span className="ex-muted">fails the check and blocks the merge</span>
-        </div>
-        <div className="ex-sev-row">
-          <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-            <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.6" strokeLinejoin="round" />
-          </svg>
-          <span className="ex-sev-word" style={{ color: '#FF986E' }}>
-            warning
-          </span>
-          <span className="ex-muted">listed in the comment, check passes</span>
-        </div>
-        <div className="ex-sev-row">
-          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
-            <circle cx="6" cy="6" r="3.5" fill="none" stroke="#2EA3F8" strokeWidth="1.5" />
-          </svg>
-          <span className="ex-sev-word" style={{ color: '#2EA3F8' }}>
-            info
-          </span>
-          <span className="ex-muted">kept in report.json only</span>
-        </div>
-      </div>
+          <div className="ex-files" aria-hidden>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="ex-file is-loading">
+                <Shim w={16} h={16} />
+                <span className="ex-file-name">
+                  <Shim w={88} h={10} />
+                  <Shim w={140} h={8} />
+                </span>
+                <span className="rp-grow" />
+                <Shim w={44} h={10} />
+                <Shim w={90} h={10} />
+                <Shim w={64} h={24} />
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="ex-files" role="listbox" aria-label="Export files">
+            {EXPORT_FILES.map((f) => {
+              const on = f.name === selected
+              const rowFailed = failed && f.name === 'final.qasm'
+              return (
+                <div
+                  key={f.name}
+                  role="option"
+                  aria-selected={on}
+                  tabIndex={0}
+                  className={`ex-file${on ? ' is-selected' : ''}`}
+                  onClick={() => setSelected(f.name)}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelected(f.name)}
+                >
+                  {Icons.file(on ? '#FFFFFF' : '#C2DADF')}
+                  <span className="ex-file-name">
+                    <span className="mono ex-file-title">{f.name}</span>
+                    <span className="ex-file-note">{f.note}</span>
+                  </span>
+                  <span className="mono ex-file-size">{f.size}</span>
+                  {/* the done word takes the hash column for a moment, so the row keeps its width */}
+                  {rowFailed ? (
+                    <span className="ex-file-hash">
+                      <MarkWord kind="failed" className="ex-file-flag" />
+                    </span>
+                  ) : saved === f.name ? (
+                    <span className="ex-file-hash">
+                      <MarkWord kind="done" word="Saved" size={12} className="ex-file-flag is-saved" />
+                    </span>
+                  ) : (
+                    <span className="mono ex-file-hash">{f.hash}</span>
+                  )}
+                  <span className="rp-grow" />
+                  <span onClick={(e) => e.stopPropagation()} className="ex-file-action">
+                    {rowFailed ? (
+                      <button className="btn-editor ex-retry" onClick={retry} disabled={retrying}>
+                        <span className="ex-retry-slot">{retrying && <Spinner />}</span>
+                        {retrying ? 'Retrying' : 'Retry'}
+                      </button>
+                    ) : (
+                      <EditorButton onClick={() => act(f)}>{f.action === 'Copy hash' && copied ? copied : f.action}</EditorButton>
+                    )}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="ex-preview">
+            <div className="ex-preview-head">
+              <span className="rp-label">preview · {selected}</span>
+              <span className="mono ex-preview-meta">{PREVIEWS[selected].meta}</span>
+            </div>
+            <CodeBlock lines={PREVIEWS[selected].lines} />
+          </div>
+        </>
+      )}
     </Tile>
   )
 }
 
-function ExportInspector({
-  state,
-  packing,
-  onDownloadFinal,
-  onDownloadAll,
-  finalSaved,
-}: {
-  state: ExportState
-  packing: number | null
-  onDownloadFinal: () => void
-  onDownloadAll: () => void
-  finalSaved?: 'saved' | 'done'
-}) {
+/* ── Qiskit code ──────────────────────────────────────────────────────── */
+function QiskitTile({ state }: { state: S10State }) {
+  const initial: Convert = state === 'converting' ? 'converting' : state === 'converted' ? 'converted' : 'idle'
+  const [convert, setConvert] = useState<Convert>(initial)
+  const [lines, setLines] = useState(state === 'converting' ? 21 : 31)
+  const timers = useRef<number[]>([])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+
+  const start = () => {
+    setConvert('converting')
+    setLines(0)
+    // 31 lines in about 1 s; the count swaps in place (no digit ticking)
+    const steps = [8, 16, 24, 31]
+    steps.forEach((n, i) => timers.current.push(window.setTimeout(() => setLines(n), 250 * (i + 1))))
+    timers.current.push(window.setTimeout(() => setConvert('converted'), 1150))
+  }
+
   const empty = state === 'empty'
-  const offline = state === 'offline'
+  const loading = state === 'loading'
+  const shown = convert === 'converting' ? Math.min(4, Math.round((lines / 31) * 7)) : 16
+
   return (
-    <>
-      <ModeTabs />
-      <div className="rp-mode-line">Files are on this machine · nothing leaves it until you download</div>
-      <div className="rp-insp-body">
-        <div className="rp-export">
-          {empty ? (
-            <div className="rp-empty">
-              <span className="rp-empty-title">Nothing changed, so there is no new circuit</span>
-              <p className="rp-export-text">4 rounds, 0 accepted. You can still take report.json, which lists every attempt and why the engine rejected it.</p>
-            </div>
-          ) : packing != null ? (
-            <div className="rp-loading-line">
-              <span>Hashing report.json · {Math.min(3, Math.max(1, Math.ceil(packing * 3)))} of 3 files</span>
-              <span className="mono">about 1 s left</span>
-            </div>
-          ) : (
-            <p className="rp-export-text">
-              The final circuit is ready. Operator equivalence passed, exact, with 25% fewer two-qubit gates.
-            </p>
-          )}
-          {offline && (
-            <div className="rp-offline">
-              <span className="rp-offline-dot" />
-              Offline. Files on this machine still download.
-            </div>
-          )}
-          {empty ? (
-            <PrimaryButton onClick={() => downloadText('report.json', reportJson(), 'application/json')}>Download report.json</PrimaryButton>
-          ) : packing != null ? (
-            <PrimaryButton progress={packing}>Packing files ({Math.round(packing * 100)}%)</PrimaryButton>
-          ) : (
-            <PrimaryButton
-              name="primary-action"
-              onClick={onDownloadFinal}
-              style={state === 'focus' ? { outline: '2px solid var(--color-action-primary)', outlineOffset: 2 } : undefined}
-            >
-              {finalSaved === 'saved' ? 'Saved to ~/Downloads' : 'Download final .qasm'}
-            </PrimaryButton>
-          )}
-          <SecondaryPair>
-            {empty ? (
-              <EditorButton wide onClick={() => actions.reset()}>
-                Run again
-              </EditorButton>
+    <Tile tabs={[{ id: 'q', label: 'Qiskit code', active: true }]} meta={<span className="mono">Python · qiskit 1.3.1</span>} bodyClassName="ex-qiskit-body">
+      {empty ? (
+        <div className="rp-tile-empty">
+          <span className="rp-tile-empty-title">No final.qasm to convert yet</span>
+          <span className="rp-tile-empty-text">Qiskit code appears once the run finishes.</span>
+        </div>
+      ) : (
+        <>
+          <div className="ex-convert">
+            {convert === 'converted' ? (
+              // once converted, the button's next verb is the download (the tile is too narrow for both)
+              <EditorButton onClick={() => downloadText('final.py', QISKIT_CODE, 'text/x-python')}>Download final.py</EditorButton>
             ) : (
-              <EditorButton wide onClick={onDownloadAll} disabled={packing != null}>
-                Download all 3 files
+              <EditorButton onClick={() => convert !== 'converting' && start()} disabled={loading}>
+                Convert to Qiskit code
               </EditorButton>
             )}
-            <EditorButton wide onClick={() => navigate(ROUTES.report, { transition: 'back' })}>
-              Back to report
-            </EditorButton>
-          </SecondaryPair>
-        </div>
-
-        <Collapsible icon={DOWNLOAD_ICON} title="In the download" meta="vs original" borderTop={false} borderBottom>
-          <Row label="two_qubit_count" value={empty ? '44 → 44 gates' : '44 → 33 gates'} />
-          <Row label="depth" value={empty ? '58 → 58 layers' : '58 → 51 layers'} />
-          <Row label="Est. cost per run" value={empty ? '$6.72 → $6.72' : '$6.72 → $5.32'} />
-        </Collapsible>
-
-        <Collapsible icon={SHIELD_CHECK} title="Before you spend QPU time" meta="4 checks" borderTop={false} borderBottom>
-          <Check text="Same task as the original" value="exact" />
-          <Check text="Every constraint held" value="all" />
-          <Check text="Scored on fixed seeds" value="8 seeds" />
-          <Check text="Cost is an estimate, not a quote" value="$96/min" info />
-        </Collapsible>
-
-        <Collapsible icon={HASH_ICON} title="Check a download" meta="sha256" borderTop={false} borderBottom>
-          <div className="ex-sha">
-            <p className="rp-export-text">Run this, then compare the result with the file's sha256.</p>
-            <div className="ex-sha-cmd mono">shasum -a 256 sidechain_qaoa.final.qasm</div>
+            {convert === 'converting' ? (
+              <>
+                <span className="ex-convert-stage">
+                  <Spinner />
+                  <span className="rp-stage-word">Converting · {lines} of 31 lines</span>
+                </span>
+                <span className="mono ex-convert-estimate">about 1 s</span>
+              </>
+            ) : convert === 'converted' ? (
+              <>
+                <MarkWord kind="done" word="Saved" size={12} className="ex-file-flag is-saved" />
+                <span className="mono ex-convert-meta">final.py · 1.2 KB · 31 lines</span>
+              </>
+            ) : (
+              <span className="mono ex-convert-meta">final.qasm → final.py · 31 lines</span>
+            )}
           </div>
-        </Collapsible>
-
-        <Collapsible icon={CLOCK_ICON} title="Earlier runs" meta="two_qubit_count" borderTop={false}>
-          <RunRow id="7f3a·0412" when="today · this run" value="44 → 33" current />
-          <RunRow id="6c19·0398" when="yesterday · budget ran out" value="44 → 38" />
-          <RunRow id="5a02·0371" when="Oct 8 · score only" value="44" />
-        </Collapsible>
-      </div>
-    </>
-  )
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rp-fact">
-      <span className="rp-fact-label" style={{ width: 140 }}>
-        {label}
-      </span>
-      <span className="rp-fact-value mono">{value}</span>
-    </div>
-  )
-}
-
-function Check({ text, value, info }: { text: string; value: string; info?: boolean }) {
-  return (
-    <div className="ex-check">
-      {info ? (
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
-          <circle cx="6" cy="6" r="4" fill="none" stroke="#2EA3F8" strokeWidth="1.5" />
-        </svg>
-      ) : (
-        CHECK()
+          {loading ? (
+            <CodeBlock lines={[]} pending={12} />
+          ) : (
+            <CodeBlock lines={QISKIT_PREVIEW.slice(0, shown)} pending={convert === 'converting' ? 3 : 0} />
+          )}
+        </>
       )}
-      <span className="ex-check-text">{text}</span>
-      <span className="mono ex-check-value">{value}</span>
-    </div>
+    </Tile>
   )
 }
 
-function RunRow({ id, when, value, current }: { id: string; when: string; value: string; current?: boolean }) {
+/* ── GitHub Action ────────────────────────────────────────────────────── */
+function ActionTile({ state }: { state: S10State }) {
+  const initial: ActionStep = state === 'added' ? 'added' : 'idle'
+  const [step, setStep] = useState<ActionStep>(initial)
+  const [url, setUrl] = useState('')
+  const [hasRepo, setHasRepo] = useState(state !== 'no-repo')
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  const offline = state === 'offline'
+  const add = () => {
+    setStep('adding')
+    timer.current = window.setTimeout(() => setStep('added'), 1200)
+  }
+  const meta = !hasRepo
+    ? 'needs a repo URL'
+    : step === 'added'
+      ? '.github/workflows/gatesmith.yml · added'
+      : '.github/workflows/gatesmith.yml · 13 lines · not added'
+
   return (
-    <div className={`ex-run${current ? ' is-current' : ''}`}>
-      <span className="ex-run-dot" />
-      <span className="mono ex-run-id">{id}</span>
-      <span className="ex-run-when">{when}</span>
-      <span className="mono ex-run-value">{value}</span>
-    </div>
+    <Tile className="ex-action" tabs={[{ id: 'a', label: 'GitHub Action', active: true }]} meta={<span className="mono">{meta}</span>} bodyClassName="ex-action-body">
+      <div className={`ex-card${hasRepo ? '' : ' is-no-repo'}`}>
+        <div className="ex-card-main">
+          <div className="ex-card-title">
+            {Icons.branch}
+            <span>{hasRepo ? `Add the GitHub Action to ${REPO}` : 'Add the GitHub Action to a repo'}</span>
+          </div>
+          <p className="ex-card-desc">Scores every pull request and comments the delta</p>
+          {!hasRepo ? (
+            <>
+              <Banner kind="info">This run came from an uploaded file, so it has no repo. Paste a GitHub repo URL to continue.</Banner>
+              <form
+                className="ex-repo"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  setHasRepo(true)
+                }}
+              >
+                <input
+                  className="ex-repo-input mono"
+                  placeholder="https://github.com/owner/repo"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  aria-label="GitHub repository URL"
+                  spellCheck={false}
+                />
+                <button type="submit" className="btn-editor">
+                  Use this repo
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className={`ex-facts${step === 'added' ? ' is-added' : ''}`}>
+                {(step === 'added'
+                  ? ([
+                      ['repo', REPO],
+                      ['pull request', 'gatesmith/add-action · open'],
+                      ['first check', 'runs on the next pull request'],
+                    ] as [string, string][])
+                  : ACTION_FACTS
+                ).map(([k, v]) => (
+                  <div key={k} className="ex-fact">
+                    <span className="ex-fact-label">{k}</span>
+                    <span className="mono ex-fact-value">{v}</span>
+                  </div>
+                ))}
+              </div>
+              <span className="rp-grow" />
+              <div className="ex-card-foot">
+                {step === 'added' ? (
+                  <>
+                    <EditorButton onClick={() => navigate(ROUTES.prComment)}>View pull request</EditorButton>
+                    <MarkWord kind="done" word="added" size={12} className="ex-file-flag is-saved" />
+                    <span className="mono ex-card-hint">.github/workflows/gatesmith.yml</span>
+                  </>
+                ) : (
+                  <>
+                    <button className="btn-editor ex-add" onClick={add} disabled={step === 'adding' || offline}>
+                      Add to repo
+                    </button>
+                    {step === 'adding' ? (
+                      <span className="ex-convert-stage">
+                        <Spinner />
+                        <span className="rp-stage-word">Opening a pull request on {REPO}</span>
+                      </span>
+                    ) : (
+                      <span className="mono ex-card-hint">{offline ? 'waits for the network' : 'opens a pull request'}</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {hasRepo && (
+          <div className="ex-card-code">
+            <CodeBlock lines={ACTION_LINES} />
+          </div>
+        )}
+      </div>
+    </Tile>
   )
 }
-
-const ICON = { fill: 'none', stroke: '#FFFFFF', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
-const DOWNLOAD_ICON = (
-  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-    <path d="M9 2.5v9M5.5 8L9 11.5 12.5 8M3.5 15h11" {...ICON} />
-  </svg>
-)
-const SHIELD_CHECK = (
-  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-    <path d="M9 2.5l5.5 2v4.2c0 3.2-2.3 5.6-5.5 6.8-3.2-1.2-5.5-3.6-5.5-6.8V4.5zM6.6 9l1.7 1.7 3.2-3.2" {...ICON} />
-  </svg>
-)
-const HASH_ICON = (
-  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-    <path d="M7 3L5.5 15M12.5 3L11 15M3.5 6.5h12M2.5 11.5h12" {...ICON} />
-  </svg>
-)
-const CLOCK_ICON = (
-  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-    <path d="M9 15.5a6.5 6.5 0 100-13 6.5 6.5 0 000 13zM9 5.5V9l2.5 1.5" {...ICON} />
-  </svg>
-)

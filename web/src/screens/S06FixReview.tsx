@@ -1,879 +1,372 @@
 /*
- * S-06 · Fix review (C1). One proposal, the engine's verdict, and the one decision.
- * Live: the candidate pane goes writing → verifying → verified (M3), then Accept plays M4.
- * States (?state=): verifying, rejected, inconclusive, invalid, worse-than-before, keyboard-focus, offline.
+ * S-06 · Fix review. One proposal for D03 block 2, what the engine checked, and the one decision.
+ * Auto mode is off: the engine accepts, nothing is applied until you press Accept.
+ * Opens as a second tab beside the file tab ("Fix · D03 block 2"); the file tab is the way back.
+ * States (?state=): rejected, inconclusive, invalid, verifying, worse-than-before, loading, empty,
+ * offline, keyboard-focus. The default is "accepted by the engine".
  */
-import { useEffect, useState, type ReactNode } from 'react'
-import { navigate, ROUTES, useHashParams } from '../app/router'
+import { useEffect, type ReactNode } from 'react'
+import { navigate, ROUTES, useHashParams, type RoutePath } from '../app/router'
 import { actions, useRun } from '../data/run'
-import { REGRESSION_MESSAGE } from '../data/demo'
-import { Content, GpuStatus, Shell } from '../ui/Shell'
-import { EditorButton, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
-import { CandidateCircuit, OriginalCircuit, type CandidateLook } from './improve/DiffCircuits'
-import {
-  Cell,
-  Chip,
-  DecisionBlock,
-  FromTo,
-  ISection,
-  Icons,
-  MarkIcon,
-  Row,
-  Rows,
-  RunTabs,
-  Word,
-  type Mark,
-} from './improve/common'
+import { Content, GpuStatus, Shell, TabStrip } from '../ui/Shell'
+import { EditorButton, ModeTabs, PoweredBy, PrimaryButton, Section, Tile } from '../ui/parts'
+import { SectionIcons } from '../ui/icons'
+import { FixCanvas, type CandidateLook } from './improve/FixCanvas'
+import { BeforeAfterTile, RegressionLanes, VerificationTile } from './improve/FixTiles'
+import { ladderFor, type Outcome } from './improve/ladders'
+import { Banner, GpuOffBanner } from './improve/Rounds'
+import { ActionRow, ErrorBlock, FeedCard, Ladder, StatusLine } from './improve/parts'
+import { FOCUS_RING, wordColor } from './improve/style'
+import { AttemptsIcon, Mark, Word, ZoomIn, ZoomOut, ZoomSlider, type MarkKind } from './improve/marks'
+import { ISSUE_URL, REGRESSION_COPY, RUN_7F3A } from './improve/data'
 import './improve/improve.css'
 import './improve/fix-review.css'
 
-type Outcome = 'writing' | 'verifying' | 'accepted' | 'rejected' | 'inconclusive' | 'invalid'
-
-const STATES = ['verifying', 'rejected', 'inconclusive', 'invalid', 'worse-than-before', 'keyboard-focus', 'offline'] as const
+const STATES = ['rejected', 'inconclusive', 'invalid', 'verifying', 'worse-than-before', 'loading', 'empty', 'offline', 'keyboard-focus', 'focus'] as const
 type StateName = (typeof STATES)[number]
+type View = StateName | 'accepted'
+
+const goState = (s: StateName | null) => navigate((s ? `${ROUTES.fixReview}?state=${s}` : ROUTES.fixReview) as RoutePath, { replace: true })
+const openIssue = () => {
+  window.open(ISSUE_URL, '_blank', 'noopener')
+}
 
 export function S06FixReview() {
   const run = useRun()
   const params = useHashParams()
-  const state = (STATES as readonly string[]).includes(params.get('state') ?? '') ? (params.get('state') as StateName) : null
+  const raw = params.get('state') ?? ''
+  const state: View = (STATES as readonly string[]).includes(raw) ? (raw as StateName) : 'accepted'
+  const live = run.live && state === 'accepted'
 
-  // What the engine has said so far.
-  let outcome: Outcome = 'accepted'
-  let ladderStep = 2
-  if (state === 'verifying') {
-    outcome = 'verifying'
-    ladderStep = 1
-  } else if (state === 'rejected' || state === 'worse-than-before') outcome = 'rejected'
-  else if (state === 'inconclusive') outcome = 'inconclusive'
-  else if (state === 'invalid') outcome = 'invalid'
-  else if (state === 'offline') {
-    outcome = 'writing'
-    ladderStep = 0
-  } else if (run.live && !state) {
-    outcome = run.candidate === 'writing' ? 'writing' : run.candidate === 'verifying' ? 'verifying' : 'accepted'
-    ladderStep = run.ladderStep
+  // The live flow: local writes the candidate, the engine walks the ladder, then the decision lands.
+  let view: View = state
+  let step = 2
+  if (live && run.candidate !== 'verified') {
+    view = 'verifying'
+    step = run.candidate === 'writing' ? 1 : Math.max(1, run.ladderStep + 1)
   }
+  const accepted = live && run.accepted
 
-  const live = run.live && !state
-  const userAccepted = live && run.accepted
-  // M4: violet dashed until the press; the Paper snapshot shows the accepted region.
+  const outcome: Outcome =
+    view === 'rejected' || view === 'worse-than-before'
+      ? 'rejected'
+      : view === 'inconclusive' || view === 'invalid' || view === 'verifying' || view === 'loading'
+        ? view
+        : view === 'offline' || view === 'empty'
+          ? 'waiting'
+          : 'accepted'
   const look: CandidateLook =
-    outcome === 'writing' ? 'writing' : outcome === 'accepted' && (!live || userAccepted) ? 'accepted' : 'proposed'
+    outcome === 'waiting' ? 'waiting' : outcome === 'verifying' || outcome === 'loading' ? 'proposed' : outcome
 
-  // A accepts, from anywhere on the screen, once the engine has verified.
+  // Enter accepts once the engine has accepted (keyboard-focus shows the ring on Accept).
   useEffect(() => {
-    if (!live || outcome !== 'accepted' || userAccepted) return
+    if (outcome !== 'accepted' || accepted) return
     const onKey = (e: KeyboardEvent) => {
       if ((e.key === 'a' || e.key === 'A') && !(e.target instanceof HTMLInputElement)) actions.accept()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [live, outcome, userAccepted])
+  }, [outcome, accepted])
 
-  const offline = state === 'offline'
+  const offline = view === 'offline'
+  const worse = view === 'worse-than-before'
 
   return (
     <Shell
       rail="runs"
-      tabs={<RunTabs />}
+      railBadges={{ runs: 1 }}
+      tabs={
+        <TabStrip
+          tabs={[
+            { id: 'qaoa', label: RUN_7F3A.file, onClick: () => navigate(ROUTES.workspace, { transition: 'back' }) },
+            { id: 'fix', label: 'Fix · D03 block 2', active: true },
+          ]}
+        />
+      }
       status={
         <>
-          <GpuStatus online={!offline} />
-          <span className="mono topbar-job">job 7f3a·0412</span>
+          {offline ? <GpuOffBanner onRetry={() => goState(null)} /> : <GpuStatus online />}
+          <span className="mono topbar-job">job {RUN_7F3A.job}</span>
         </>
       }
-      inspector={<Inspector outcome={outcome} state={state} userAccepted={userAccepted} />}
+      inspector={<Inspector view={view} step={step} accepted={accepted} />}
     >
-      <Content>
+      <Content className={`fr-content${worse ? ' is-worse' : ''}`}>
+        {worse && (
+          <Banner kind="rejected" word="rejected" tall action={<EditorButton onClick={openIssue}>Open issue</EditorButton>}>
+            <div className="mono im-banner-title">two_qubit_depth 184 → 214 layers · original R2 kept</div>
+            <div>{REGRESSION_COPY}</div>
+          </Banner>
+        )}
         <Tile
           name="finding-card"
-          style={{ flexShrink: 0 }}
+          className="fr-circuit"
           tabs={[
             { id: 'circuit', label: 'Circuit', onClick: () => (actions.selectFinding('D03'), navigate(ROUTES.workspace, { transition: 'back' })) },
             { id: 'diff', label: 'Diff', active: true },
           ]}
-          meta={<span className="mono">D03 commuting block · q3 to q6 · lines 13 to 18</span>}
-          bodyClassName="fr-diff"
-          bodyStyle={{ flex: '0 0 auto' }}
+          meta={
+            <span className="im-tile-tools">
+              <ZoomOut />
+              <ZoomSlider knob={32} />
+              <ZoomIn />
+              <span className="mono im-tile-meta-text">finding #3 · layers 17 to 31</span>
+            </span>
+          }
+          bodyClassName="fr-circuit-body"
         >
-          <div className="fr-side">
-            <div className="fr-side-head">
-              <span className="fr-side-title">Original</span>
-              <span className="mono fr-side-meta">6 two-qubit ops</span>
+          {view === 'empty' ? (
+            <div className="fr-canvas is-empty">
+              <span>No proposal for finding #3 yet</span>
+              <EditorButton onClick={() => actions.requestFix('D03')}>Request fix</EditorButton>
             </div>
-            <OriginalCircuit />
-          </div>
-          <div className="fr-side">
-            <div className="fr-side-head">
-              <span className="fr-side-title is-ai">Candidate · proposed by local · granite-8b</span>
-              <span className="mono fr-side-meta">
-                {outcome === 'writing' ? (offline ? 'waiting for the GPU' : 'writing') : outcome === 'invalid' ? 'not parsed' : '4 two-qubit ops'}
-              </span>
-            </div>
-            {offline ? (
-              <OfflinePane />
-            ) : outcome === 'invalid' ? (
-              <InvalidPane />
-            ) : (
-              <CandidateCircuit look={look} showTag={userAccepted} />
-            )}
-          </div>
+          ) : (
+            <FixCanvas
+              look={look}
+              overlay={
+                outcome === 'invalid' ? (
+                  <CanvasNote kind="invalid" word="invalid" text="QASM parse error (Q101) · candidate line 63, col 24 · request a new candidate" />
+                ) : offline ? (
+                  <CanvasNote kind="queued" word="queued" text="attempt 6 waits for the GPU machine" />
+                ) : undefined
+              }
+            />
+          )}
         </Tile>
-
-        {state === 'worse-than-before' && <RegressionBanner />}
-
-        <div className="fr-lower">
-          {/* With the regression banner up, the secondary blocks step aside so nothing clips. */}
-          <Verification outcome={outcome} ladderStep={ladderStep} compact={state === 'worse-than-before'} />
-          <BeforeAfter outcome={outcome} live={live} userAccepted={userAccepted} compact={state === 'worse-than-before'} />
-        </div>
+        {worse ? (
+          <RegressionLanes />
+        ) : (
+          <div className="fr-lower">
+            <VerificationTile outcome={outcome} step={step} attempt={view !== 'empty'} />
+            <BeforeAfterTile outcome={outcome} />
+          </div>
+        )}
       </Content>
     </Shell>
   )
 }
 
-/** The regression message asks for a GitHub issue; open a new one on the project. */
-const openIssue = () => window.open('https://github.com/GridGxly/Gatesmith/issues/new', '_blank', 'noopener')
-
-/* ── Verification ─────────────────────────────────────────────────────── */
-
-const VERDICT: Record<Outcome, { chip: ReactNode; title: string; evidence: ReactNode; decision: ReactNode; meta: string }> = {
-  writing: {
-    chip: <Chip tint="var(--color-text-tertiary)" kind="info">waiting</Chip>,
-    title: 'Waiting for a candidate',
-    evidence: <span className="im-tertiary">nothing to check yet</span>,
-    decision: <span className="im-tertiary">after the ladder</span>,
-    meta: 'waiting',
-  },
-  verifying: {
-    chip: (
-      <Chip tint="var(--color-signal-info)">
-        <ArcIcon /> verifying
-      </Chip>
-    ),
-    title: 'Checking the candidate',
-    evidence: <span className="im-tertiary">running</span>,
-    decision: <span className="im-tertiary">the candidate stays violet and dashed until the engine decides</span>,
-    meta: 'running',
-  },
-  accepted: {
-    chip: (
-      <Chip tint="var(--color-signal-good)" kind="check">
-        passed
-      </Chip>
-    ),
-    title: 'Same job, checked exactly',
-    evidence: '‖U − e^iφ·V‖ = 3.1e-15 · φ = 0.0',
-    decision: (
-      <>
-        <Word kind="check">accepted</Word>
-        <span className="im-tertiary">primary improved, all constraints hold</span>
-      </>
-    ),
-    meta: '3.4 s',
-  },
-  rejected: {
-    chip: (
-      <Chip tint="var(--color-signal-bad)" kind="cross">
-        rejected
-      </Chip>
-    ),
-    title: 'Constraint broken',
-    evidence: 'two_qubit_depth 27 > 24 layers baseline',
-    decision: (
-      <>
-        <Word kind="cross">rejected</Word>
-        <span className="im-tertiary">fewer gates, but a longer chain</span>
-      </>
-    ),
-    meta: '3.4 s',
-  },
-  inconclusive: {
-    chip: (
-      <Chip tint="var(--color-signal-warn)" kind="inconclusive">
-        inconclusive
-      </Chip>
-    ),
-    title: 'Exact check timed out',
-    evidence: 'stopped at 120 s · 2,048 random states agreed',
-    decision: (
-      <>
-        <Word kind="inconclusive">inconclusive</Word>
-        <span className="im-tertiary">random-state evidence never changes the status</span>
-      </>
-    ),
-    meta: '120 s',
-  },
-  invalid: {
-    chip: (
-      <Chip tint="var(--color-text-secondary)" kind="dash">
-        invalid
-      </Chip>
-    ),
-    title: 'The model returned broken QASM',
-    evidence: "Q104 · candidate line 17 · unknown gate 'cnotx'",
-    decision: (
-      <>
-        <Word kind="dash" wordColor="var(--color-text-secondary)">
-          invalid
-        </Word>
-        <span className="im-tertiary">nothing was scored</span>
-      </>
-    ),
-    meta: '0.1 s',
-  },
-}
-
-function ArcIcon() {
+function CanvasNote({ kind, word, text }: { kind: MarkKind; word: string; text: string }) {
   return (
-    <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden className="fr-arc">
-      <path d="M7 2.5a4.5 4.5 0 1 1-4.5 4.5" fill="none" stroke="#2EA3F8" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-type Step = { label: string; mark: Mark; word: string; muted?: boolean }
-
-function ladder(outcome: Outcome, step: number): { steps: Step[]; meta: string } {
-  const label = ['Structure · same qubits, same measurements', 'Operator equivalence · exact', 'Random-state sampling']
-  const notNeeded: Step = { label: label[2], mark: 'dash', word: 'not needed', muted: true }
-  const queued = (i: number): Step => ({ label: label[i], mark: 'dot-grey', word: 'queued', muted: true })
-  const passed = (i: number): Step => ({ label: label[i], mark: 'check', word: 'passed' })
-  const running = (i: number): Step => ({ label: label[i], mark: 'dot-blue', word: 'checking' })
-  switch (outcome) {
-    case 'writing':
-      return { steps: [queued(0), queued(1), queued(2)], meta: '0 of 3 run' }
-    case 'verifying':
-      return {
-        steps: [step >= 1 ? passed(0) : running(0), step >= 2 ? passed(1) : step === 1 ? running(1) : queued(1), queued(2)],
-        meta: `${step} of 3 run`,
-      }
-    case 'inconclusive':
-      return {
-        steps: [passed(0), { label: label[1], mark: 'inconclusive', word: 'timed out' }, { label: label[2], mark: 'check-muted', word: '2,048 agreed' }],
-        meta: '3 of 3 run',
-      }
-    case 'invalid':
-      return {
-        steps: [0, 1, 2].map((i) => ({ label: label[i], mark: 'dash' as Mark, word: 'not run', muted: true })),
-        meta: '0 of 3 run',
-      }
-    default:
-      return { steps: [passed(0), passed(1), notNeeded], meta: '2 of 3 run' }
-  }
-}
-
-function Verification({ outcome, ladderStep, compact = false }: { outcome: Outcome; ladderStep: number; compact?: boolean }) {
-  const v = VERDICT[outcome]
-  const { steps, meta } = ladder(outcome, ladderStep)
-  return (
-    <Tile tabs={[{ id: 'v', label: 'Verification', active: true }]} meta={<span className="mono">{v.meta}</span>} style={{ flex: '1 1 0' }}>
-      <div className="fr-body">
-        <div className="fr-group fr-group-12">
-          <div className="fr-verdict" key={outcome}>
-            {v.chip}
-            <span className="fr-verdict-title">{v.title}</span>
-          </div>
-          <Rows>
-            <Row>
-              <Cell w={110} className="im-label">
-                Method
-              </Cell>
-              <Cell className="mono">operator equivalence ≤ 12 q</Cell>
-            </Row>
-            <Row>
-              <Cell w={110} className="im-label">
-                Evidence
-              </Cell>
-              <Cell className="mono">{v.evidence}</Cell>
-            </Row>
-            <Row>
-              <Cell w={110} className="im-label">
-                Scope
-              </Cell>
-              <Cell className="mono">whole circuit, not only the block</Cell>
-            </Row>
-            <Row>
-              <Cell w={110} className="im-label">
-                Decision
-              </Cell>
-              <Cell style={{ gap: 8 }}>{v.decision}</Cell>
-            </Row>
-          </Rows>
-        </div>
-
-        <div className="fr-group">
-          <div className="im-group-title">
-            <span>Verification ladder</span>
-            <span className="im-group-meta">{meta}</span>
-          </div>
-          <Rows>
-            {steps.map((s, i) => (
-              <Row key={i}>
-                <Cell w={24} className="mono fr-step-n" style={{ color: s.muted ? 'var(--color-text-disabled)' : undefined }}>
-                  {i + 1}
-                </Cell>
-                <Cell style={{ color: s.muted ? 'var(--color-text-disabled)' : 'var(--color-text-primary)' }}>{s.label}</Cell>
-                <Cell w={96} end>
-                  <span className="fr-step-word" key={s.word}>
-                    <Word kind={s.mark} wordColor={s.muted ? 'var(--color-text-disabled)' : undefined}>
-                      {s.word}
-                    </Word>
-                  </span>
-                </Cell>
-              </Row>
-            ))}
-          </Rows>
-          <p className="fr-note">Random-state evidence never changes the status. It appears only when an exact check is out of reach.</p>
-        </div>
-
-        {!compact && (
-        <div className="fr-group">
-          <div className="im-group-title">
-            <span>Check details</span>
-          </div>
-          <Rows>
-            <Row>
-              <Cell w={110} className="im-label">
-                Matrix
-              </Cell>
-              <Cell className="mono">4096 × 4096 · complex128</Cell>
-            </Row>
-            <Row>
-              <Cell w={110} className="im-label">
-                Tolerance
-              </Cell>
-              <Cell className="mono">1e-9</Cell>
-            </Row>
-            <Row>
-              <Cell w={110} className="im-label">
-                Ran on
-              </Cell>
-              <Cell className="mono">this machine · CPU · 3.2 s</Cell>
-            </Row>
-          </Rows>
-        </div>
-        )}
-      </div>
-    </Tile>
-  )
-}
-
-/* ── Before and after ─────────────────────────────────────────────────── */
-
-/**
- * The count steps 36 → 35 → 34 → 33 when the engine's verdict lands, each step a little longer
- * (motion follows the data). Accept is the celebration: the chip settles with the one overshoot.
- */
-function useVerdictCount(stepping: boolean) {
-  const [n, setN] = useState(stepping ? 36 : 33)
-  useEffect(() => {
-    if (!stepping) {
-      setN(33)
-      return
-    }
-    setN(36)
-    const ids = [
-      window.setTimeout(() => setN(35), 140),
-      window.setTimeout(() => setN(34), 320),
-      window.setTimeout(() => setN(33), 560),
-    ]
-    return () => ids.forEach(clearTimeout)
-  }, [stepping])
-  return n
-}
-
-function BeforeAfter({
-  outcome,
-  live,
-  userAccepted,
-  compact = false,
-}: {
-  outcome: Outcome
-  live: boolean
-  userAccepted: boolean
-  compact?: boolean
-}) {
-  const verified = outcome === 'accepted'
-  const [stepping] = useState(() => live && !verified)
-  const counted = useVerdictCount(stepping && verified)
-  const after = live && !verified ? 36 : counted
-  const chip = verified && after === 33
-  const pending = outcome === 'writing' || outcome === 'verifying' || outcome === 'invalid' || outcome === 'inconclusive'
-  const broken = outcome === 'rejected'
-  const holds = <Word kind="check-muted">holds</Word>
-  return (
-    <Tile
-      tabs={[{ id: 'ba', label: 'Before and after', active: true }]}
-      meta={<span className="mono">best of 8 seeds, both sides</span>}
-      style={{ flex: '1 1 0' }}
-    >
-      <div className={`fr-body${pending ? ' is-pending' : ''}`}>
-        <div className="fr-group fr-group-12">
-          <div className="fr-hero">
-            <span className="mono fr-hero-from">36</span>
-            <span className="mono fr-hero-arrow">→</span>
-            <span className="mono fr-hero-to" key={after}>
-              {after}
-            </span>
-            <span className="fr-hero-unit">two-qubit gates</span>
-            {chip && (
-              <span className={`fr-hero-chip mono${userAccepted ? ' is-settle' : ''}`} key={userAccepted ? 'settled' : 'landed'}>
-                −8%
-              </span>
-            )}
-          </div>
-          <Rows>
-            <Row>
-              <Cell className="im-label">two_qubit_depth ≤ baseline</Cell>
-              <Cell w={112} end className="mono" style={{ color: broken ? 'var(--color-signal-bad)' : undefined }}>
-                {broken ? '27 > 24' : '22 ≤ 24'}
-              </Cell>
-              <Cell w={52} className="mono im-secondary" style={{ paddingLeft: 8 }}>
-                layers
-              </Cell>
-              <Cell w={64} end>
-                {broken ? <Word kind="cross">broken</Word> : holds}
-              </Cell>
-            </Row>
-            <Row>
-              <Cell className="im-label">reliability_heuristic ≥ baseline</Cell>
-              <Cell w={112} end className="mono">
-                0.762 ≥ 0.741
-              </Cell>
-              <Cell w={52} />
-              <Cell w={64} end>
-                {holds}
-              </Cell>
-            </Row>
-            <Row>
-              <Cell className="im-label">width unchanged</Cell>
-              <Cell w={112} end className="mono">
-                12 = 12
-              </Cell>
-              <Cell w={52} className="mono im-secondary" style={{ paddingLeft: 8 }}>
-                q
-              </Cell>
-              <Cell w={64} end>
-                {holds}
-              </Cell>
-            </Row>
-            <Row>
-              <Cell className="im-label">seed_spread ≤ 0.25</Cell>
-              <Cell w={112} end className="mono">
-                0.14
-              </Cell>
-              <Cell w={52} className="mono im-secondary" style={{ paddingLeft: 8 }}>
-                ratio
-              </Cell>
-              <Cell w={64} end>
-                {holds}
-              </Cell>
-            </Row>
-          </Rows>
-        </div>
-
-        <div className="fr-group">
-          <div className="im-group-title">
-            <span>Also moved</span>
-          </div>
-          <Rows>
-            {(
-              [
-                ['depth', '54', '51', 'layers', '−3'],
-                ['swaps_inserted', '14', '11', 'ops', '−3'],
-                ['routing_overhead', '0.36', '0.29', 'ratio', '−0.07'],
-              ] as const
-            ).map(([label, from, to, unit, d]) => (
-              <Row key={label}>
-                <Cell className="im-label">{label}</Cell>
-                <Cell w={112} end>
-                  <FromTo from={from} to={to} />
-                </Cell>
-                <Cell w={52} className="mono im-secondary" style={{ paddingLeft: 8 }}>
-                  {unit}
-                </Cell>
-                <Cell w={64} end className="mono im-secondary">
-                  {d}
-                </Cell>
-              </Row>
-            ))}
-          </Rows>
-        </div>
-
-        {!compact && (
-        <div className="fr-group">
-          <div className="im-group-title">
-            <span>Every seed improved</span>
-            <span className="fr-legend">
-              <span className="fr-legend-item">
-                <span className="fr-legend-ring" />
-                current
-              </span>
-              <span className="fr-legend-item">
-                <span className="fr-legend-dot" />
-                candidate
-              </span>
-            </span>
-          </div>
-          <SeedChart />
-        </div>
-        )}
-      </div>
-    </Tile>
-  )
-}
-
-const SEEDS: [number, number, number][] = [
-  [11, 54, 87],
-  [23, 43, 76],
-  [37, 54, 87],
-  [41, 32, 65],
-  [53, 54, 87],
-  [67, 43, 76],
-  [79, 21, 65],
-  [97, 54, 87],
-]
-
-function SeedChart() {
-  return (
-    <svg width="475" height="132" viewBox="0 0 475 132" aria-label="Two-qubit gates per seed, current against candidate">
-      <path d="M28 10.5H475M28 54.5H475M28 98.5H475" fill="none" stroke="#354348" strokeDasharray="2 3" />
-      {(
-        [
-          ['40', 13.5],
-          ['36', 57.5],
-          ['32', 101.5],
-        ] as const
-      ).map(([t, y]) => (
-        <text key={t} x="0" y={y} fontFamily="JetBrains Mono" fontSize="10" fill="#ADC5CA">
-          {t}
-        </text>
-      ))}
-      <text x="0" y="124" fontFamily="JetBrains Mono" fontSize="10" fill="#667E83">
-        seed
-      </text>
-      <path d={SEEDS.map(([, a, b], i) => `M${56 + i * 56} ${a}V${b}`).join('')} fill="none" stroke="#496166" strokeWidth="2" />
-      {SEEDS.map(([seed, a, b], i) => {
-        const x = 56 + i * 56
-        return (
-          <g key={seed}>
-            <circle cx={x} cy={a} r="3.5" fill="#243237" stroke="#ADC5CA" strokeWidth="1.5" />
-            <circle cx={x} cy={b} r="3.5" fill="#5FEEA3" />
-            <text x={x} y="124" textAnchor="middle" fontFamily="JetBrains Mono" fontSize="10" fill="#ADC5CA">
-              {seed}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
-  )
-}
-
-/* ── Candidate pane variants ─────────────────────────────────────────── */
-
-function OfflinePane() {
-  return (
-    <div className="fr-pane-note">
-      <span className="fr-offline-dot" />
-      <span>GPU machine is offline. This proposal waits and resumes when it is back; reference-qiskit keeps going.</span>
-    </div>
-  )
-}
-
-function InvalidPane() {
-  return (
-    <div className="fr-pane-note">
-      <MarkIcon kind="dash" />
-      <span className="mono">Q104 · candidate line 17 · unknown gate 'cnotx'</span>
-    </div>
-  )
-}
-
-function RegressionBanner() {
-  return (
-    <div className="fr-regression" role="status">
-      <svg width="14" height="18" viewBox="0 -2 14 18" aria-hidden>
-        <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-      <div className="fr-regression-text">
-        <div className="fr-regression-title">This change made the circuit worse, so the engine kept the current one.</div>
-        <div className="fr-regression-body">{REGRESSION_MESSAGE}</div>
-      </div>
-      <EditorButton onClick={openIssue}>Open an issue</EditorButton>
+    <div className="fr-canvas-note">
+      <Word kind={kind}>{word}</Word>
+      <span>{text}</span>
     </div>
   )
 }
 
 /* ── Inspector ───────────────────────────────────────────────────────── */
+const PROPOSAL = {
+  role: 'Qiskit/granite-3.3-8b-qiskit',
+  text: 'local proposed: route the block on a line layout, 39 rzz, no swaps inside it',
+  means: 'the 39 cost gates keep their angles, only their order and the qubit placement change.',
+}
 
-function Inspector({
-  outcome,
-  state,
-  userAccepted,
-}: {
-  outcome: Outcome
-  state: StateName | null
-  userAccepted: boolean
-}) {
-  const verified = outcome === 'accepted'
-  const kept = outcome === 'rejected' || outcome === 'inconclusive' || outcome === 'invalid'
-  // The workspace with D03 selected: its QASM lines 13–18 carry the region rail.
-  const openInQasm = () => {
-    actions.selectFinding('D03')
-    navigate(ROUTES.workspace, { transition: 'back' })
-  }
+type Row = { title: string; review?: boolean; kind: MarkKind; word: string; line: string }
 
-  let primary: ReactNode
-  if (verified) {
-    primary = (
-      <PrimaryButton onClick={!userAccepted ? () => actions.accept() : undefined} name="primary-action">
-        {userAccepted ? 'Accepted' : 'Accept'}
-      </PrimaryButton>
-    )
-  } else if (kept) {
-    primary = (
-      <PrimaryButton onClick={() => actions.keepCurrent()} name="primary-action">
-        Keep current
-      </PrimaryButton>
+const R1: Row = { title: 'R1 · attempt 2', kind: 'rejected', word: 'rejected', line: 'two_qubit_depth 214 > 202 baseline' }
+const R2: Row = { title: 'R2 · attempt 4 · block 1', kind: 'accepted', word: 'accepted', line: '298 → 281 gates · passed' }
+const R3: Record<Exclude<View, 'empty'>, Omit<Row, 'title' | 'review'>> = {
+  accepted: { kind: 'accepted', word: 'accepted', line: '281 → 270 gates · not applied yet' },
+  'keyboard-focus': { kind: 'accepted', word: 'accepted', line: '281 → 270 gates · not applied yet' },
+  focus: { kind: 'accepted', word: 'accepted', line: '281 → 270 gates · not applied yet' },
+  rejected: { kind: 'rejected', word: 'rejected', line: '281 → 270 gates · two_qubit_depth 214 > 202' },
+  'worse-than-before': { kind: 'rejected', word: 'rejected', line: '281 → 270 gates · two_qubit_depth 214 > 202' },
+  inconclusive: { kind: 'inconclusive', word: 'inconclusive', line: 'QCEC stopped at the 60 s limit · Q402' },
+  invalid: { kind: 'invalid', word: 'invalid', line: 'QASM parse error · line 63 · Q101' },
+  verifying: { kind: 'verifying', word: 'verifying', line: 'step 2 of 4 · equivalent' },
+  loading: { kind: 'verifying', word: 'verifying', line: 'step 3 of 4 · re-scoring on 8 seeds' },
+  offline: { kind: 'queued', word: 'queued', line: 'waits for the GPU machine' },
+}
+
+function Inspector({ view, step, accepted }: { view: View; step: number; accepted: boolean }) {
+  const focus = view === 'keyboard-focus' || view === 'focus'
+  const engineAccepted = view === 'accepted' || focus
+  const kept = view === 'rejected' || view === 'worse-than-before' || view === 'inconclusive' || view === 'invalid'
+  const requestFix = () => actions.requestFix('D03')
+  const keepCurrent = () => actions.keepCurrent()
+
+  /* review block: who said what */
+  let feed: ReactNode
+  if (view === 'empty') {
+    feed = <div className="fr-empty-feed">No proposal for finding #3 yet. Request fix asks local for one; the engine checks it here.</div>
+  } else if (view === 'offline') {
+    feed = (
+      <>
+        <div className="fr-gpu-line">
+          <span className="fr-gpu-dot" />
+          <span>GPU machine is off · model proposals wait</span>
+        </div>
+        <FeedCard who="local" role={<Word kind="queued" />} at="#3 · attempt 6" look="queued" text="Your fix request waits for the GPU machine. The engine checks run on this laptop." />
+      </>
     )
   } else {
-    const label =
-      state === 'offline' ? 'Waiting for the GPU' : outcome === 'verifying' ? 'Verifying (12 q)' : 'Waiting for local · granite-8b'
-    primary = (
-      <span className="btn-primary im-primary-busy" style={{ height: 40, viewTransitionName: 'primary-action' }} aria-live="polite">
-        <span className="btn-primary-label">{label}</span>
-      </span>
+    const proposal = <FeedCard who="local" role={PROPOSAL.role} at="386 s" text={PROPOSAL.text} means={PROPOSAL.means} look={engineAccepted ? 'default' : 'proposed'} />
+    const verifies = (
+      <FeedCard
+        who="engine"
+        role="reference-qiskit · verifies"
+        at="409 s"
+        text="engine: allowed and equivalent, operator_equiv on 12 virtual qubits in 3.4 s"
+        means="the candidate computes exactly what the current circuit computes."
+      />
+    )
+    if (engineAccepted)
+      feed = (
+        <>
+          {proposal}
+          {verifies}
+          <FeedCard who="engine" role="re-scored on 8 seeds" at="412 s" text="engine: passed, −11 gates, constraints passed" means="fewer two-qubit gates and nothing else got worse, so it qualifies." />
+        </>
+      )
+    else if (view === 'rejected' || view === 'worse-than-before')
+      feed = (
+        <>
+          {proposal}
+          <FeedCard
+            who="engine"
+            role="re-scored on 8 seeds"
+            at="412 s"
+            text="engine: rejected · two_qubit_depth 214 > 202 baseline"
+            means="fewer gates, but the circuit got deeper than the baseline allows, so it is not kept."
+          />
+        </>
+      )
+    else if (view === 'inconclusive')
+      feed = (
+        <>
+          {proposal}
+          <FeedCard who="engine" role="reference-qiskit · verifies" at="409 s" text="engine: inconclusive, the exact check ran out of time" means="nothing is claimed either way. The current circuit is untouched." />
+          <ErrorBlock kind="inconclusive" word="inconclusive" what="Verification inconclusive" code="Q402" rest="QCEC stopped at the 60 s limit on 12 virtual qubits · request a new candidate" />
+        </>
+      )
+    else if (view === 'invalid')
+      feed = (
+        <>
+          {proposal}
+          <FeedCard who="engine" role="reference-qiskit · parses first" at="387 s" text="engine: invalid, the candidate does not parse" means="nothing was checked or scored. The current circuit is untouched." />
+          <ErrorBlock kind="invalid" word="invalid" what="QASM parse error" code="Q101" rest="candidate line 63, col 24, ';' missing after rzz(0.7854) q[4],q[5] · request a new candidate" />
+        </>
+      )
+    else if (view === 'loading') feed = <>{proposal}{verifies}</>
+    else feed = proposal
+  }
+
+  /* decision block: the status line, the one mint, the editor button */
+  let decision: ReactNode
+  if (engineAccepted) {
+    decision = (
+      <>
+        <StatusLine kind="accepted" text="Engine accepted · not applied until you accept" />
+        <PrimaryButton
+          name="primary-action"
+          onClick={accepted ? undefined : () => actions.accept()}
+          done={accepted}
+          doneLabel="Accepted"
+          style={focus ? FOCUS_RING : undefined}
+        >
+          Accept
+        </PrimaryButton>
+        <ActionRow button="Keep current" onClick={keepCurrent} caption={focus ? 'Enter accepts · Tab moves to Keep current' : 'Accept makes the candidate round 3'} />
+      </>
+    )
+  } else if (kept) {
+    const word: [MarkKind, string, string] =
+      view === 'inconclusive' ? ['inconclusive', 'inconclusive', ''] : view === 'invalid' ? ['invalid', 'invalid', 'line 63'] : ['rejected', 'rejected', '214 > 202 layers']
+    decision = (
+      <>
+        {view === 'inconclusive' ? (
+          <StatusLine kind="inconclusive" word="inconclusive" text="Engine could not decide · original kept" />
+        ) : (
+          <div className="im-status-line">
+            <span className="im-status-text is-sec">Engine decision</span>
+            <span className="im-grow" />
+            <Word kind={word[0]}>{word[1]}</Word>
+            <span className="mono im-status-value">{word[2]}</span>
+          </div>
+        )}
+        <PrimaryButton name="primary-action" onClick={requestFix}>
+          Request fix
+        </PrimaryButton>
+        <ActionRow button="Keep current" onClick={keepCurrent} caption={view === 'rejected' || view === 'worse-than-before' ? 'The original stays as R2' : 'Request fix asks local again'} />
+      </>
+    )
+  } else if (view === 'verifying' || view === 'loading') {
+    const s = view === 'loading' ? 3 : step
+    decision = (
+      <>
+        <StatusLine kind="verifying" text={s >= 3 ? 'Verifying · step 3 of 4 · re-scoring on 8 seeds' : `Verifying · step ${s} of 4 · 12 qubits`} />
+        <Ladder rungs={ladderFor(view === 'loading' ? 'loading' : 'verifying', s)} />
+        <PrimaryButton name="primary-action" disabled>
+          Accept
+        </PrimaryButton>
+        <ActionRow button="Keep current" onClick={keepCurrent} caption="Accept unlocks when the engine decides" />
+      </>
+    )
+  } else if (view === 'offline') {
+    decision = (
+      <>
+        <div className="im-status-line">
+          <span className="im-status-text is-sec">Engine decision</span>
+          <span className="im-grow" />
+          <Word kind="queued" />
+          <span className="mono im-status-value">no candidate yet</span>
+        </div>
+        <ActionRow button="Cancel request" onClick={keepCurrent} caption="Starts when the GPU is online" />
+      </>
+    )
+  } else {
+    decision = (
+      <>
+        <StatusLine kind="queued" text="No candidate yet · nothing to decide" />
+        <PrimaryButton name="primary-action" onClick={requestFix}>
+          Request fix
+        </PrimaryButton>
+        <div className="im-action-row">
+          <span className="im-caption">local proposes · the engine verifies · you accept</span>
+        </div>
+      </>
     )
   }
 
-  const focus = state === 'keyboard-focus'
-  const caption = focus
-    ? 'Enter keeps the circuit. A accepts.'
-    : kept
-      ? 'The engine keeps the current circuit.'
-      : 'Keep current sends D04, the next finding, to the models.'
-
-  const events = feed(outcome)
-  const r6: { mark: Mark; word: string } =
-    outcome === 'accepted'
-      ? { mark: 'check', word: 'accepted' }
-      : outcome === 'rejected'
-        ? { mark: 'cross', word: 'rejected' }
-        : outcome === 'inconclusive'
-          ? { mark: 'inconclusive', word: 'inconclusive' }
-          : outcome === 'invalid'
-            ? { mark: 'dash', word: 'invalid' }
-            : { mark: 'dot-blue', word: 'verifying' }
-  const r5done = outcome !== 'writing' && outcome !== 'verifying'
-  const checked = (r5done ? 1 : 0) + (r6.word !== 'verifying' ? 1 : 0)
+  const rows: Row[] = view === 'empty' ? [R1, R2] : [R1, R2, { title: 'R3 · attempt 6 · block 2', review: true, ...R3[view] }]
 
   return (
     <>
       <ModeTabs />
-      <DecisionBlock line="Round 3 · proposal #6 from local · granite-8b">
-        <div className="im-actions">
-          {primary}
-          <div className="secondary-pair">
-            {kept ? (
-              <>
-                <EditorButton wide onClick={openInQasm}>Open in QASM</EditorButton>
-                <EditorButton wide onClick={openIssue}>Open an issue</EditorButton>
-              </>
-            ) : (
-              <>
-                <EditorButton wide onClick={() => actions.keepCurrent()} style={focus ? FOCUS_RING : undefined}>
-                  Keep current
-                </EditorButton>
-                <EditorButton wide onClick={openInQasm}>Open in QASM</EditorButton>
-              </>
-            )}
-          </div>
-          <div className="im-caption" key={caption}>
-            {caption}
-          </div>
+      <div className="fr-review">
+        <div className="im-mode-line">Runs on this machine · CPU · round 3 of 4 · 412 of 900 s</div>
+        <div className="fr-context">
+          <span className="fr-context-title">Fix review</span>
+          <span className="im-grow" />
+          <span className="mono fr-context-meta">{view === 'empty' ? '#3 · D03 block 2 · no attempt yet' : '#3 · D03 block 2 · attempt 6'}</span>
         </div>
-      </DecisionBlock>
-
-      <div className="fr-insp-body">
-        <ISection icon={Icons.chat} title="What happened" meta={`${events.length} event${events.length === 1 ? '' : 's'}`} border={false}>
-          <div className="fr-feed">
-            {events.map((e) => (
-              <div className="fr-event im-arrive" key={e.key}>
-                {e.who === 'model' ? (
-                  <span className="fr-avatar is-ai mono">8b</span>
-                ) : (
-                  <span className="fr-avatar">{Icons.engine}</span>
-                )}
-                <div className="fr-event-body">
-                  <div className={`fr-event-head mono${e.who === 'model' ? ' is-ai' : ''}`}>{e.head}</div>
-                  <div className="fr-event-text">{e.text}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </ISection>
-
-        <ISection icon={Icons.list} title="Round 3 attempts" meta={`${checked} of 2 checked`}>
-          <Rows>
-            <Row>
-              <Cell w={28} className="mono fr-n">
-                #5
-              </Cell>
-              <Cell style={{ gap: 8 }}>
-                <span className="im-dot" style={{ background: 'var(--color-signal-info)' }} />
-                <span className="mono">layout_search</span>
-              </Cell>
-              <Cell w={72} end className="mono im-secondary">
-                +1
-              </Cell>
-              <Cell w={96} end>
-                {r5done ? <Word kind="cross">rejected</Word> : <Word kind="dot-blue" gap={6}>verifying</Word>}
-              </Cell>
-            </Row>
-            <Row>
-              <Cell w={28} className="mono fr-n">
-                #6
-              </Cell>
-              <Cell style={{ gap: 8 }}>
-                <span className="im-dot" style={{ background: 'var(--color-signal-ai)' }} />
-                <span className="mono">commuting_reorder</span>
-              </Cell>
-              <Cell w={72} end className="mono im-secondary">
-                −3
-              </Cell>
-              <Cell w={96} end>
-                <span key={r6.word} className="im-fade-in">
-                  <Word kind={r6.mark} gap={r6.mark.startsWith('dot') ? 6 : 4} wordColor={r6.mark === 'dash' ? 'var(--color-text-secondary)' : undefined}>
-                    {r6.word}
-                  </Word>
-                </span>
-              </Cell>
-            </Row>
-          </Rows>
-        </ISection>
-
-        <ISection icon={Icons.queue} title="Next in queue" meta="round 4">
-          <div className="im-card">
-            <div className="fr-card-top">
-              <span className="mono fr-n">#3</span>
-              <Word kind="warning">warning</Word>
-              <span style={{ flex: '1 1 0' }} />
-              <span className="mono fr-card-rule">D04 resynthesis</span>
+        <div className="fr-feed">{feed}</div>
+      </div>
+      <div className="fr-decision">
+        {decision}
+        <PoweredBy />
+      </div>
+      <Section icon={SectionIcons.clock} title="Budget" meta={RUN_7F3A.budget} open={false} onToggle={() => navigate(ROUTES.loop)} />
+      <Section icon={<AttemptsIcon />} title="Attempts on D03" meta={`local · ${rows.length} attempts`} bodyClassName="fr-attempts">
+        {rows.map((r) => (
+          <div key={r.title} className={`fr-attempt${r.review ? ' is-review' : ''}`}>
+            <div className="fr-attempt-top">
+              <span className="mono">{r.title}</span>
+              {r.review && <span className="fr-attempt-review">in review</span>}
+              <span className="im-grow" />
+              <Mark kind={r.kind} />
+              <span className="fr-attempt-word" style={{ color: wordColor(r.kind) }}>
+                {r.word}
+              </span>
             </div>
-            <div className="fr-card-title">Block is resynthesizable</div>
-            <div className="mono fr-card-rule">4 gates removable · q9–q10</div>
+            <span className="mono fr-attempt-line">{r.line}</span>
           </div>
-        </ISection>
-
-        <ISection icon={Icons.steps} title="Run so far" meta="round 3 of 4">
-          <Rows>
-            <SoFar r="R1" layer="ref" strategy="routing_search" from="44" to="40" status={<Word kind="check">accepted</Word>} />
-            <SoFar r="R2" layer="local" strategy="commuting_reorder" from="40" to="36" status={<Word kind="check">accepted</Word>} />
-            <SoFar
-              r="R3"
-              layer="local"
-              strategy="commuting_reorder"
-              from="36"
-              to={kept ? '36' : '33'}
-              status={
-                userAccepted ? (
-                  <span className="im-fade-in">
-                    <Word kind="check">accepted</Word>
-                  </span>
-                ) : kept ? (
-                  <Word kind={r6.mark} wordColor={r6.mark === 'dash' ? 'var(--color-text-secondary)' : undefined}>
-                    {r6.word}
-                  </Word>
-                ) : (
-                  <Word kind="dot-yellow" gap={6}>
-                    in review
-                  </Word>
-                )
-              }
-            />
-            <Row>
-              <Cell className="im-label">QPU estimate</Cell>
-              <Cell w={undefined} style={{ flex: '0 0 auto' }}>
-                <FromTo from="$5.60" to={kept ? '$5.60' : '$5.32'} />
-              </Cell>
-              <Cell w={96} end className="mono im-secondary" style={{ paddingLeft: 8 }}>
-                per run
-              </Cell>
-            </Row>
-          </Rows>
-        </ISection>
+        ))}
+      </Section>
+      <div className="fr-findings">
+        <Section icon={SectionIcons.list} title="Findings" meta="3 open · 1 accepted · by severity" open={false} onToggle={() => navigate(ROUTES.workspace, { transition: 'back' })} />
       </div>
     </>
   )
-}
-
-const FOCUS_RING = { outline: '2px solid var(--color-action-primary)', outlineOffset: 2 } as const
-
-function SoFar({ r, layer, strategy, from, to, status }: { r: string; layer: 'ref' | 'local'; strategy: string; from: string; to: string; status: ReactNode }) {
-  return (
-    <Row>
-      <Cell w={28} className="mono fr-n">
-        {r}
-      </Cell>
-      <Cell style={{ gap: 8 }}>
-        <span className="im-dot" style={{ background: layer === 'ref' ? 'var(--color-signal-info)' : 'var(--color-signal-ai)' }} />
-        <span className="mono">{strategy}</span>
-      </Cell>
-      <Cell w={72} end>
-        <FromTo from={from} to={to} />
-      </Cell>
-      <Cell w={96} end>
-        {status}
-      </Cell>
-    </Row>
-  )
-}
-
-type Event = { key: string; who: 'model' | 'engine'; head: string; text: string }
-
-function feed(outcome: Outcome): Event[] {
-  const proposal: Event = {
-    key: 'proposal',
-    who: 'model',
-    head: 'granite-8b-qiskit · local · proposal',
-    text: 'The two CX gates on q4 and q5 only wrap an RZ that commutes past them. I moved the RZ and removed both CX gates.',
-  }
-  const verifyHead = 'engine · verify · operator equivalence ≤ 12 q'
-  switch (outcome) {
-    case 'writing':
-      return [{ key: 'asked', who: 'model', head: 'granite-8b-qiskit · local · writing', text: 'Asked to fix D03 on lines 13 to 18. No candidate yet.' }]
-    case 'verifying':
-      return [proposal, { key: 'checking', who: 'engine', head: verifyHead, text: 'Checking. The candidate stays violet and dashed until the engine decides.' }]
-    case 'accepted':
-      return [
-        proposal,
-        { key: 'verdict', who: 'engine', head: verifyHead, text: 'Same job, checked exactly. Two-qubit gates 36 to 33 after routing. Every constraint holds. Accepted.' },
-      ]
-    case 'rejected':
-      return [
-        proposal,
-        {
-          key: 'verdict',
-          who: 'engine',
-          head: 'engine · score · constraints',
-          text: 'Fewer gates, but the remaining ones line up in a longer chain. The engine keeps the current circuit.',
-        },
-      ]
-    case 'inconclusive':
-      return [
-        proposal,
-        {
-          key: 'verdict',
-          who: 'engine',
-          head: verifyHead,
-          text: 'Timed out at 120 s. 2,048 random states agreed, which never changes the status.',
-        },
-      ]
-    case 'invalid':
-      return [
-        { key: 'proposal', who: 'model', head: 'granite-8b-qiskit · local · proposal', text: 'Returned a candidate for D03.' },
-        { key: 'verdict', who: 'engine', head: 'engine · parse · Q104', text: "Unknown gate 'cnotx' on line 17. Nothing was scored." },
-      ]
-  }
 }

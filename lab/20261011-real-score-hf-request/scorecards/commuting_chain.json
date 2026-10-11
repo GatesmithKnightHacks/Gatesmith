@@ -1,0 +1,612 @@
+{
+  "schema": "qscore.scorecard/v0.3",
+  "item": {
+    "id": "commuting_chain",
+    "item_sha256": "8004d696f7e026c6e17b2ce2728ca66f2907c809395316424e19f9303c7d0599",
+    "circuit_sha256": "65af055b6afbb5fdb284d5f10d253697cdf9a47ef36cd623a7bc604e48f72575",
+    "manifest_sha256": "97accfa159d97f480652f07416ca12ab9dde32eb482d79453715869848868ab2",
+    "score_version": "qscore-2026.2"
+  },
+  "status": "complete",
+  "error": null,
+  "target": {
+    "name": "line-7",
+    "num_qubits": 7,
+    "basis": [
+      "cx",
+      "rz",
+      "sx",
+      "x"
+    ],
+    "calibration_id": null,
+    "calibration_assumed": false
+  },
+  "compile": {
+    "seeds": [
+      11
+    ],
+    "representative_seed": 11,
+    "selection_policy": "min primary; tie: two_qubit_depth, seed order",
+    "per_seed": [
+      {
+        "seed": 11,
+        "two_qubit_count": 6,
+        "two_qubit_depth": 6,
+        "depth": 27,
+        "time_s": 0.8101686669979244
+      }
+    ],
+    "all_to_all": {
+      "two_qubit_count": 6
+    },
+    "route_only": {
+      "swaps_inserted": 0
+    }
+  },
+  "metrics": [
+    {
+      "id": "width",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 7,
+      "unit": "qubits",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 7
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "size",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 42,
+      "unit": "ops",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 6
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "depth",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 27,
+      "unit": "layers",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 6
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "two_qubit_count",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 6,
+      "unit": "gates",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 6,
+        "logical_multi_qubit_ops": 0
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "two_qubit_depth",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 6,
+      "unit": "layers",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "logical": 6
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "measurement_count",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "logical",
+      "value": 0,
+      "unit": "ops",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "toffoli_count",
+      "group": "resources",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "logical",
+      "value": 0,
+      "unit": "gates",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "routing_overhead",
+      "group": "hardware",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 0.0,
+      "unit": "ratio",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "routed_two_qubit": 6,
+        "all_to_all_two_qubit": 6,
+        "swaps_inserted": 0,
+        "top_swap_pairs": {}
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "swaps_inserted",
+      "group": "hardware",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 0,
+      "unit": "gates",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "seed": 11,
+        "per_pair": {}
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "compile_ratio",
+      "group": "hardware",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 1.0,
+      "unit": "ratio",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "compiled_two_qubit": 6,
+        "raw_two_qubit": 6
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "reliability_heuristic",
+      "group": "hardware",
+      "version": "1",
+      "kind": "heuristic",
+      "scope": "compiled",
+      "value": null,
+      "unit": null,
+      "status": "unavailable",
+      "reason": "target has no calibration",
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "scheduled_duration",
+      "group": "hardware",
+      "version": "1",
+      "kind": "heuristic",
+      "scope": "compiled",
+      "value": null,
+      "unit": null,
+      "status": "unavailable",
+      "reason": "target has no gate durations",
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "seed_spread",
+      "group": "hardware",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 0.0,
+      "unit": "ratio",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "min": 6,
+        "median": 6,
+        "max": 6,
+        "per_seed": {
+          "11": 6
+        }
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "supermarq_profile",
+      "group": "opportunities",
+      "version": "1",
+      "kind": "context",
+      "scope": "logical",
+      "value": {
+        "program_communication": 0.2857142857142857,
+        "critical_depth": 1.0,
+        "entanglement_ratio": 1.0,
+        "parallelism": 0.0,
+        "liveness": 0.2857142857142857,
+        "measurement": 0.0
+      },
+      "unit": "features in [0, 1]",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "source": "SupermarQ features.py @ Infleqtion/client-superstaq dcf8318 (Apache-2.0)",
+        "undefined_as_zero": []
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "entanglement_variance",
+      "group": "opportunities",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "logical",
+      "value": 0.20408163265306123,
+      "unit": "gates^2",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "per_qubit": {
+          "0": 1,
+          "1": 2,
+          "2": 2,
+          "3": 2,
+          "4": 2,
+          "5": 2,
+          "6": 1
+        },
+        "mean": 1.7142857142857142,
+        "cv": 0.26352313834736496
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "structure",
+      "group": "opportunities",
+      "version": "1",
+      "kind": "context",
+      "scope": "logical",
+      "value": {
+        "commuting_runs": [
+          {
+            "qubits": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "layers": [
+              0,
+              5
+            ],
+            "gate_indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "num_ops": 6
+          }
+        ],
+        "clifford_blocks": [
+          {
+            "qubits": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "layers": [
+              0,
+              5
+            ],
+            "gate_indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "num_ops": 6
+          }
+        ],
+        "linear_function_blocks": []
+      },
+      "unit": "dict",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "resynthesis_potential",
+      "group": "opportunities",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "compiled",
+      "value": 0,
+      "unit": "gates",
+      "status": "computed",
+      "reason": null,
+      "error": null,
+      "evidence": {
+        "top_blocks": [],
+        "raw_potential": 0
+      },
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "scalability",
+      "group": "research",
+      "version": "1",
+      "kind": "deterministic",
+      "scope": "both",
+      "value": null,
+      "unit": null,
+      "status": "unavailable",
+      "reason": "no size_sweep",
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "simulated_task_score",
+      "group": "research",
+      "version": "1",
+      "kind": "statistical",
+      "scope": "compiled",
+      "value": null,
+      "unit": null,
+      "status": "unavailable",
+      "reason": "intent has no task",
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    },
+    {
+      "id": "mirror_score",
+      "group": "research",
+      "version": "1",
+      "kind": "statistical",
+      "scope": "compiled",
+      "value": null,
+      "unit": null,
+      "status": "unavailable",
+      "reason": "simulation is not in the MVP build (ChP-0023)",
+      "error": null,
+      "evidence": null,
+      "uncertainty": null,
+      "method": null
+    }
+  ],
+  "findings": [
+    {
+      "id": "D03#1",
+      "rule": "D03",
+      "title": "Commuting block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_ops",
+        "value": 6.0,
+        "margin": 0.0
+      },
+      "evidence": {
+        "num_ops": 6,
+        "num_qubits": 7
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layers": [
+          0,
+          5
+        ],
+        "gate_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "strategies": [
+        "commutation_aware_routing"
+      ],
+      "suppressed": null
+    },
+    {
+      "id": "D05#1",
+      "rule": "D05",
+      "title": "Clifford or linear block",
+      "severity": "warning",
+      "confidence": "rule_fired",
+      "threshold": {
+        "name": "min_qubits",
+        "value": 3.0,
+        "margin": 1.3333333333333333
+      },
+      "evidence": {
+        "block_type": "clifford",
+        "num_qubits": 7,
+        "num_ops": 6
+      },
+      "region": {
+        "scope": "logical",
+        "qubits": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "layers": [
+          0,
+          5
+        ],
+        "gate_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "strategies": [
+        "block_resynthesis"
+      ],
+      "suppressed": null
+    }
+  ],
+  "requests": [],
+  "resources": {
+    "wall_s": 0.8260337910032831,
+    "cpu_s": 0.5299999999999999,
+    "gpu_s": 0.0,
+    "peak_vram_mib": null
+  },
+  "fallbacks_used": [],
+  "provenance": {
+    "qscore": "0.1.0",
+    "git_commit": "26f08c8bd98e153aa5787013ac98f80761b67c0d",
+    "git_dirty": false,
+    "lock_sha256": "eca94e351b0b2eabda13d4fb67a7f21a0ddac4b5356eda5c3a04247b139a55a2",
+    "python": "3.12.14",
+    "qiskit": "2.5.2",
+    "qiskit_aer": "0.17.2",
+    "aer_build": "cpu",
+    "mqt_qcec": "3.11.0",
+    "rocm": null,
+    "gpu": null,
+    "hardware_profile_id": null,
+    "profile": "dev",
+    "fallbacks_enabled": [],
+    "seeds": {
+      "transpiler": [
+        11
+      ],
+      "simulator_base": 1234
+    },
+    "thresholds_sha256": "6dc0ead8c66da31999de25e5601365d0b3212f1d1f344878289c1099bf5f5e17",
+    "started_at": "2026-10-11T07:13:06.932484Z",
+    "finished_at": "2026-10-11T07:13:07.804165Z"
+  },
+  "created_at": "2026-10-11T07:13:07.804272Z",
+  "x-diagnose": {
+    "skipped_rules": [
+      {
+        "rule": "D06",
+        "reason": "metric reliability_heuristic not computed (unavailable)"
+      },
+      {
+        "rule": "D07",
+        "reason": "metric scheduled_duration not computed (unavailable)"
+      },
+      {
+        "rule": "D09",
+        "reason": "metric scalability not computed (unavailable)"
+      },
+      {
+        "rule": "D10",
+        "reason": "simulation metrics are final product (ChP-0023)"
+      }
+    ]
+  },
+  "x-reference": {
+    "benchpress": {
+      "convention": "benchpress@b695f30e83a32bac05b9b4d8e98d37ba9aae5236 device_transpile",
+      "optimization_level": 2,
+      "seed": 11,
+      "gate_count_2q": 6,
+      "depth_2q": 6,
+      "two_q_gate": "cx"
+    },
+    "corpus": null
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "transport": "fake; zero network and credential access",
+  "request_id": "commuting_chain/r1/D03#1",
+  "finding": "D03",
+  "scope": "region",
+  "qubits": 7,
+  "strategy": "commutation_aware_routing",
+  "operations": [
+    "GET /v1/models",
+    "POST /v1/chat/completions"
+  ],
+  "parsed_proposals": 1,
+  "response": "synthetic identity fixture; no improvement claimed",
+  "verification": "not_run",
+  "acceptance": "not_run"
+}

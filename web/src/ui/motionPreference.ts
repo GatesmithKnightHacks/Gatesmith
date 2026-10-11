@@ -39,6 +39,14 @@ export function setReducedMotion(on: boolean) {
 
 export const isReducedMotion = current
 
+/** The motion tokens in milliseconds, for motion driven from script (same values as motion.css). */
+export const MOTION_MS = { hover: 150, tile: 200, load: 400, spin: 1000, shimmer: 1200, done: 1200 } as const
+
+/** Fade an element in where it stands (opacity only, so reduced motion keeps it). */
+export function fadeIn(el: Element | null, ms: number = MOTION_MS.tile) {
+  el?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: 'ease' })
+}
+
 export function useReducedMotion() {
   return useSyncExternalStore(
     (cb) => {

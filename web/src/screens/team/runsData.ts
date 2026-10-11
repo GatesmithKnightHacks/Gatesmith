@@ -1,78 +1,72 @@
-/* S-13 Runs data: jobs on this machine and the platform queue, newest first. */
+/*
+ * S-13 Runs data: the runs saved to qlab-dev, newest first. Named like the engine's job states
+ * (queued, running, done, failed, cancelled) so the account store can replace it.
+ * 7f3a·0412 is the canonical loop run: it finished at 11:42 with 270 gates (S-12 shows the same run).
+ */
 
-export type JobState = 'claimed' | 'running' | 'done' | 'queued' | 'failed' | 'cancelled'
-export type JobKind = 'profile' | 'improve' | 'score' | 'validate' | 'conform' | 'bench'
+export type JobState = 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
+/** What the run did; the open action follows it. */
+export type JobKind = 'improve' | 'score' | 'bench'
 
 export type Job = {
   id: string
-  item: string
-  file: string
+  item: 'sidechain_qaoa.qasm' | 'sbox_oracle.qasm'
+  qubits: number
   kind: JobKind
   state: JobState
   started: string
   duration: string
+  /** two_qubit_count, mono with its unit; empty when there is none yet */
+  gates: string
   result: string
-  day: 'today' | 'yesterday' | 'earlier'
-  worker?: string
-  model?: string
-  queued?: string
+  day: 'today' | 'yesterday'
+  /** inspector facts */
+  baseline?: number
+  fixes: string
 }
+
+const SIDE = { item: 'sidechain_qaoa.qasm', qubits: 12 } as const
+const SBOX = { item: 'sbox_oracle.qasm', qubits: 20 } as const
 
 export const JOBS: Job[] = [
-  { id: '7f3b·0c5e', item: 'packing_qaoa_p2', file: 'sidechain_qaoa.qasm', kind: 'profile', state: 'claimed', started: '11:08', duration: '2 s', result: 'laptop-cpu claimed it · starting', day: 'today', worker: 'laptop-cpu · local', queued: '11:08:01 · waited 2 s' },
-  { id: '7f3a·0412', item: 'packing_qaoa_p2', file: 'sidechain_qaoa.qasm', kind: 'improve', state: 'running', started: '11:02', duration: '6 m 40 s', result: 'round 3 of 4 · 44 to 36 gates verified so far', day: 'today', worker: 'laptop-gpu · local', model: 'granite-8b-qiskit', queued: '11:01:52 · waited 9 s' },
-  { id: '7f39·9c11', item: 'packing_qaoa_p2', file: 'sidechain_qaoa.qasm', kind: 'score', state: 'done', started: '10:58', duration: '41 s', result: '44 gates · 3 findings, 2 high', day: 'today', worker: 'laptop-cpu · local', queued: '10:58:10 · waited 1 s' },
-  { id: '7f38·51d0', item: 'sbox_oracle', file: 'sbox_layer_4x.qasm', kind: 'improve', state: 'queued', started: '10:57', duration: 'not started', result: 'waiting for GPU · position 1', day: 'today', worker: 'platform queue', model: 'granite-8b-qiskit', queued: '10:57:30 · waiting 11 m' },
-  { id: '7f37·a2e4', item: 'sbox_oracle', file: 'sbox_layer_4x.qasm', kind: 'score', state: 'done', started: '10:40', duration: '2 m 12 s', result: '118 gates · 4 findings · 2 metrics skipped', day: 'today', worker: 'laptop-cpu · local', queued: '10:40:02 · waited 1 s' },
-  { id: '7f36·0b7c', item: 'grover_5q', file: 'grover_5q.qasm', kind: 'validate', state: 'failed', started: '10:31', duration: '0.4 s', result: 'Q118 · creg c[4] smaller than qreg q[5]', day: 'today', worker: 'laptop-cpu · local', queued: '10:31:00 · waited 0 s' },
-  { id: '7f35·77e0', item: 'packing_qaoa_p2', file: 'sidechain_qaoa.qasm', kind: 'conform', state: 'done', started: '10:12', duration: '4 m 05 s', result: 'granite-8b-qiskit · 12 of 12 fixtures', day: 'today', worker: 'laptop-gpu · local', model: 'granite-8b-qiskit', queued: '10:11:58 · waited 2 s' },
-  { id: '7f34·c3a9', item: 'qft_8', file: 'qft_8.qasm', kind: 'score', state: 'done', started: '09:55', duration: '52 s', result: '56 gates · 3 findings, 1 high', day: 'today', worker: 'laptop-cpu · local', queued: '09:55:04 · waited 1 s' },
-  { id: '7f33·19bf', item: 'vqe_h2_4q', file: 'vqe_h2_4q.qasm', kind: 'improve', state: 'cancelled', started: '09:41', duration: 'not started', result: 'cancelled while queued', day: 'today', worker: 'platform queue', model: 'granite-8b-qiskit', queued: '09:40:12 · cancelled at 09:41' },
-  { id: '7f32·e801', item: 'packing_qaoa_p2', file: 'sidechain_qaoa.qasm', kind: 'bench', state: 'done', started: '09:20', duration: '1 m 30 s', result: '8 seeds · spread 0.18', day: 'today', worker: 'laptop-gpu · local', queued: '09:19:55 · waited 5 s' },
-  { id: '7f31·4d6a', item: 'sidechain_qaoa_p1', file: 'sidechain_qaoa_p1.qasm', kind: 'improve', state: 'done', started: '09:02', duration: '5 m 18 s', result: '21 to 20 gates · stopped by the engine', day: 'today', worker: 'laptop-gpu · local', model: 'granite-8b-qiskit', queued: '09:01:50 · waited 10 s' },
-  { id: '7f30·8a42', item: 'qft_8', file: 'qft_8.qasm', kind: 'score', state: 'failed', started: '08:47', duration: '1 m 03 s', result: 'WorkerStopped · not requeued', day: 'today', worker: 'laptop-gpu · local', queued: '08:46:58 · waited 2 s' },
-  { id: '7f2f·91e0', item: 'grover_5q', file: 'grover_5q.qasm', kind: 'score', state: 'done', started: '18:12', duration: '22 s', result: '18 gates · none open', day: 'yesterday', worker: 'laptop-cpu · local', queued: '18:12:00 · waited 0 s' },
-  { id: '7f2e·5b37', item: 'qft_8', file: 'qft_8.qasm', kind: 'bench', state: 'done', started: '17:40', duration: '1 m 52 s', result: '8 seeds · spread 0.22', day: 'yesterday', worker: 'laptop-gpu · local', queued: '17:39:51 · waited 9 s' },
-  { id: '7f2d·c018', item: 'vqe_h2_4q', file: 'vqe_h2_4q.qasm', kind: 'score', state: 'done', started: '16:05', duration: '19 s', result: '6 gates · 1 finding, info', day: 'yesterday', worker: 'laptop-cpu · local', queued: '16:05:01 · waited 1 s' },
-  { id: '7f2b·6e42', item: 'grover_5q', file: 'grover_5q.qasm', kind: 'improve', state: 'done', started: '14:48', duration: '3 m 12 s', result: 'no accepted rounds · stopped by the engine', day: 'yesterday', worker: 'laptop-gpu · local', model: 'granite-8b-qiskit', queued: '14:47:59 · waited 1 s' },
-  { id: '7f2a·07d9', item: 'sbox_oracle', file: 'sbox_layer_4x.qasm', kind: 'score', state: 'done', started: '13:30', duration: '2 m 05 s', result: '118 gates · 4 findings', day: 'yesterday', worker: 'laptop-cpu · local', queued: '13:29:58 · waited 2 s' },
+  { id: '7f3c·1a02', ...SIDE, kind: 'improve', state: 'running', started: '11:42', duration: '2 m 10 s', gates: '298 gates', result: 'round 2 of 4 · from 321 so far', day: 'today', baseline: 321, fixes: '1 accepted · round 2 of 4' },
+  { id: '7f3c·0e17', ...SBOX, kind: 'improve', state: 'queued', started: '11:40', duration: 'not started', gates: '', result: 'waiting for GPU · position 1', day: 'today', fixes: 'none yet · waiting for GPU' },
+  { id: '7f3a·0412', ...SIDE, kind: 'improve', state: 'done', started: '11:34', duration: '8 m 10 s', gates: '270 gates', result: 'from 321 · 4 rounds · stopped by the engine', day: 'today', baseline: 321, fixes: '3 accepted · 3 rejected · 2 inconclusive' },
+  { id: '7f3b·0c5e', ...SIDE, kind: 'improve', state: 'done', started: '11:08', duration: '6 m 12 s', gates: '281 gates', result: 'from 321 · 2 accepted', day: 'today', baseline: 321, fixes: '2 accepted · 1 rejected · 1 inconclusive' },
+  { id: '7f3a·77d1', ...SBOX, kind: 'score', state: 'done', started: '10:40', duration: '2 m 05 s', gates: '1041 gates', result: 'score only · 4 findings · 1 high', day: 'today', fixes: 'none · score only' },
+  { id: '7f39·5b08', ...SBOX, kind: 'improve', state: 'failed', started: '09:55', duration: '1 m 03 s', gates: '', result: 'Q501 · worker stopped · not requeued', day: 'today', fixes: 'none · stopped at compile' },
+  { id: '7f39·2c1e', ...SIDE, kind: 'improve', state: 'cancelled', started: '09:41', duration: 'not started', gates: '', result: 'cancelled while queued', day: 'today', fixes: 'none · cancelled while queued' },
+  { id: '7f38·f0a3', ...SBOX, kind: 'bench', state: 'done', started: '09:20', duration: '1 m 52 s', gates: '1041 gates', result: 'bench · 8 seeds · spread 0.22', day: 'today', fixes: 'none · bench' },
+  { id: '7f38·e801', ...SIDE, kind: 'improve', state: 'done', started: '18:12', duration: '5 m 18 s', gates: '281 gates', result: 'from 321 · stopped by the engine', day: 'yesterday', baseline: 321, fixes: '2 accepted · 2 rejected' },
+  { id: '7f38·4d6a', ...SBOX, kind: 'score', state: 'done', started: '17:40', duration: '2 m 05 s', gates: '1041 gates', result: 'score only · 4 findings · 1 high', day: 'yesterday', fixes: 'none · score only' },
+  { id: '7f37·c018', ...SIDE, kind: 'score', state: 'done', started: '16:05', duration: '38 s', gates: '321 gates', result: 'score only · 4 findings · 4 high', day: 'yesterday', fixes: 'none · score only' },
+  { id: '7f37·2e9b', ...SBOX, kind: 'bench', state: 'done', started: '14:30', duration: '2 m 11 s', gates: '1041 gates', result: 'bench · 8 seeds · spread 0.18', day: 'yesterday', fixes: 'none · bench' },
+  { id: '7f36·b1f4', ...SIDE, kind: 'improve', state: 'done', started: '13:02', duration: '4 m 40 s', gates: '281 gates', result: 'from 321 · 2 accepted', day: 'yesterday', baseline: 321, fixes: '2 accepted · 1 rejected' },
+  { id: '7f36·07d9', ...SIDE, kind: 'score', state: 'done', started: '11:30', duration: '44 s', gates: '321 gates', result: 'score only · first run', day: 'yesterday', fixes: 'none · first run' },
 ]
 
-export const isActive = (j: Job) => j.state === 'claimed' || j.state === 'running' || j.state === 'queued'
-export const isFailed = (j: Job) => j.state === 'failed'
-
-/** The selected job's events, newest last. The running job's are the ones on the board. */
-export function eventsFor(j: Job): { time: string; word: string; note?: string; now?: boolean }[] {
-  if (j.id === '7f3a·0412')
-    return [
-      { time: '11:01:52', word: 'queued' },
-      { time: '11:02:01', word: 'claimed', note: 'by laptop-gpu' },
-      { time: '11:02:02', word: 'running', note: 'base score 44 gates' },
-      { time: '11:04:10', word: 'accepted', note: 'round 1 · 44 to 40 gates' },
-      { time: '11:06:02', word: 'accepted', note: 'round 2 · 40 to 36 gates' },
-      { time: '11:07:48', word: 'parsed', note: 'round 3 · 36 to 33 gates' },
-      { time: 'now', word: 'verifying', note: 're-score and task check', now: true },
-    ]
-  const t = j.queued?.slice(0, 8) ?? j.started
-  const worker = j.worker?.split(' · ')[0] ?? 'worker'
-  const base = [{ time: t, word: 'queued' }]
-  if (j.state === 'queued') return [...base, { time: 'now', word: 'waiting', note: j.result, now: true }]
-  if (j.state === 'cancelled') return [...base, { time: `${j.started}:00`, word: 'cancelled', note: 'by you, before a worker claimed it' }]
-  if (j.state === 'claimed') return [...base, { time: 'now', word: 'claimed', note: `by ${worker}`, now: true }]
-  const rest = [
-    { time: `${j.started}:01`, word: 'claimed', note: `by ${worker}` },
-    { time: `${j.started}:02`, word: 'running' },
-  ]
-  if (j.state === 'running') return [...base, rest[0], { time: 'now', word: 'running', note: j.result, now: true }]
-  if (j.state === 'failed') return [...base, ...rest, { time: 'end', word: 'failed', note: j.result }]
-  return [...base, ...rest, { time: 'end', word: 'done', note: j.result }]
+/** GPU off (states board): a run queued after the machine went to sleep waits in place. */
+export const QUEUED_WHILE_GPU_OFF: Job = {
+  id: '7f3d·2b10',
+  ...SIDE,
+  kind: 'improve',
+  state: 'queued',
+  started: '11:45',
+  duration: 'not started',
+  gates: '',
+  result: 'waiting for GPU · position 2',
+  day: 'today',
+  fixes: 'none yet · waiting for GPU',
 }
 
-/** Older runs, shown after Load earlier runs (the same runs the intake and export screens list). */
-export const EARLIER: Job[] = [
-  { id: '5a02·0371', item: 'packing_qaoa_p2', file: 'sidechain_qaoa.qasm', kind: 'score', state: 'done', started: '13:12', duration: '38 s', result: '44 gates · score only', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 13:12:04 · waited 1 s' },
-  { id: '4e77·0350', item: 'sbox_oracle', file: 'sbox_layer_4x.qasm', kind: 'score', state: 'done', started: '11:47', duration: '2 m 01 s', result: '118 gates · score only', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 11:47:30 · waited 2 s' },
-  { id: '4e70·0344', item: 'grover_5q', file: 'grover_5q.qasm', kind: 'score', state: 'done', started: '10:05', duration: '21 s', result: '18 gates · none open', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 10:05:12 · waited 1 s' },
-  { id: '4e6a·0339', item: 'qft_8', file: 'qft_8.qasm', kind: 'score', state: 'done', started: '09:40', duration: '52 s', result: '56 gates · 3 findings, 1 high', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 09:40:21 · waited 1 s' },
-  { id: '4e66·0331', item: 'vqe_h2_4q', file: 'vqe_h2_4q.qasm', kind: 'score', state: 'done', started: '09:12', duration: '19 s', result: '6 gates · 1 finding, info', day: 'earlier', worker: 'laptop-cpu · local', queued: 'Oct 8 09:12:47 · waited 1 s' },
-]
+/** The failed run's detail line (error copy: what failed, the code, where, the fix). */
+export const FAILURE: Record<string, { code: string; where: string; fix: string }> = {
+  '7f39·5b08': {
+    code: 'Q501',
+    where: 'worker stopped at compile · seed 3 of 8 · 09:56',
+    fix: 'The GPU machine went to sleep mid-run. Requeue it, or switch to Laptop.',
+  },
+}
+
+export const ITEMS = ['sidechain_qaoa.qasm', 'sbox_oracle.qasm'] as const
+export const STATES: JobState[] = ['running', 'queued', 'done', 'failed', 'cancelled']

@@ -1,0 +1,31 @@
+schema: qscore.project/v0.2
+project:
+  name: engine-to-hf-bridge
+  root: .
+defaults:
+  target: {backend: line-7, calibration: none}
+  objective:
+    primary: two_qubit_count
+    direction: minimize
+    constraints: []
+    report: [depth]
+  execution:
+    device: cpu
+    transpiler_seeds: [11]
+    seed_simulator: 1234
+  budget:
+    wall_time_s: 60
+    gpu_time_s: 0
+    max_rounds: 1
+    max_proposals: 1
+    layer_timeout_s: 60
+  privacy: {external_inference: true, send_region_only: true}
+circuits:
+  - id: commuting_chain
+    source: {qasm: circuit.qasm}
+    invariants: {intent: exact_unitary, global_phase: ignore}
+    permitted:
+      changes: [commuting_reorder]
+      scope: region
+      ancillas: {add: 0, reuse: true}
+      approximation: none

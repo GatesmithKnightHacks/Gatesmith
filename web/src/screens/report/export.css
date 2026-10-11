@@ -1,374 +1,335 @@
-/* ── S-10 layout ─────────────────────────────────────────────────────── */
-.ex-content {
-  flex-direction: row;
-}
-.ex-left {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
-  flex: 1 1 0;
-  min-width: 0;
-}
-.ex-files > .tile-body {
-  flex: 0 0 auto;
-}
-.ex-code {
-  flex: 1 1 0;
-}
-.ex-action {
-  flex-shrink: 0;
-  width: 400px;
-}
-.ex-action > .tile-body {
-  overflow: hidden;
-}
+/* S-10 · Export, measured from board 1NPN-0 and its states board 1RNK-0. */
 
-/* ── Files table ─────────────────────────────────────────────────────── */
-.ex-table {
+/* ── Files ─────────────────────────────────────────────────────────────── */
+.ex-files-body {
+  gap: var(--spacing-3);
+  padding: var(--spacing-1) var(--spacing-3) var(--spacing-3);
+}
+.ex-stage {
+  padding-top: var(--spacing-2);
+}
+.ex-files {
   display: flex;
   flex-direction: column;
-  padding: 4px 12px 12px;
+  flex-shrink: 0;
 }
-.ex-tr {
+.ex-file {
+  position: relative;
   display: flex;
   align-items: center;
+  gap: 10px;
   flex-shrink: 0;
-  height: 40px;
+  height: 46px;
+  padding-left: 10px;
   border-bottom: 1px solid var(--color-surface-app);
+  cursor: pointer;
 }
-.ex-tr.is-last {
-  border-bottom: 0;
+.ex-file.is-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 2px;
+  height: 32px;
+  background: var(--color-signal-select);
 }
-.ex-th {
-  height: 28px;
-  color: var(--color-text-tertiary);
-  font-size: var(--text-label);
-  line-height: 14px;
-}
-.ex-c-icon {
-  flex-shrink: 0;
-  width: 26px;
-}
-.ex-c-name {
-  flex: 1 1 0;
-  min-width: 0;
-}
-.ex-c-size {
-  flex-shrink: 0;
-  width: 80px;
-  text-align: right;
-}
-.ex-c-sha {
-  flex-shrink: 0;
-  width: 110px;
-  text-align: right;
-}
-.ex-file .ex-c-sha {
-  color: var(--color-text-secondary);
-}
-.ex-c-action {
-  display: flex;
-  justify-content: flex-end;
-  flex-shrink: 0;
-  width: 100px;
+.ex-file.is-loading {
+  cursor: default;
 }
 .ex-file-name {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  width: 158px;
+}
+.ex-file-title {
+  color: var(--color-text-primary);
+  line-height: 16px;
+  white-space: nowrap;
 }
 .ex-file-note {
   color: var(--color-text-tertiary);
   font-size: var(--text-label);
   line-height: 14px;
+  white-space: nowrap;
 }
-.ex-saved,
-.ex-done {
-  display: inline-flex;
-  align-items: center;
+.ex-file-name > * + * {
+  margin-top: -2px;
+}
+.ex-file-size {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  width: 54px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.ex-file-hash {
+  flex-shrink: 0;
+  width: 104px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ex-file-flag {
+  animation: rp-fade-in var(--rp-tile) ease both;
+}
+.ex-file-flag.is-saved {
+  color: var(--color-text-primary) !important;
+}
+.ex-file-action {
+  display: flex;
+  flex-shrink: 0;
+}
+/* Retry keeps its width while it works: the spinner takes a reserved slot (DS-08 R6) */
+.ex-retry {
+  gap: var(--spacing-1);
+  width: 84px;
+}
+.ex-retry:disabled {
+  color: var(--color-text-primary);
+}
+.ex-retry-slot {
+  display: flex;
+}
+.ex-retry-slot:empty {
+  display: none;
+}
+.ex-preview {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  padding: 4px 0;
-  color: var(--color-signal-good);
-  animation: ex-swap var(--motion-fast) var(--ease-enter) both;
+  flex: 1 1 0;
+  min-height: 0;
 }
-.ex-done {
-  color: var(--color-text-secondary);
-}
-@keyframes ex-swap {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-}
-
-/* ── Code tile ───────────────────────────────────────────────────────── */
-.ex-code-bar {
+.ex-preview-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-4);
   flex-shrink: 0;
-  padding: var(--spacing-3);
+  height: 16px;
 }
-.ex-code-lead {
-  color: var(--color-text-secondary);
-}
-.ex-converting {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  color: var(--color-text-primary);
-}
-.ex-left-time {
+.ex-preview-meta {
   color: var(--color-text-tertiary);
   font-size: var(--text-label);
-}
-.ex-code-block {
-  display: flex;
-  flex: 1 1 0;
-  min-height: 0;
-  margin: 0 12px 12px;
-  padding-block: 10px;
-  overflow: clip;
-  background: var(--color-surface-inset);
-}
-.ex-gutter {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  width: 40px;
-  padding-right: 12px;
-  text-align: right;
-  color: var(--color-text-disabled);
-  line-height: 20px;
-}
-.ex-code-text {
-  flex: 1 1 0;
-  color: var(--color-text-primary);
-  font-size: var(--text-body);
-  line-height: 20px;
-  white-space: pre;
-  animation: ex-code-in var(--motion-base) var(--ease-enter) both;
-}
-@keyframes ex-code-in {
-  from {
-    opacity: 0;
-  }
+  line-height: 14px;
+  white-space: nowrap;
 }
 
-/* ── Action tile ─────────────────────────────────────────────────────── */
-.ex-action-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
+/* ── Qiskit code ───────────────────────────────────────────────────────── */
+.ex-qiskit-body {
+  gap: 10px;
   padding: var(--spacing-3);
 }
-.ex-action-title {
-  color: var(--color-text-primary);
-  font-size: var(--text-base);
-  font-weight: var(--font-weight-medium);
-  line-height: 20px;
+.ex-convert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  height: 24px;
 }
-.ex-action-lead {
-  color: var(--color-text-secondary);
-  line-height: 18px;
+.ex-convert-meta {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
 }
-.ex-repo {
+.ex-convert-stage {
   display: flex;
   align-items: center;
   gap: var(--spacing-2);
-  padding: 8px 12px;
-  border-radius: var(--radius-xs);
-  background: var(--color-surface-inset);
-}
-.ex-repo-name {
   flex: 1 1 0;
-  color: var(--color-text-primary);
+  min-width: 0;
 }
-.ex-repo-branch {
+.ex-convert-estimate {
+  flex-shrink: 0;
   color: var(--color-text-tertiary);
   font-size: var(--text-label);
   line-height: 14px;
 }
-.ex-repo-input {
+
+/* ── GitHub Action ─────────────────────────────────────────────────────── */
+.ex-action {
+  flex: 0 0 364px;
+}
+.ex-action-body {
+  flex-direction: row;
+  padding: var(--spacing-3);
+}
+.ex-card {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-surface-selected);
+  background: var(--color-surface-raised);
+}
+.ex-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+  width: var(--container-inspector);
+  padding: 14px var(--spacing-4);
+}
+.ex-card-title {
   display: flex;
   align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+  white-space: nowrap;
+}
+.ex-card-title .rp-mark {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-primary) !important;
+}
+.ex-card-desc {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.ex-facts {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding-top: var(--spacing-1);
+}
+.ex-fact {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 24px;
+  border-bottom: 1px solid var(--color-surface-selected);
+}
+.ex-fact-label {
+  flex-shrink: 0;
+  width: 72px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.ex-fact-value {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.ex-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.ex-card-hint {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ex-add:disabled {
+  opacity: 0.3;
+  color: var(--color-text-primary);
+}
+.ex-card-code {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) 0;
+}
+.ex-repo {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+}
+.ex-repo-input {
+  flex: 1 1 0;
+  min-width: 0;
   height: 26px;
   padding-inline: var(--spacing-2);
   border-radius: var(--radius-xs);
   border: 1px solid var(--color-border-control);
   background: var(--color-surface-control);
+  color: var(--color-text-primary);
+  transition: border-color var(--rp-hover) ease;
+}
+.ex-repo-input::placeholder {
   color: var(--color-text-disabled);
 }
-.ex-yaml {
-  margin: 0 12px;
-  padding: var(--spacing-3);
-  background: var(--color-surface-inset);
-  color: var(--color-text-primary);
-  font-size: var(--text-body);
-  line-height: 20px;
-  white-space: pre;
-}
-.ex-action-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-  padding: var(--spacing-3);
-}
-.ex-bullet {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  color: var(--color-text-secondary);
-}
-.ex-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-.ex-buttons {
-  display: flex;
-  gap: var(--spacing-2);
-}
-.ex-added {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-  animation: ex-swap var(--motion-base) var(--ease-enter) both;
-}
-.ex-added-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-text-primary);
-  font-size: var(--text-base);
-  font-weight: var(--font-weight-medium);
-  line-height: 20px;
-}
-.ex-error-word {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--color-signal-bad);
-}
-.ex-error-code {
-  color: var(--color-text-tertiary);
-  font-size: var(--text-label);
-}
-.ex-muted {
-  color: var(--color-text-secondary);
-}
-.ex-preview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-  margin: 0 12px 12px;
-  padding: var(--spacing-3);
-  border-radius: var(--radius-base);
-  border: 1px solid var(--color-border-subtle);
-  text-align: left;
-  transition: border-color var(--motion-instant) var(--ease-standard);
-}
-.ex-preview:hover {
-  border-color: var(--color-border-control);
-}
-.ex-preview-label {
-  color: var(--color-text-tertiary);
-  font-size: var(--text-label);
-  line-height: 14px;
-}
-.ex-preview-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.ex-preview-passed {
-  color: var(--color-action-primary);
-}
-.ex-preview-row {
-  display: flex;
-  justify-content: space-between;
-  color: var(--color-text-primary);
-}
-.ex-severity {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-  padding: 4px 12px 12px;
-}
-.ex-severity-label {
-  color: var(--color-text-tertiary);
-  font-size: var(--text-label);
-  line-height: 14px;
-}
-.ex-sev-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-}
-.ex-sev-word {
-  flex-shrink: 0;
-  width: 64px;
-}
 
-/* ── Inspector ───────────────────────────────────────────────────────── */
+/* ── Inspector: upload opt-in and the saved line ───────────────────────── */
 .ex-check {
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-2);
   flex-shrink: 0;
-  height: 28px;
-  border-top: 1px solid var(--color-surface-app);
+  height: 16px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
 }
-.ex-check-text {
-  flex: 1 1 0;
+.ex-check input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.ex-check-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-control);
+}
+.ex-check input:focus-visible + .ex-check-box {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.ex-check input:disabled ~ * {
+  opacity: 0.3;
+}
+.ex-saved {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 16px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  animation: rp-fade-in var(--rp-tile) ease both;
+}
+.ex-saved-handle {
   color: var(--color-text-primary);
 }
-.ex-check-value {
-  color: var(--color-text-secondary);
-}
-.ex-sha {
+.ex-pr {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  gap: 2px;
+  padding-top: 6px;
 }
-.ex-sha-cmd {
-  display: flex;
-  align-items: center;
-  height: 32px;
-  padding-inline: var(--spacing-3);
-  border-radius: var(--radius-xs);
-  background: var(--color-surface-inset);
-  color: var(--color-text-primary);
-}
-.ex-run {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  flex-shrink: 0;
-  height: 28px;
-  border-top: 1px solid var(--color-surface-app);
+.ex-pr-label {
   color: var(--color-text-secondary);
 }
-.ex-run-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--color-text-disabled);
-  flex-shrink: 0;
-}
-.ex-run.is-current .ex-run-dot {
-  background: var(--color-text-primary);
-}
-.ex-run-id {
-  flex-shrink: 0;
-  width: 76px;
-}
-.ex-run.is-current .ex-run-id,
-.ex-run.is-current .ex-run-value {
+.ex-pr-title {
   color: var(--color-text-primary);
+  line-height: 18px;
+  white-space: nowrap;
 }
-.ex-run-when {
+.ex-facts.is-added .ex-fact-label {
+  width: 96px;
+}
+.ex-card.is-no-repo .ex-card-main {
   flex: 1 1 0;
+  width: auto;
 }

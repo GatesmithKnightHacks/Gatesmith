@@ -1,504 +1,522 @@
-import { useEffect, useState, type ReactNode } from 'react'
+/*
+ * S-03 · Pre-flight (Paper 175Y-0, states 1ODU-0). What the engine understood, the plan and its cost,
+ * and the validation. Nothing runs until "Confirm and score". Auto mode is off in the canonical run
+ * (the user accepts each verified fix).
+ * States at #/preflight?state=issues | rejected | impractical | loading | offline | gpu-off | focus.
+ */
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
-import { actions, useRun } from '../data/run'
-import { Chevron } from '../ui/icons'
-import { EditorButton, Field, FieldRow, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Switch, Tile } from '../ui/parts'
-import { Content, GpuStatus, Shell, TabStrip } from '../ui/Shell'
-import { QaoaCircuit } from './intake/QaoaCircuit'
-import './intake/intake.css'
-import './intake/s01.css'
+import { GPU_OFF_MESSAGE } from '../data/demo'
+import { actions } from '../data/run'
+import { EditorButton, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
+import { GpuStatus, Shell, AccountMark } from '../ui/Shell'
+import { SboxCanvas, SidechainCanvas } from './intake/canvases'
+import { Banner, Facts, Glyph, InspSection, IntakeTabs, RunBlock, Shim, Spinner } from './intake/kit'
+import { useOnline } from './intake/online'
 import './intake/s03.css'
 
-const FACTS_L = [
-  ['Qubits', '12 q'],
-  ['Gates', '72'],
-  ['Two-qubit gates', '44'],
-  ['Depth', '58'],
-]
-const FACTS_R = [
-  ['Intent', 'expectation'],
-  ['Item', 'packing_qaoa_p2'],
-  ['Measured', '12 of 12 q'],
-  ['Format', 'OpenQASM 2.0'],
-]
-const PLAN = [
-  ['Device', 'FakeTorino · 133 q'],
-  ['Method', 'statevector · double'],
-  ['Memory', '64 KB of 31 GB'],
-  ['Seeds', '11 23 37 41 53 67 79 97'],
-  ['Estimated time', 'about 40 s to score'],
-  ['Not checked', 'mirror_score · hardware runs'],
-]
-/* Two states are about a different, larger circuit; the whole screen follows it. */
-type Subject = {
-  file: string
-  line: string
-  caption: string
-  canvas: [string, string]
-  facts: [string[][], string[][]]
-  plan: string[][]
-  badPlan: string[]
-  assumptions: string[][]
-  lead: string
-}
-const SUBJECTS: Record<'rejected' | 'impractical', Subject> = {
-  rejected: {
-    file: 'sidechain_qaoa_xl.qasm',
-    line: 'Runs on this machine · CPU, 41 q does not fit',
-    caption: 'A 41-qubit, two-layer QAOA for side-chain packing. It is too large to simulate on this machine, so nothing can run until it is smaller.',
-    canvas: ['41 q · not drawn', 'larger than the 31 q this machine simulates'],
-    facts: [
-      [
-        ['Qubits', '41 q'],
-        ['Gates', '296'],
-        ['Two-qubit gates', '180'],
-        ['Depth', '214'],
-      ],
-      [
-        ['Intent', 'expectation'],
-        ['Item', 'packing_qaoa_xl'],
-        ['Measured', '41 of 41 q'],
-        ['Format', 'OpenQASM 2.0'],
-      ],
-    ],
-    plan: [
-      ['Device', 'FakeTorino · 133 q'],
-      ['Method', 'statevector · double'],
-      ['Memory', '32 TB of 31 GB'],
-      ['Seeds', '11 23 37 41 53 67 79 97'],
-      ['Estimated time', 'not feasible'],
-      ['Not checked', 'everything · blocked by Q301'],
-    ],
-    badPlan: ['Memory', 'Estimated time'],
-    assumptions: [
-      ['Bit order', 'Little-endian: q0 is the rightmost bit.'],
-      ['Measurement', 'All 41 qubits, read as one 41-bit string from c[41].'],
-      ['Equivalence', 'Not checked: 41 q is past every exact method here.'],
-    ],
-    lead: 'Nothing can be scored until the circuit fits in 31 q.',
-  },
-  impractical: {
-    file: 'sidechain_qaoa_30.qasm',
-    line: 'Runs on this machine · CPU, 30 q fits, slowly',
-    caption: 'A 30-qubit, two-layer QAOA for side-chain packing. It fits, but every exact check takes minutes, so rounds will be slow.',
-    canvas: ['30 q · drawn after scoring', 'too dense to read at this size'],
-    facts: [
-      [
-        ['Qubits', '30 q'],
-        ['Gates', '186'],
-        ['Two-qubit gates', '112'],
-        ['Depth', '140'],
-      ],
-      [
-        ['Intent', 'expectation'],
-        ['Item', 'packing_qaoa_30'],
-        ['Measured', '30 of 30 q'],
-        ['Format', 'OpenQASM 2.0'],
-      ],
-    ],
-    plan: [
-      ['Device', 'FakeTorino · 133 q'],
-      ['Method', 'statevector · double'],
-      ['Memory', '16 GB of 31 GB'],
-      ['Seeds', '11 23 37 41 53 67 79 97'],
-      ['Estimated time', 'about 9 min per verify'],
-      ['Not checked', 'mirror_score · 2 unaffordable metrics'],
-    ],
-    badPlan: [],
-    assumptions: [
-      ['Bit order', 'Little-endian: q0 is the rightmost bit.'],
-      ['Measurement', 'All 30 qubits, read as one 30-bit string from c[30].'],
-      ['Equivalence', 'Random-state sampling only; exact checks stop at 12 q.'],
-    ],
-    lead: 'Scores 8 seeds against D01 to D10 in about 6 min.',
-  },
+type S03State = 'clean' | 'issues' | 'rejected' | 'impractical' | 'loading' | 'offline' | 'gpu-off' | 'focus'
+type Circuit = 'sidechain' | 'sbox' | 'lattice'
+
+const SECONDS_PER_ROUND = 90
+
+const CHECKS: Record<Exclude<Circuit, 'lattice'>, [string, string, string][]> = {
+  sidechain: [
+    ['parse', 'OpenQASM 2.0 read in full · 88 lines · 12 q', 'sidechain_qaoa.qasm:1'],
+    ['width', '12 qubits fit the 34 qubit simulation limit', 'sidechain_qaoa.qasm:4'],
+    ['basis', 'Every gate compiles to cz rz sx x', 'target.basis'],
+    ['manifest', 'qscore.yaml matches the schema', 'qscore.yaml'],
+    ['task', 'Expectation task names its observable, cost_hamiltonian', 'qscore.yaml:7'],
+    ['budget', '8 seeds and 4 rounds fit the 900 s wall time', 'qscore.yaml:22'],
+    ['metrics', 'two_qubit_count can be computed on FakeTorino', 'qscore.yaml:16'],
+  ],
+  sbox: [
+    ['parse', 'OpenQASM 2.0 read in full · 214 lines · 20 q', 'sbox_oracle.qasm:1'],
+    ['width', '20 qubits fit the 34 qubit simulation limit', 'sbox_oracle.qasm:4'],
+    ['basis', 'Every gate compiles to cz rz sx x', 'target.basis'],
+    ['manifest', 'qscore.yaml matches the schema', 'qscore.yaml'],
+    ['task', 'Reversible task checks every input', 'qscore.yaml:7'],
+    ['budget', '8 seeds and 4 rounds fit the 900 s wall time', 'qscore.yaml:22'],
+    ['metrics', 'two_qubit_count can be computed on FakeTorino', 'qscore.yaml:16'],
+  ],
 }
 
-const CHECKS = [
-  ['OpenQASM 2.0 parses', '20 lines'],
-  ['Manifest matches the circuit', '12 q · 12 c'],
-  ['Fits on the target', '12 of 133 q'],
-  ['Simulable on this machine', '12 of 31 q'],
-]
-const ASSUMPTIONS = [
-  ['Bit order', 'Little-endian: q0 is the rightmost bit.'],
-  ['Measurement', 'All 12 qubits, read as one 12-bit string from c[12].'],
-  ['Equivalence', 'Operator check up to global phase, exact at 12 q.'],
-]
-const DIAGNOSTICS = [
-  ['D01', 'Routing adds more gates than the circuit needs'],
-  ['D02', 'Results vary between seeds'],
-  ['D03', 'Gates that commute and can be reordered'],
-  ['D04', 'Blocks that resynthesize into fewer gates'],
-]
-const RESOURCES = [
-  ['CPU', '8 cores · 40 s'],
-  ['GPU', 'needed from round 1 · online'],
-  ['Platform queue', 'not used in laptop mode'],
-]
-const COST = [
-  ['QPU time per run', '4.2 s · 4,000 shots'],
-  ['Cost per run', '$6.72 at $96/min'],
-  ['100 runs', '$672'],
-]
-
-type S03State = 'none' | 'validating' | 'issues' | 'rejected' | 'impractical' | 'offline' | 'gpu-off'
-
-const sec = { fill: 'none', stroke: '#FFFFFF', strokeWidth: 1.4 } as const
 const icons = {
-  clock: (
+  budget: (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <circle cx="9" cy="9" r="6.5" {...sec} />
-      <path d="M9 5.5V9l2.5 1.5" {...sec} strokeLinecap="round" />
+      <circle cx="9" cy="9" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M9 5.5V9l2.5 1.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   ),
-  chip: (
+  item: (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <rect x="3" y="3" width="12" height="12" rx="1.5" {...sec} />
-      <path d="M6.5 6.5h5v5h-5z" {...sec} />
+      <path d="M4.5 2.5h6l3 3v10h-9z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M10.5 2.5v3h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
-  dollar: (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <circle cx="9" cy="9" r="6.5" {...sec} />
-      <path
-        d="M9 4.8v8.4M11 6.6H8.2a1.4 1.4 0 0 0 0 2.8h1.6a1.4 1.4 0 0 1 0 2.8H7"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+  high: (
+    <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden>
+      <path d="M7 2v6M7 11v.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  ),
+  caret: (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
+      <path d="M2 3.5L5 6.5l3-3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
   check: (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M3 7.5l2.5 2.5L11 4.5" fill="none" stroke="#C2DADF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden>
+      <path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
-  cross: (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
-  warn: (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  ),
-  power: (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M7 2v4.5M4.2 4a4.2 4.2 0 105.6 0" fill="none" stroke="#C2DADF" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  ),
-}
-
-/** A collapsible inspector section whose header lives inside the padded body (S-03 Resources and Cost). */
-function InsetSection({ icon, title, meta, children }: { icon: ReactNode; title: string; meta?: string; children: ReactNode }) {
-  const [open, setOpen] = useState(true)
-  return (
-    <section className="s03-inset-section">
-      <button className="s03-inset-header" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {icon}
-        <span className="insp-section-title">{title}</span>
-        {meta && <span className="insp-section-meta">{meta}</span>}
-        <span className={`s01-chevron${open ? '' : ' is-closed'}`}>
-          <Chevron open />
-        </span>
-      </button>
-      <div className={`s01-collapse${open ? ' is-open' : ''}`}>
-        <div className="s01-collapse-inner">{children}</div>
-      </div>
-    </section>
-  )
-}
-
-function BudgetSection({ auto, setAuto }: { auto: boolean; setAuto: (v: boolean) => void }) {
-  const [open, setOpen] = useState(true)
-  return (
-    <section className="insp-section">
-      <button className="insp-section-header" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {icons.clock}
-        <span className="insp-section-title">Budget</span>
-        <span className={`s01-chevron${open ? '' : ' is-closed'}`}>
-          <Chevron open />
-        </span>
-      </button>
-      <div className={`s01-collapse${open ? ' is-open' : ''}`}>
-        <div className="s01-collapse-inner">
-          <div className="s03-fields">
-            <FieldRow label="Target">
-              <Field value="FakeTorino" select />
-            </FieldRow>
-            <FieldRow label="Seeds">
-              <Field value="8" unit="seeds" />
-            </FieldRow>
-            <FieldRow label="Max rounds">
-              <Field value="4" unit="rounds" />
-            </FieldRow>
-            <FieldRow label="Wall time">
-              <Field value="900" unit="s" />
-            </FieldRow>
-            <FieldRow label="Layers">
-              <Field value="reference · local" select />
-            </FieldRow>
-            <div className="s03-auto">
-              <Switch on={auto} onChange={setAuto} label="Auto mode" />
-              <span>Auto mode</span>
-              <span className="s03-auto-note">{auto ? 'on' : 'off'} · never keeps a worse circuit</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
 }
 
 export function S03Preflight() {
-  const run = useRun()
   const params = useHashParams()
-  const forced = (params.get('state') ?? 'none') as S03State
-  const [auto, setAuto] = useState(false)
-  const [mode, setMode] = useState<'laptop' | 'platform'>(forced === 'offline' ? 'platform' : 'laptop')
-  useEffect(() => setMode(forced === 'offline' ? 'platform' : 'laptop'), [forced])
+  const forced = (params.get('state') ?? 'clean') as S03State
+  return <Preflight key={forced} forced={forced} />
+}
 
-  const landed = forced === 'validating' ? 2 : run.phase === 'preflight' ? run.preflightChecks : 4
-  const validating = landed < 4
-  const blocked = forced === 'issues' || forced === 'rejected'
-  const canConfirm = !validating && !blocked
-  const subject = forced === 'rejected' || forced === 'impractical' ? SUBJECTS[forced] : null
-  const facts = subject?.facts ?? [FACTS_L, FACTS_R]
-  const plan = subject?.plan ?? PLAN
+function Preflight({ forced }: { forced: S03State }) {
+  const online = useOnline()
+  const circuit: Circuit = forced === 'rejected' ? 'lattice' : forced === 'impractical' ? 'sbox' : 'sidechain'
+  const loading = forced === 'loading'
+  const offline = forced === 'offline' || !online
+  const gpuOff = forced === 'gpu-off'
+
+  const [applied, setApplied] = useState(false)
+  const [rounds, setRounds] = useState(forced === 'issues' ? '40' : '4')
+  const [seeds, setSeeds] = useState('8')
+  const [wall, setWall] = useState('900')
+  const [auto, setAuto] = useState(false)
+  const [limits, setLimits] = useState(false)
+  const target = useRef<HTMLSelectElement>(null)
+  const firstIssue = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (forced === 'focus') target.current?.focus()
+    if (forced === 'issues') firstIssue.current?.focus()
+  }, [forced])
+
+  const highOpen = forced === 'issues' && !applied
+  const roundsOver = Number(rounds) * SECONDS_PER_ROUND > Number(wall)
+  const warnings = roundsOver ? 1 : 0
+  const blocked = highOpen || circuit === 'lattice' || loading
+
+  const file = circuit === 'sidechain' ? 'sidechain_qaoa.qasm' : circuit === 'sbox' ? 'sbox_oracle.qasm' : 'lattice_41q.qasm'
+  const item = circuit === 'sidechain' ? 'packing_qaoa_p2' : circuit === 'sbox' ? 'sbox_oracle' : 'lattice_41q'
+
+  const runLine = loading
+    ? 'Reading the circuit · about 2 s'
+    : circuit === 'lattice'
+      ? 'Nothing to confirm · the circuit is over the limit'
+      : highOpen
+        ? 'Confirm waits for 1 high issue · warnings do not block'
+        : circuit === 'sbox'
+          ? 'Runs on this machine · CPU · about 26 min'
+          : gpuOff
+            ? 'Runs on this machine · CPU · scoring about 40 s'
+            : 'Runs on this machine · CPU · about 40 s'
+
+  const validationMeta = loading
+    ? 'checking · 0 of 7 done'
+    : circuit === 'lattice'
+      ? 'rejected · 1 issue'
+      : circuit === 'sbox'
+        ? '1 issue · 1 warning · sbox_oracle.qasm'
+        : highOpen || warnings
+          ? `${(highOpen ? 1 : 0) + warnings} issue${(highOpen ? 1 : 0) + warnings === 1 ? '' : 's'} · ${highOpen ? '1 high' : '0 high'}${warnings ? ' · 1 warning' : ''}`
+          : '0 issues · 7 checks · schema qscore-2026.1'
 
   return (
     <Shell
       rail="new"
       status={
-        <>
-          <GpuStatus online={forced !== 'gpu-off'} />
-          <span className="mono topbar-job">job 7f3a·0412</span>
-        </>
+        gpuOff ? (
+          <>
+            <span className="pf-gpu-off">
+              <span className="pf-gpu-off-dot" />
+              {GPU_OFF_MESSAGE}
+            </span>
+            <AccountMark />
+          </>
+        ) : (
+          <>
+            <GpuStatus online />
+            <AccountMark />
+          </>
+        )
       }
-      tabs={
-        <TabStrip
-          tabs={[
-            { id: 'a', label: subject?.file ?? 'sidechain_qaoa.qasm', active: true },
-            { id: 'b', label: 'sbox_oracle.qasm' },
-          ]}
-        />
-      }
+      tabs={<IntakeTabs label={file} />}
       inspector={
-        <>
-          <ModeTabs active={mode} onChange={setMode} />
-          <ModeBlock line={subject?.line ?? 'Runs on this machine · CPU, 12 q fits'} />
-          <BudgetSection auto={auto} setAuto={setAuto} />
-          <div className="s03-confirm">
-            {forced === 'impractical' && (
-              <div className="s03-banner">
-                {icons.warn}
-                <div>
-                  <div className="s03-banner-title">Impractical at 30 q</div>
-                  <div className="s03-banner-text">
-                    Scoring fits, but each verify takes about 9 min and 2 metrics will be skipped as unaffordable. A smaller starting circuit gives faster rounds.
-                  </div>
-                </div>
-              </div>
-            )}
-            {forced === 'offline' && (
-              <div className="s03-banner is-row">
-                {icons.warn}
-                <span className="s03-banner-grow">The platform is offline. Your plan is saved.</span>
-                <EditorButton onClick={() => setMode('laptop')}>Use Laptop</EditorButton>
-              </div>
-            )}
-            {forced === 'gpu-off' && (
-              <div className="s03-banner is-row is-neutral">
-                {icons.power}
-                <span className="s03-banner-grow">GPU off. Scoring runs now; the local model starts when the GPU is back.</span>
-              </div>
-            )}
-            <p className="s03-confirm-lead">
-              {validating ? `Validating · ${landed} of 4 checks` : (subject?.lead ?? 'Scores 8 seeds against D01 to D10 in about 40 s.')}
-            </p>
-            <PrimaryButton onClick={() => actions.confirmAndScore()} disabled={!canConfirm} name="primary-action" style={{ paddingBlock: 0 }}>
+        <div className="ink-scope pf-insp">
+          <ModeTabs />
+          <RunBlock center line={runLine}>
+            <PrimaryButton disabled={blocked} onClick={() => actions.confirmAndScore()} name="primary-action">
               Confirm and score
             </PrimaryButton>
-            <div style={{ paddingTop: 2 }}>
-              <PoweredBy />
+          </RunBlock>
+          <InspSection icon={icons.budget} title="Budget" meta="from qscore.yaml" ruled={false} bodyClassName="pf-budget">
+            <label className="pf-field-row">
+              <span className="pf-field-label">Target</span>
+              <span className="pf-field is-select">
+                <select ref={target} className="mono" defaultValue="FakeTorino" aria-label="Target">
+                  <option value="FakeTorino">FakeTorino · 133 q</option>
+                  <option value="FakeKyiv">FakeKyiv · 127 q</option>
+                  <option value="FakeSherbrooke">FakeSherbrooke · 127 q</option>
+                </select>
+                {icons.caret}
+              </span>
+            </label>
+            <NumberField label="Seeds" unit="seeds" value={seeds} onChange={setSeeds} />
+            <NumberField label="Max rounds" unit="rounds" value={rounds} onChange={setRounds} warn={roundsOver} />
+            <NumberField label="Wall time" unit="s" value={wall} onChange={setWall} warn={roundsOver} />
+            {roundsOver && (
+              <div className="pf-field-msg ink-fade-in" role="status">
+                about {SECONDS_PER_ROUND} s per round · {rounds} rounds need {Number(rounds) * SECONDS_PER_ROUND} s
+              </div>
+            )}
+            <div className="pf-check-row">
+              <button role="checkbox" aria-checked={auto} className={`pf-checkbox${auto ? ' is-on' : ''}`} onClick={() => setAuto((a) => !a)} aria-label="Auto mode">
+                {auto && icons.check}
+              </button>
+              <span>Auto mode · never keeps a worse circuit</span>
             </div>
-          </div>
-          <InsetSection icon={icons.chip} title="Resources">
-            {RESOURCES.map(([k, v], i) => (
-              <div key={k} className={`s03-row${i === RESOURCES.length - 1 ? ' is-last' : ''}`}>
-                <span className="s03-row-label">{k}</span>
-                <span className="mono s03-row-value">{forced === 'gpu-off' && k === 'GPU' ? 'off · local waits' : v}</span>
-              </div>
-            ))}
-          </InsetSection>
-          <InsetSection icon={icons.dollar} title="What it costs today" meta="estimate · before fixes">
-            {COST.map(([k, v], i) => (
-              <div key={k} className={`s03-row${i === COST.length - 1 ? ' is-last' : ''}`}>
-                <span className="s03-row-label">{k}</span>
-                <span className="mono s03-row-value">{v}</span>
-              </div>
-            ))}
-            <p className="s03-cost-note">Scoring tells you how much of this the fixes can save.</p>
-          </InsetSection>
-        </>
+          </InspSection>
+          <InspSection icon={icons.item} title="Item" meta={`item id ${item}`}>
+            <Facts
+              topRule={false}
+              labelWidth={84}
+              rows={
+                circuit === 'sidechain'
+                  ? [
+                      ['Source', 'qlab/sidechain-packing@4e1c2a9'],
+                      ['Circuit', 'circuits/sidechain_qaoa.qasm'],
+                      ['Manifest', 'qscore.yaml · 9c41…e07b'],
+                      ['Job', 'created on confirm'],
+                    ]
+                  : circuit === 'sbox'
+                    ? [
+                        ['Source', 'bundled example'],
+                        ['Circuit', 'sbox_oracle.qasm'],
+                        ['Manifest', 'qscore.yaml · drafted'],
+                        ['Job', 'created on confirm'],
+                      ]
+                    : [
+                        ['Source', 'dropped file'],
+                        ['Circuit', 'lattice_41q.qasm'],
+                        ['Manifest', 'qscore.yaml · drafted'],
+                        ['Job', 'not created · rejected'],
+                      ]
+              }
+            />
+          </InspSection>
+        </div>
       }
     >
-      <Content className="s03-content">
-        <Tile
-          className="s03-interp"
-          tabs={[{ id: 'interp', label: 'Interpretation', active: true }]}
-          meta={<span className="ik-meta-mono">what the engine understood</span>}
-        >
-          <div className="s03-canvas-slot">
-            <div className="s03-canvas" style={{ viewTransitionName: 'circuit-canvas' }}>
-              {subject ? (
-                <div className="s03-canvas-empty">
-                  <div className="mono s03-canvas-empty-title">{subject.canvas[0]}</div>
-                  <div className="s03-canvas-empty-sub">{subject.canvas[1]}</div>
-                </div>
-              ) : (
-                <QaoaCircuit />
-              )}
-            </div>
-          </div>
-          <div className="s03-caption">
-            <p className="s03-caption-text">
-              {subject?.caption ??
-                'A 12-qubit, two-layer QAOA for side-chain packing. Gatesmith will estimate its expectation value and cut two-qubit gates without changing the answer.'}
-            </p>
-            <div className="s03-facts">
-              {facts.map((col, ci) => (
-                <div key={ci} className="s03-facts-col">
-                  {col.map(([k, v], i) => (
-                    <div key={k} className={`s03-row${i === col.length - 1 ? ' is-last' : ''}`}>
-                      <span className="s03-row-label">{k}</span>
-                      <span className="mono s03-row-value">{v}</span>
-                    </div>
+      <div className="pf-tiles ink-scope">
+        <div className="pf-top">
+          {/* ── Interpretation ── */}
+          <Tile
+            className="pf-interp"
+            tabs={[{ id: 'interp', label: 'Interpretation', active: true }]}
+            meta={<span className="mono">step 3 of 3 · what the engine understood</span>}
+            bodyClassName="pf-interp-body"
+          >
+            <div className="pf-canvas">
+              {loading ? (
+                <div className="pf-canvas-wait" aria-hidden>
+                  {[240, 200, 256, 176, 232, 208].map((w) => (
+                    <Shim key={w} w={w} />
                   ))}
                 </div>
-              ))}
+              ) : circuit === 'lattice' ? (
+                <div className="pf-canvas-empty">
+                  <span>Not drawn · 41 qubits is over the 34 qubit simulation limit</span>
+                </div>
+              ) : circuit === 'sbox' ? (
+                <SboxCanvas />
+              ) : (
+                <SidechainCanvas />
+              )}
             </div>
-          </div>
-        </Tile>
-        <div className="s03-right">
-          <Tile
-            className="s03-plan"
-            tabs={[{ id: 'plan', label: 'Plan', active: true }]}
-            meta={<span className="ik-meta-mono">nothing runs until you confirm</span>}
-            bodyClassName="s03-plan-body"
-          >
-            {plan.map(([k, v], i) => (
-              <div key={k} className={`s03-plan-row${i === plan.length - 1 ? ' is-last' : ''}`}>
-                <span className="s03-row-label">{k}</span>
-                <span className={`mono s03-row-value${subject?.badPlan.includes(k) ? ' is-bad' : ''}`}>{v}</span>
+            {loading ? (
+              <div className="pf-caption is-stage" role="status">
+                <Spinner size={14} />
+                <span className="pf-stage-word">Reading the circuit</span>
+                <span className="mono pf-stage-detail">line 48 of 88</span>
+                <span className="mono pf-stage-est">about 2 s</span>
               </div>
-            ))}
-          </Tile>
-          <Tile
-            className="s03-validation"
-            tabs={[{ id: 'validation', label: 'Validation', active: true }]}
-            meta={<span className="ik-meta-mono">{validating ? `${landed} of 4 checks` : blocked ? 'one pass · 0.4 s · blocked' : 'one pass · 0.4 s'}</span>}
-            bodyClassName="s03-validation-body"
-          >
-            {forced === 'issues' ? (
-              <Issues />
-            ) : forced === 'rejected' ? (
-              <Rejected />
             ) : (
-              <>
-                <div className="s03-verdict">
-                  {validating ? <span className="s03-dot is-running" /> : icons.check}
-                  <span className="s03-verdict-title">{validating ? 'Checking' : 'No issues'}</span>
-                  <span className="mono s03-meta">manifest sha 3f9a1c07</span>
-                </div>
-                <div className="s03-checks">
-                  {CHECKS.map(([text, meta], i) => {
-                    const done = i < landed
-                    const running = i === landed && validating
-                    return (
-                      <div key={text} className={`s03-check${done ? ' is-done' : running ? ' is-running' : ' is-pending'}`}>
-                        <span className="mono s03-check-mark">{done ? '✓' : running ? '●' : '○'}</span>
-                        <span className="s03-check-text">{text}</span>
-                        <span className="mono s03-meta">{done ? meta : running ? 'checking' : ''}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-            <div className="s03-block">
-              <div className="s03-block-title">Assumptions the engine made</div>
-              {(subject?.assumptions ?? ASSUMPTIONS).map(([k, v]) => (
-                <div key={k} className="s03-assume">
-                  <span className="s03-assume-k">{k}</span>
-                  <span className="s03-assume-v">{v}</span>
-                </div>
-              ))}
-            </div>
-            <div className="s03-block">
-              <div className="s03-block-head">
-                <span className="s03-block-title is-inline">What scoring will look for</span>
-                <span className="mono s03-meta">D01 to D10</span>
+              <div className="pf-caption mono">
+                {circuit === 'sidechain'
+                  ? '12 qubits · QAOA p = 2 · expectation · 2 commuting blocks'
+                  : circuit === 'sbox'
+                    ? '20 qubits · reversible · 100 toffoli gates'
+                    : '41 qubits · lattice model · over the limit'}
               </div>
-              {DIAGNOSTICS.map(([k, v]) => (
-                <div key={k} className="s03-diag">
-                  <span className="mono s03-diag-k">{k}</span>
-                  <span className="s03-diag-v">{v}</span>
-                </div>
-              ))}
-              <button className="s03-diag is-more" onClick={() => navigate(ROUTES.template)}>
-                <span className="mono s03-diag-k">D05+</span>
-                <span className="s03-diag-v">Six more checks, listed in Docs</span>
-              </button>
-            </div>
+            )}
+          </Tile>
+
+          {/* ── Plan ── */}
+          <Tile
+            className="pf-plan"
+            tabs={[{ id: 'plan', label: 'Plan', active: true }]}
+            meta={<span className="mono">{loading ? 'waits for the circuit' : 'estimate · reference-qiskit'}</span>}
+            bodyClassName="pf-plan-body"
+          >
+            <Plan circuit={circuit} loading={loading} seeds={seeds} />
           </Tile>
         </div>
-      </Content>
+
+        {/* ── Validation ── */}
+        <Tile
+          className="pf-validation"
+          tabs={[{ id: 'validation', label: 'Validation', active: true }]}
+          meta={<span className="mono">{validationMeta}</span>}
+          bodyClassName="pf-val-body"
+        >
+          {offline && (
+            <Banner tone="warn" word="offline">
+              <span className="ink-banner-grow">You are offline · runs stay on this machine · syncs when the network is back</span>
+            </Banner>
+          )}
+          {loading ? (
+            <ChecksTable rows={CHECKS.sidechain} loading />
+          ) : circuit === 'lattice' ? (
+            <Rejected limits={limits} onLimits={() => setLimits((v) => !v)} />
+          ) : circuit === 'sbox' ? (
+            <>
+              <Banner tone="warn" word="warning">
+                <span className="mono pf-banner-where">estimate</span>
+                <span className="ink-banner-grow">Scoring takes about 26 min on this machine</span>
+              </Banner>
+              <div className="pf-reason">
+                <div className="pf-reason-row">
+                  <span className="pf-reason-label">Reason</span>
+                  <span className="mono">1041 two-qubit gates × 8 seeds · equivalence checks on 20 q</span>
+                </div>
+                <div className="pf-reason-row">
+                  <span className="pf-reason-label">Faster</span>
+                  <span className="mono">2 seeds · about 7 min · or switch to Platform</span>
+                </div>
+              </div>
+              <ChecksTable rows={CHECKS.sbox} />
+            </>
+          ) : highOpen || roundsOver ? (
+            <>
+              {highOpen && (
+                <div className="pf-issue-wrap" ref={firstIssue} tabIndex={-1}>
+                  <div className="pf-issue is-high">
+                    <div className="pf-issue-head">
+                      <span className="pf-sev is-high">
+                        {icons.high}
+                        high
+                      </span>
+                      <span className="pf-issue-title">Unsupported gate</span>
+                      <span className="mono pf-code">(Q102)</span>
+                      <span className="mono pf-where">· sidechain_qaoa.qasm line 52, column 1</span>
+                    </div>
+                    <div>ms is not in qelib1.inc · replace it before scoring</div>
+                    <div className="pf-issue-foot">
+                      <span className="pf-hint-label">Did you mean</span>
+                      <span className="mono pf-hint">rzz(0.7854) q[0],q[1]; · same angle, in qelib1.inc</span>
+                      <EditorButton onClick={() => setApplied(true)}>Apply</EditorButton>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {roundsOver && (
+                <div className="pf-issue is-warn ink-fade-in">
+                  <div className="pf-issue-head">
+                    <span className="pf-sev is-warn">
+                      <Glyph kind="warn" />
+                      warning
+                    </span>
+                    <span className="mono pf-where">qscore.yaml line 22</span>
+                  </div>
+                  <div>
+                    max_rounds: {rounds} cannot finish inside wall_time_s: {wall}
+                  </div>
+                  <div className="pf-issue-foot">
+                    <span className="pf-hint-label">Hint</span>
+                    <span className="mono pf-hint">about {SECONDS_PER_ROUND} s per round · use 4 rounds or raise the wall time</span>
+                  </div>
+                </div>
+              )}
+              <div className="pf-passed-row">
+                <Glyph kind="check" />
+                <span>passed</span>
+                <span className="mono pf-passed-list">
+                  parse · width · manifest · task · metrics{applied ? ' · basis' : ''}
+                </span>
+                <span className="pf-grow" />
+                <span className="mono pf-passed-count">
+                  {applied ? 6 : 5} of 7 checks
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <Banner
+                tone="good"
+                word="No issues"
+                action={<EditorButton onClick={() => navigate(ROUTES.repoScan)}>View manifest</EditorButton>}
+              >
+                <span className="mono pf-banner-where">manifest sha256 9c41…e07b</span>
+                <span className="ink-banner-grow" />
+              </Banner>
+              <ChecksTable rows={CHECKS.sidechain} />
+            </>
+          )}
+        </Tile>
+      </div>
     </Shell>
   )
 }
 
-function Issues() {
+function NumberField({ label, unit, value, onChange, warn }: { label: string; unit: string; value: string; onChange: (v: string) => void; warn?: boolean }) {
   return (
-    <div className="s03-issues" role="alert">
-      <div className="s03-issues-head">
-        {icons.cross}
-        <span className="s03-verdict-title">2 issues</span>
-        <span className="mono s03-meta">fix both to continue</span>
-      </div>
-      <div className="s03-issue is-focus" tabIndex={0}>
-        <div className="mono s03-issue-where">
-          <span className="s03-issue-code">Q202</span> qscore.yaml line 4
-        </div>
-        <div>Function &apos;build_qaoa2&apos; not found in src/packing/qaoa.py. Did you mean &apos;build_qaoa&apos;?</div>
-      </div>
-      <div className="s03-issue" tabIndex={0}>
-        <div className="mono s03-issue-where">
-          <span className="s03-issue-code">Q118</span> sidechain_qaoa.qasm line 3
-        </div>
-        <div>creg c[11] is smaller than qreg q[12]. Measure needs 12 bits. Change it to c[12].</div>
-      </div>
+    <label className="pf-field-row">
+      <span className="pf-field-label">{label}</span>
+      <span className={`pf-field${warn ? ' is-warn' : ''}`}>
+        <input
+          className="mono"
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, '').slice(0, 5))}
+          aria-label={label}
+          aria-invalid={warn || undefined}
+        />
+        <span className="mono pf-field-unit">{unit}</span>
+      </span>
+    </label>
+  )
+}
+
+function PlanRow({ label, value, note, tone }: { label: string; value: ReactNode; note?: ReactNode; tone?: 'bad' | 'warn' }) {
+  return (
+    <div className="pf-plan-row">
+      <span className="pf-plan-label">{label}</span>
+      <span className={`mono pf-plan-value${tone ? ` is-${tone}` : ''}`}>{value}</span>
+      {note != null && <span className="mono pf-plan-note">{note}</span>}
     </div>
   )
 }
 
-function Rejected() {
+function Plan({ circuit, loading, seeds }: { circuit: Circuit; loading: boolean; seeds: string }) {
+  const n = Number(seeds) || 8
+  const wait = (w: number) => <Shim w={w} />
   return (
-    <div className="s03-rejected" role="alert">
-      <div className="s03-rejected-title">
-        {icons.cross}
-        Needs 41 simulated qubits; this machine simulates up to 31
+    <>
+      <div className="pf-plan-group is-first">compile</div>
+      <PlanRow label="Device" value="FakeTorino" note="133 q · cz rz sx x" />
+      <PlanRow label="Method" value={loading ? wait(120) : `level 3 compile × ${n} seeds`} note={loading ? undefined : 'engine · deterministic'} />
+      <PlanRow label="Seeds" value={`best of ${n}`} note={loading ? undefined : 'seed spread reported'} />
+      <div className="pf-plan-group">cost on this machine</div>
+      {circuit === 'lattice' ? (
+        <>
+          <PlanRow label="Memory" value="35.2 TB" note="of 24.0 GB free" tone="bad" />
+          <PlanRow label="Estimated time" value="not run" note="rejected before scoring" />
+        </>
+      ) : (
+        <>
+          <PlanRow label="Memory" value={loading ? wait(56) : circuit === 'sbox' ? '16.8 GB' : '1.2 GB'} note={loading ? undefined : 'of 24.0 GB free'} />
+          <PlanRow
+            label="Estimated time"
+            value={loading ? wait(72) : circuit === 'sbox' ? 'about 26 min' : 'about 40 s'}
+            note={loading ? undefined : 'score only · fix rounds use the budget'}
+            tone={circuit === 'sbox' ? 'warn' : undefined}
+          />
+        </>
+      )}
+      <div className="pf-plan-group">scope</div>
+      <PlanRow label="Primary metric" value="two_qubit_count" note="lower is better" />
+      <PlanRow label="Rules" value="D01 to D08" note="D09 D10 not evaluated" />
+      <div className="pf-plan-row is-tall">
+        <span className="pf-plan-label">Will not be checked</span>
+        {loading ? (
+          <span className="pf-plan-value">{wait(136)}</span>
+        ) : (
+          <div className="pf-nc">
+            <div className="pf-nc-row">
+              <span className="mono pf-nc-name">simulated_task_score</span>
+              <Glyph kind="ring" size={8} />
+              <span className="pf-nc-status">unavailable</span>
+              <span className="mono pf-nc-why">not in the MVP build</span>
+            </div>
+            <div className="pf-nc-row">
+              <span className="mono pf-nc-name">mirror_score</span>
+              <Glyph kind="ring" size={8} />
+              <span className="pf-nc-status">skipped</span>
+              <span className="mono pf-nc-why">not selected</span>
+            </div>
+          </div>
+        )}
       </div>
-      <p>Q301 · the feasibility pass found a 41-qubit register in sidechain_qaoa_xl.qasm. Statevector memory would be 32 TB.</p>
-      <p>Come back with a smaller circuit, or split it into blocks of 31 qubits or fewer.</p>
-      <div className="s03-rejected-actions">
-        <EditorButton onClick={() => navigate(ROUTES.template)}>Read the limits</EditorButton>
-        <EditorButton onClick={() => navigate(ROUTES.newRun)}>Pick another file</EditorButton>
+    </>
+  )
+}
+
+function ChecksTable({ rows, loading }: { rows: [string, string, string][]; loading?: boolean }) {
+  return (
+    <div className="pf-table" role="table" aria-label="Validation checks">
+      <div className="pf-thead" role="row">
+        <span className="pf-col-status">status</span>
+        <span className="pf-col-check">check</span>
+        <span className="pf-col-result">result</span>
+        <span>location</span>
       </div>
+      {rows.map(([check, result, where], i) => {
+        const state = !loading ? 'passed' : i === 0 ? 'running' : 'queued'
+        return (
+          <div key={check} className={`pf-trow is-${state}`} role="row">
+            <span className="pf-col-status pf-status">
+              {state === 'passed' ? <Glyph kind="check" /> : state === 'running' ? <Spinner size={14} /> : <Glyph kind="ring" size={8} />}
+              {state}
+            </span>
+            <span className="mono pf-col-check">{check}</span>
+            <span className="pf-col-result">{state === 'passed' ? result : state === 'running' ? 'reading line 48 of 88' : <Shim w={180 + ((i * 47) % 120)} />}</span>
+            <span className="mono pf-where-col">{state === 'queued' ? <Shim w={96} /> : where}</span>
+          </div>
+        )
+      })}
     </div>
+  )
+}
+
+function Rejected({ limits, onLimits }: { limits: boolean; onLimits: () => void }) {
+  return (
+    <>
+      <Banner tone="bad" word="rejected">
+        <span>Circuit wider than the target</span>
+        <span className="mono pf-code">(Q103)</span>
+        <span className="mono pf-where">· lattice_41q.qasm line 4 · use a smaller circuit</span>
+      </Banner>
+      <div className="pf-reject">
+        <div className="pf-reject-title">Needs 41 simulated qubits; this machine has 34</div>
+        <div className="mono pf-reject-detail">statevector for 41 q needs 35.2 TB · 24.0 GB free</div>
+      </div>
+      <div className="pf-reject-foot">
+        <span className="pf-grow">Come back with a smaller circuit</span>
+        <EditorButton onClick={onLimits}>
+          <span className={`pf-limits-label${limits ? ' is-open' : ''}`}>
+            Read size limits
+            {icons.caret}
+          </span>
+        </EditorButton>
+      </div>
+      {limits && (
+        <div className="pf-limits ink-fade-in">
+          <Facts
+            labelWidth={160}
+            rows={[
+              ['Statevector', '34 q · 24.0 GB free on this machine'],
+              ['Compile only', 'up to 133 q · FakeTorino'],
+            ]}
+          />
+        </div>
+      )}
+    </>
   )
 }

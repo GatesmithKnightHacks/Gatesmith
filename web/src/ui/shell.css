@@ -1,14 +1,22 @@
+/*
+ * The workbench is an instrument panel drawn at 1440 × 900. It never reflows: a smaller window
+ * scrolls to it (base.css lets the document scroll), so every tile keeps the board's geometry.
+ */
 .shell {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
-  min-width: 1280px;
+  min-width: 1440px;
+  min-height: 900px;
   background: var(--color-surface-app);
 }
 
 /* ── Top bar ─────────────────────────────────────────────────────────── */
 .topbar {
+  position: relative;
+  /* above the rail (5) so the account menu hangs over the body */
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -45,8 +53,8 @@
   color: var(--color-text-secondary);
 }
 .gpu-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -59,10 +67,20 @@
   min-height: 0;
 }
 .shell-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
   min-width: 0;
+  min-height: 0;
+}
+/* Toasts float at the main column's foot, 12px in from the right and the bottom. */
+.shell-toast {
+  position: absolute;
+  right: 12px;
+  bottom: 16px;
+  z-index: 4;
+  pointer-events: none;
 }
 .shell-content {
   display: flex;
@@ -82,167 +100,429 @@
   scrollbar-width: none;
 }
 
-/* ── Rail: six 20px icons on a 78px pitch ────────────────────────────── */
+/* ── Rail: 52 wide incl. its 2px ground border, 24px icons on a 70px pitch ── */
 .rail {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   flex-shrink: 0;
-  width: var(--container-rail);
-  padding: 18px 0 14px;
-  /* above the work area, so the settings and account popovers are not covered */
+  width: 52px;
+  border-right: 2px solid var(--color-surface-app);
+  /* above the work area, so the label chips and menus are not covered */
   position: relative;
   z-index: 5;
   background: var(--color-surface-panel);
+  transition: width var(--motion-tile) var(--ease-motion);
 }
-.rail-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 34px;
+/* Expand: 52 → 200 in 200 ease; the main column shrinks, the inspector keeps 380. */
+.rail.is-expanded {
+  width: 200px;
 }
+:root[data-reduce-motion] .rail {
+  transition: none;
+}
+.rail-nav,
 .rail-bottom {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
-  padding-top: var(--spacing-3);
+  gap: 22px;
+}
+.rail-bottom {
   border-top: 1px solid var(--color-surface-app);
 }
+.rail-slot {
+  position: relative;
+  flex-shrink: 0;
+}
+/* Expanded: a rule separates New run · Runs · Repo from Leaderboard · Help. */
+.rail-slot.has-rule::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: -11px;
+  height: 1px;
+  background: var(--color-surface-app);
+  opacity: 0;
+  transition: opacity var(--motion-hover) var(--ease-motion);
+}
+.rail.is-expanded .rail-slot.has-rule::before {
+  opacity: 1;
+  transition: opacity var(--motion-tile) var(--ease-motion) var(--motion-tile);
+}
+
 .rail-item {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 50px;
-  height: 44px;
-  flex-shrink: 0;
+  gap: 13px;
+  width: 100%;
+  height: 48px;
+  padding-left: 13px;
+  /* labels clip to the rail while it grows; the hit area still reaches into the gaps */
+  overflow-x: clip;
+  color: var(--color-text-tertiary);
+  transition: color var(--motion-hover) var(--ease-motion);
+}
+/* The whole 52 × 70 row is the hit area, never just the icon. */
+.rail-item::before {
+  content: '';
+  position: absolute;
+  inset: -11px 0;
+}
+.rail-item:hover {
+  color: var(--color-text-primary);
+}
+.rail-item.is-current {
+  color: var(--color-signal-select);
 }
 .rail-disc {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  transition: background-color var(--motion-instant) var(--ease-standard);
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
 }
-.rail-item:hover .rail-disc,
-.rail-disc.is-active {
-  background: #00000040;
+.rail-label {
+  flex-shrink: 0;
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--motion-hover) var(--ease-motion),
+    visibility 0s linear var(--motion-hover);
 }
+/* labels fade in 200 once the width has arrived */
+.rail.is-expanded .rail-label {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--motion-tile) var(--ease-motion) var(--motion-tile),
+    visibility 0s linear var(--motion-tile);
+}
+:root[data-reduce-motion] .rail.is-expanded .rail-label,
+:root[data-reduce-motion] .rail.is-expanded .rail-slot.has-rule::before {
+  transition-delay: 0s;
+}
+
+/* Current: a 2px yellow bar at the left edge spanning the 24px box; snaps, no tween. */
 .rail-marker {
   position: absolute;
   left: 0;
   top: 12px;
   width: 2px;
-  height: 20px;
+  height: 24px;
   background: var(--color-signal-select);
-  view-transition-name: rail-marker;
 }
-.rail-avatar {
+/* Keyboard: the 2px yellow outline, offset 2, radius 4, around a 36px box; moves at 0 ms. */
+.rail-item:focus-visible {
+  outline: none;
+}
+.rail-item:focus-visible::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-base);
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+
+/* Badges, one per item at most. Runs: a 16px count chip 2px outside the box's top right. */
+.rail-count {
+  position: absolute;
+  left: 23px;
+  top: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
-  background: var(--color-surface-inset);
-  border: 1px solid var(--color-border-control);
+  min-width: 16px;
+  height: 16px;
+  padding-inline: 4px;
+  border-radius: var(--radius-base);
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+  font-size: var(--text-axis);
+  line-height: 12px;
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+/* Repo: a 6px pink dot after a CI regression. */
+.rail-dot {
+  position: absolute;
+  left: 35px;
+  top: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-signal-bad);
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
 }
 
-/* ── Tab strip ───────────────────────────────────────────────────────── */
-.tabstrip {
+/* Hover label: shows at once (0 ms delay, 150 ms fade), right of the rail, never on the hit area. */
+.rail-tip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  translate: 0 -50%;
+  z-index: 21;
   display: flex;
   align-items: center;
+  gap: 10px;
+  padding: var(--spacing-2);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--motion-hover) var(--ease-motion),
+    visibility 0s linear var(--motion-hover);
+}
+.rail-item:hover + .rail-tip,
+.rail-item:focus-visible + .rail-tip {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--motion-hover) var(--ease-motion);
+}
+/* The label chip yields to an open menu. */
+.rail-item[aria-expanded='true'] + .rail-tip {
+  opacity: 0;
+  visibility: hidden;
+}
+.rail-tip-key {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+}
+
+/* The main column takes focus back on Esc; it shows no ring of its own. */
+.shell-main:focus {
+  outline: none;
+}
+
+/* ── Tab band: 42 tall, 31-tall tiles r4, the active one panel with a 3px mint underline ── */
+.tabstrip {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   flex-shrink: 0;
-  height: 36px;
+  height: 42px;
+  padding-top: var(--spacing-1);
 }
 .tabstrip-tabs {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--spacing-1);
 }
 .run-tab {
+  position: relative;
   display: flex;
   align-items: center;
-  height: 28px;
+  height: 31px;
   padding-inline: var(--spacing-3);
+  border-radius: var(--radius-base);
   background: var(--color-surface-inset);
   color: var(--color-text-secondary);
   font-size: var(--text-body);
   font-weight: var(--font-weight-medium);
   line-height: var(--leading-ui);
-  transition: color var(--motion-fast) var(--ease-standard);
+  white-space: nowrap;
+  transition:
+    color var(--motion-hover) var(--ease-motion),
+    background-color var(--motion-hover) var(--ease-motion);
+}
+.run-tab:hover {
+  color: var(--color-text-primary);
 }
 .run-tab.is-active {
+  background: var(--color-surface-panel);
   color: var(--color-text-primary);
-  border-bottom: 2px solid var(--color-action-primary);
+  cursor: default;
+}
+/* the underline sits 3px under the tile; it snaps to the clicked tab (no tween) */
+.run-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 34px;
+  height: 3px;
+  background: var(--color-action-primary);
 }
 .run-tab-add {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 31px;
+  border-radius: var(--radius-base);
   background: var(--color-surface-inset);
+  transition: background-color var(--motion-hover) var(--ease-motion);
+}
+.run-tab-add:hover {
+  background: var(--color-surface-panel);
 }
 .tabstrip-history {
   display: flex;
   align-items: center;
-  gap: var(--spacing-3);
-  padding-right: var(--spacing-2);
+  gap: 14px;
+  height: 31px;
+  padding-right: 10px;
 }
 .tabstrip-history button:disabled {
   cursor: default;
 }
 
-/* ── Rail popovers ───────────────────────────────────────────────────── */
-.rail-popover-anchor {
-  position: relative;
-}
-.rail-popover {
-  position: absolute;
-  left: calc(100% + 8px);
-  bottom: 4px;
+/* ── Menus (M6 menu open / Esc, DS-08): one grammar for the rail menus and the account menu ── */
+/* 224 wide on the inset, 1px ground border, radius 4, 28px rows, 10px inset, 1px panel rules. In 200, out 150, in place. */
+.menu {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
-  width: 248px;
-  padding: var(--spacing-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-popover);
-  animation: popover-in var(--motion-base) var(--ease-enter) both;
+  width: 224px;
+  padding: var(--spacing-1) 0;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
 }
-@keyframes popover-in {
-  from {
-    opacity: 0;
-    transform: translateX(-4px);
-  }
+.menu.is-leaving {
+  animation: motion-fade-out var(--motion-hover) var(--ease-motion) both;
 }
-.popover-title {
+/* A rail menu sits on the content column's left edge, level with its item. */
+.rail-popover {
+  position: absolute;
+  left: calc(100% + 4px);
+  bottom: 0;
+}
+.rail-nav .rail-popover {
+  bottom: auto;
+  top: 0;
+}
+/* The account menu hangs under its mark, right-aligned with it. */
+.topbar-menu {
+  position: absolute;
+  top: 44px;
+  right: var(--spacing-4);
+  z-index: 20;
+}
+.menu-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.menu-title .mono {
   color: var(--color-text-primary);
-  font-size: var(--text-base);
-  font-weight: var(--font-weight-medium);
-  line-height: 18px;
-  padding-bottom: var(--spacing-1);
 }
-.popover-note {
-  color: var(--color-text-secondary);
+.menu-rule {
+  height: 1px;
+  flex-shrink: 0;
+  background: var(--color-surface-panel);
 }
-.popover-row {
+.menu-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
-  color: var(--color-text-secondary);
-  border-top: 1px solid var(--color-surface-inset);
+  gap: var(--spacing-2);
+  height: 28px;
+  padding: 0 10px;
+  width: 100%;
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  text-align: left;
 }
-.popover-value {
+.menu-row.is-action {
+  cursor: pointer;
+  transition: background-color var(--motion-hover) var(--ease-motion);
+}
+.menu-row.is-action:hover {
+  background: var(--color-surface-panel);
+}
+.menu-row.is-action:focus-visible {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: -2px;
+}
+.menu-value {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+/* The one checkbox grammar (S-03 auto mode): 14px, radius 2, control border, on the inset. */
+.menu-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-inset);
   color: var(--color-text-primary);
 }
-.popover-action {
-  align-self: flex-start;
-  margin-top: var(--spacing-1);
+
+/* ── Account mark in the top bar (S-19 board): a #354348 chip with the disc and the handle ── */
+.topbar-account {
+  display: flex;
+  align-items: center;
+}
+.account-mark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-selected);
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  transition: background-color var(--motion-hover) var(--ease-motion);
+}
+.account-mark:hover,
+.account-mark[aria-expanded='true'] {
+  background: var(--color-border-control);
+}
+.account-mark:focus-visible {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.account-mark.is-out {
+  background: none;
+  padding: 0;
+}
+.account-mark.is-out:hover {
+  background: none;
+  color: var(--color-text-primary);
+}
+.account-disc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
 }

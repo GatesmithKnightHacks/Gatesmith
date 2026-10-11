@@ -22,13 +22,13 @@ dependencies = [
     "rich>=13.9",
     "ruamel.yaml>=0.18",
     "jinja2>=3.1",
+    "httpx>=0.27",  # HTTPS worker job client (11 §3, ChP-0054)
 ]
 
 [project.optional-dependencies]
 gpu-rocm = []  # marker only: the ROCm Aer wheel is installed from the private Hub repo, never from PyPI
 hf = ["openai>=1.50", "huggingface_hub>=1.0", "pyarrow>=17"]
 ui = ["gradio>=5", "fastapi>=0.115", "uvicorn>=0.32"]
-neon = ["psycopg[binary]>=3.2"]
 
 [project.scripts]
 qscore = "qscore.cli:app"
@@ -58,8 +58,8 @@ testpaths = ["tests"]
 addopts = "--strict-markers"
 markers = [
     "gpu: needs the W7900 with the ROCm Aer build",
+    "platform: needs the platform job API (a local fake by default; specs/11 §3)",
     "slow: CPU, longer than 30 s",
-    "neon: needs QSCORE_TEST_NEON_DSN (Neon dev branch)",
     "hub: needs HF_TOKEN with write access to a test repo",
     "llm: needs a running model endpoint",
 ]
@@ -86,5 +86,5 @@ module = ["qscore.schemas.*", "qscore.metrics.*", "qscore.diagnose.*", "qscore.v
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["qiskit.*", "qiskit_ibm_runtime.*"]
+module = ["qiskit.*", "qiskit_aer.*", "qiskit_ibm_runtime.*"]
 ignore_missing_imports = true

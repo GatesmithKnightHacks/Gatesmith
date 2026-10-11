@@ -1,6 +1,6 @@
 # Gatesmith web
 
-The Gatesmith workbench in the browser: every screen from the design file, built to match it pixel for pixel, with the motion from the storyboards. It runs the canonical demo (sidechain_qaoa, 12 qubits, FakeTorino, 44 → 33 two-qubit gates over four rounds) on a scripted engine, so the whole flow works without a GPU.
+The Gatesmith workbench in the browser: every screen from the design file, built to match it pixel for pixel, with the motion from the storyboards. It runs the canonical demo (run 7f3a·0412: sidechain_qaoa.qasm, 12 qubits, FakeTorino, 8 seeds, two-qubit gates 321 → 298 → 281 → 270 over four rounds, stopping at 490 s of a 900 s budget) on a scripted engine, so the whole flow works without a GPU.
 
 ## Run it
 
@@ -32,6 +32,12 @@ Any screen also opens on its own at its route and shows its design snapshot:
 | `#/leaderboard` | S-14 Leaderboard |
 | `#/screening` | S-15 Candidate screening |
 | `#/bench` | S-16 Model bench |
+| `#/signin` | S-17 Sign in |
+| `#/signup` | S-18 Create account |
+| `#/account` | S-19 Account |
+| `#/gate` | S-20/S-21 Small-screen gate (shown on its own at desktop size; it also appears under 1280 px or on a touch-only pointer) |
+
+`#/template?state=feedback` shows every feedback part from DS-08 live on the shell: button states, spinners, the shimmer skeleton and its crossfade, field validation, banners, the toast, row flash and drag-over.
 
 States from each screen's states board are at `?state=<name>`, for example `#/new?state=drag-over`, `#/fix?state=worse-than-before`, `#/loop?state=budget-hit`.
 
@@ -48,11 +54,13 @@ npm run diff S-04    # one screen; writes tests/output/S-04.side.png (design | c
 
 ## How it is built
 
-- **Tokens.** `../design/tokens.css` is imported as is; nothing redefines it. Motion values from the design system live in `src/styles/motion.css` as proposed tokens with the same names.
-- **Shell and parts.** `src/ui` holds the shell (top bar 52, rail 50, tab strip 36, inspector 380, 4px gutters) and the shared components: tiles, inspector sections, fields, buttons, finding cards, status words.
+- **Tokens.** `../design/tokens.css` is imported as is; nothing redefines it. The motion tokens and the few feedback colors it has no name for (skeleton block and band, spinner arc and track, row flash, drag-over) live in `src/styles/motion.css` as proposed tokens, aliased to tokens.css primitives.
+- **Shell.** `src/ui/Shell.tsx`, measured from the master board: top bar 52 (2 px ground border), rail 52 including its 2 px border, tab band 42 with 31-tall r4 tiles and a 3 px mint underline under the active one, mode tabs filled 28, section rows 44, inspector 380, 4 px ground gutters. `Shell` takes `rail` (the current item), `railBadges` (`{ runs, repoRegressed }`), `tabs`, `inspector`, `status` and a `toast` slot at the main column's foot.
+- **Rail.** New run, Runs, Repo, Leaderboard, Help; Settings, Account and Expand at the foot; 24 px icons on a 70 px pitch and the whole 52 × 70 row is the hit area. Idle icons are #ADC5CA and turn white in 150 ms on hover, with the label chip (and its shortcut) at once; the current item has the 2 px yellow bar and a yellow icon and snaps on click. Expand widens the rail to 200 px in 200 ms with the labels fading in after, and is remembered in localStorage. Badges: a count chip on Runs while runs are in progress, a pink dot on Repo after a CI regression. Keyboard: Tab reaches the rail as one stop, ↑ ↓ move the yellow outline, Enter or Space opens, Esc returns to the main column, and `g` then `n` / `r` / `p` / `l` / `a` jumps to New run, Runs, Repo, Leaderboard, Account.
+- **Parts.** `src/ui/parts.tsx` (tiles, mode tabs, sections, fields with warning and invalid validation, primary and editor buttons, finding cards, rows), `Spinner.tsx`, `Banner.tsx` (with `ErrorCode`), `Toast.tsx`, `Tooltip.tsx`, `Skeleton.tsx` (`Sk`, `SkSwap`, …) and `status.tsx` (status is always an icon, a word and a color, in the engine's vocabulary).
 - **Screens.** `src/screens/<Screen>.tsx`, each with its own folder for local parts and CSS. Screens load lazily and are preloaded, so a view transition never captures a blank frame.
 - **Demo engine.** `src/data/run.ts` plays the run with the storyboard timings: scan, findings landing, rounds, the fix review, the accept moment and the stop. `src/data/demo.ts` holds the data, named like the engine's `qscore.scorecard/v0.2` fields and rule ids (D01 to D10), so a real backend can replace it.
-- **Motion.** Same-document view transitions carry shared elements between screens (`circuit-canvas`, `primary-action`, `finding-card`, `rail-marker`); in-screen motion uses CSS with the motion tokens. Reduced motion shortens everything to a quick crossfade.
+- **Motion.** Three durations, one curve and two loops (DS-07, DS-08): `--motion-hover` 150 ms (hover and press colors, every exit), `--motion-tile` 200 ms (tiles, cards, banners, menus, tooltips, chevron turns, tab content, the rail's Expand), `--motion-load` 400 ms (a screen change, skeleton to content), `--motion-spin` 1000 ms per spinner turn and `--motion-shimmer` 1200 ms per skeleton sweep. Every transition eases with `ease`; only the two loops run linear. Nothing springs, slides, bounces, staggers or ticks digits. A screen change is a same-document view transition in which the main column fades in over 400 ms while the top bar, rail, tab strip and inspector hold still (`src/app/transitions.css`); no element morphs between screens. Buttons keep one width in every state (loading shows the spinner in a reserved slot, done shows the past verb with a check for 1200 ms); banners, toasts, menus and tooltips fade in place (in 200, out 150, tooltips after 400). Reduced motion (the system setting, or Settings in the rail) keeps every fade and stops every transform and sweep: the spinner becomes a whole static ring and the skeleton pulses 1 → 0.6 → 1 over 1.2 s.
 
 ## The engine
 

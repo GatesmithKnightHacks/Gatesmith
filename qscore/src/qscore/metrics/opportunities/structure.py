@@ -49,46 +49,34 @@ def layers_of(qc: QuantumCircuit) -> list[int]:
 
 def commuting_runs(qc: QuantumCircuit) -> list[dict[str, Any]]:
     """Maximal connected runs of diagonal 2q gates; 1q diagonal gates do not break a run."""
-    parent: dict[int, int] = {}
-
-    def find(x: int) -> int:
-        while parent[x] != x:
-            parent[x] = parent[parent[x]]
-            x = parent[x]
-        return x
-
-    run_of: dict[int, int | None] = {}
-    closed: set[int] = set()  # roots of runs a non-diagonal op has cut; nothing may join them
-    members: dict[int, list[int]] = {}
+    dag = DAGCircuit()
+    dag.add_qubits(qc.qubits)
+    dag.add_clbits(qc.clbits)
+    for creg in qc.cregs:
+        dag.add_creg(creg)
+    index_of: dict[int, int] = {}
     for idx, inst in enumerate(qc.data):
         if c.is_directive(inst):
             continue
-        name = inst.operation.name
-        qs = [qc.find_bit(q).index for q in inst.qubits]
-        if name in DIAGONAL_2Q:
-            parent[idx] = idx
-            for q in qs:
-                prev = run_of.get(q)
-                if prev is not None and find(prev) not in closed:
-                    parent[find(prev)] = find(idx)
-            for q in qs:
-                run_of[q] = idx
-            members[idx] = [idx]
-        elif name in DIAGONAL_1Q:
-            continue
-        else:
-            for q in qs:
-                prev = run_of.get(q)
-                if prev is not None:
-                    closed.add(find(prev))
-                run_of[q] = None
-    groups: dict[int, list[int]] = {}
-    for idx in members:
-        groups.setdefault(find(idx), []).append(idx)
+        node = dag.apply_operation_back(inst.operation, inst.qubits, inst.clbits, check=False)
+        index_of[node._node_id] = idx
+    # Collect convex DAG blocks rather than closing an entire connected component when
+    # one wire ends. Backward collection preserves the later run when a boundary rejoins.
+    blocks = collect_using_filter_function(
+        dag,
+        lambda node: node.op.name in DIAGONAL_2Q | DIAGONAL_1Q,
+        split_blocks=True,
+        min_block_size=1,
+        split_layers=False,
+        collect_from_back=True,
+        max_block_width=None,
+    )
     layers = layers_of(qc)
     runs = []
-    for idxs in groups.values():
-        idxs.sort()
+    for nodes in blocks:
+        idxs = sorted(index_of[n._node_id] for n in nodes if n.op.name in DIAGONAL_2Q)
+        if not idxs:
+            continue
         qubits = sorted({qc.find_bit(q).index for i in idxs for q in qc.data[i].qubits})
         runs.append(
             {
@@ -180,12 +168,15 @@ class Structure:
 
 
 def block_potential(block: QuantumCircuit, two_qubit_gate: str) -> int:
-    """Current 2q gates in a ≤2-qubit block minus the KAK minimum for `two_qubit_gate`."""
+    """Current 2q gates in a ≤2-qubit block minus the KAK minimum for `two_qubit_gate`: the
+    two-qubit gates of the exact synthesis. (`num_basis_gates` is not used: in Qiskit 2.5.2
+    it returns 0 for SWAP-class blocks at some global phases; ChP-0043.)"""
     current = c.two_qubit_count(block)
     if block.num_qubits != 2 or current == 0:
         return 0
     decomposer = TwoQubitBasisDecomposer(KAK_GATES[two_qubit_gate])
-    return current - int(decomposer.num_basis_gates(Operator(block).data))
+    minimum = decomposer(Operator(block).data).count_ops().get(two_qubit_gate, 0)
+    return current - int(minimum)
 
 
 def _blocks(qc: QuantumCircuit) -> list[tuple[QuantumCircuit, list[int]]]:
@@ -222,7 +213,8 @@ class ResynthesisPotential:
 
     Sum over two-qubit blocks of the compiled circuit (`Collect2qBlocks` +
     `ConsolidateBlocks`) of the block's current two-qubit gates minus
-    `TwoQubitBasisDecomposer(<target's two-qubit gate>).num_basis_gates(block unitary)`.
+    the two-qubit gates in `TwoQubitBasisDecomposer(<target's two-qubit gate>)(block unitary)`
+    (exact KAK synthesis; ChP-0043).
     Evidence: the top blocks with locations, and the same sum on the raw translation
     (`raw_potential`, informational).
 

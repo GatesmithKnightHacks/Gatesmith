@@ -18,7 +18,7 @@ from qscore.schemas.common import MetricGroup, QDocument, QModel, issue_error
 PROJECT_SCHEMA = "qscore.project/v0.2"
 REQUIRED_PLACEHOLDER = "<required>"
 ITEM_ID_PATTERN = r"^[a-z0-9_][a-z0-9_\-]{0,63}$"
-BUILDER_PATTERN = re.compile(r"^[^:]+\.py::[A-Za-z_][A-Za-z0-9_]*$")
+BUILDER_PATTERN = re.compile(r"^[^:]+\.(py|ipynb)::[A-Za-z_][A-Za-z0-9_]*$")
 
 Intent = Literal[
     "exact_unitary",
@@ -192,13 +192,25 @@ class BuilderSource(QModel):
     builder: str
     args: dict[str, object] = Field(default_factory=dict)
     parameters: ParametersFile | None = None
+    # ChP-0037: run the file's top-level statements that start at or before this line, then
+    # take `name` (a circuit variable, or a function called with `args`). Notebook lines count
+    # in the code-cell script that `qscore discover` prints.
+    line: int | None = Field(default=None, ge=1)
 
     @field_validator("builder")
     @classmethod
     def _builder_format(cls, builder: str) -> str:
         if not BUILDER_PATTERN.match(builder):
-            raise issue_error("Q103", "builder must be 'path/to/file.py::function'")
+            raise issue_error(
+                "Q103", "builder must be 'path/to/file.py::name' or 'path/to/notebook.ipynb::name'"
+            )
         return builder
+
+    @model_validator(mode="after")
+    def _notebook_needs_line(self) -> BuilderSource:
+        if self.builder.split("::", 1)[0].endswith(".ipynb") and self.line is None:
+            raise issue_error("Q103", "a notebook builder needs 'line' (from qscore discover)")
+        return self
 
 
 class SizeSweep(QModel):

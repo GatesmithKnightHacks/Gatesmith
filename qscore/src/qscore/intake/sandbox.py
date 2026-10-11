@@ -1,7 +1,8 @@
 """Run a builder in a separate process (specs/05-pipeline.md §4.2, ★ process mode).
 
 The child is ``python -I intake/runner.py request.json`` with a timeout, ``RLIMIT_AS = mem_mb``
-and ``RLIMIT_CPU``, a temporary working directory and an environment stripped of secrets. The
+and ``RLIMIT_CPU``, a temporary working directory (line mode: the builder file's directory,
+ChP-0037 §2.1 D, set by the runner) and an environment stripped of secrets. The
 sandbox is not a security boundary for hostile code (R10): builders come only from curated
 example repos or the user's own repo in laptop mode.
 """
@@ -19,6 +20,7 @@ import sys
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from importlib.metadata import version
 from pathlib import Path
 
 from qiskit import QuantumCircuit, qpy
@@ -30,17 +32,30 @@ from qscore.schemas.common import sha256_hex
 RUNNER = Path(__file__).with_name("runner.py")
 
 # Stripped from the child's environment (05 §4.2).
-_SECRET = re.compile(r"(_TOKEN|_KEY|_DSN)$|SECRET|^(HF|NEON|GEMINI|OPENAI)_", re.IGNORECASE)
+_SECRET = re.compile(r"(_TOKEN|_KEY|_DSN)$|SECRET|^(HF|GEMINI|OPENAI)_", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
 class BuilderRequest:
-    """One builder call: ``file::function(**args)`` with ``project_root`` on ``sys.path``."""
+    """One builder call: ``file::function(**args)`` with ``project_root`` on ``sys.path``.
+
+    Line mode (ChP-0037): ``source_text`` is the script prefix from ``intake.script.prefix``
+    (statements at or before ``line``), run in ``cwd``; ``function`` then names a circuit
+    variable or a function. ``line`` is only used to name the line in a missing-name message.
+    """
 
     project_root: Path
     file: Path
     function: str
     args: dict[str, object] = field(default_factory=dict)
+    source_text: str | None = None
+    cwd: Path | None = None
+    line: int | None = None
+
+    def __post_init__(self) -> None:
+        line_mode = (self.source_text is not None, self.cwd is not None, self.line is not None)
+        if any(line_mode) and not all(line_mode):
+            raise ValueError("line mode needs source_text, cwd and line together")
 
 
 @dataclass(frozen=True)
@@ -79,7 +94,51 @@ def _limits(timeout_s: float, mem_mb: int) -> Callable[[], None] | None:
     return apply
 
 
-def run_builder(request: BuilderRequest, timeout_s: float, mem_mb: int) -> SandboxResult:
+def project_python(root: Path, timeout_s: float, mem_mb: int) -> Path:
+    """Check the explicitly configured uv interpreter before any builder code runs."""
+    python = (
+        root / ".qscore/venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    )
+    hint = f"Run qscore deps {root} to prepare the project environment."
+    if not python.is_file():
+        raise ConfigError(f"project runner interpreter missing: {python}. {hint}")
+    command = (
+        "import json,sys; from importlib.metadata import version; "
+        "print(json.dumps({'python':list(sys.version_info[:2]), 'qiskit':version('qiskit')}))"
+    )
+    try:
+        with tempfile.TemporaryDirectory(prefix="qscore-env-check-") as work:
+            result = subprocess.run(
+                [str(python), "-I", "-c", command],
+                cwd=work,
+                env=child_env(dict(os.environ)),
+                preexec_fn=_limits(timeout_s, mem_mb),
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout_s,
+            )
+        if result.returncode != 0:
+            raise ConfigError(
+                f"project environment version check failed (exit {result.returncode}). {hint}"
+            )
+        facts = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+        raise ConfigError(
+            f"could not verify project environment: {type(exc).__name__}. {hint}"
+        ) from exc
+    expected = {"python": list(sys.version_info[:2]), "qiskit": version("qiskit")}
+    if facts != expected:
+        raise ConfigError(
+            f"project environment needs Python {sys.version_info.major}.{sys.version_info.minor} "
+            f"and qiskit=={expected['qiskit']}. {hint}"
+        )
+    return python
+
+
+def run_builder(
+    request: BuilderRequest, timeout_s: float, mem_mb: int, *, python: Path | None = None
+) -> SandboxResult:
     """Build the circuit in the sandbox; failures raise ``SandboxError`` (Q300-Q303)."""
     preexec = _limits(timeout_s, mem_mb)
     with tempfile.TemporaryDirectory(prefix="qscore-builder-") as tmp:
@@ -90,6 +149,9 @@ def run_builder(request: BuilderRequest, timeout_s: float, mem_mb: int) -> Sandb
             "file": str(request.file.resolve()),
             "function": request.function,
             "args": request.args,
+            "source_text": request.source_text,
+            "cwd": None if request.cwd is None else str(request.cwd.resolve()),
+            "line": request.line,
             "qpy": str(qpy_path),
             "status": str(status_path),
         }
@@ -97,7 +159,12 @@ def run_builder(request: BuilderRequest, timeout_s: float, mem_mb: int) -> Sandb
         where = f"{request.file.name}::{request.function}"
         try:
             proc = subprocess.run(
-                [sys.executable, "-I", str(RUNNER), str(work / "request.json")],
+                [
+                    str(python) if python is not None else sys.executable,
+                    "-I",
+                    str(RUNNER),
+                    str(work / "request.json"),
+                ],
                 cwd=work,
                 env=child_env(dict(os.environ)),
                 preexec_fn=preexec,

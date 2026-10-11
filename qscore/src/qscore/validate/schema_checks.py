@@ -74,7 +74,10 @@ def load_manifest_with_positions(path: Path) -> tuple[ProjectManifest, PositionM
             severity="error",
             location=Location(file=path.name),
             message=f"manifest not found: {path}",
-            hint="Pass the path to an existing qscore.yaml, or score a single QASM file instead.",
+            hint=(
+                f"Draft one with `qscore discover {path.parent} --draft`, pass an existing "
+                "qscore.yaml, or score a single QASM file instead."
+            ),
             docs="docs/issues.md#q200",
         )
         report = single_issue_report(path.name, issue)

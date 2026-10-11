@@ -1,5 +1,5 @@
 """Circuit loading (specs/05-pipeline.md §4.1). Slice S5: OpenQASM 2/3 files.
-Builders via the sandbox arrive with M3 (ChP-0023)."""
+Builders via the sandbox arrive with M3 (ChP-0023); packages and line mode with ChP-0037."""
 
 from __future__ import annotations
 
@@ -14,8 +14,11 @@ from pathlib import Path
 from openqasm3.parser import QASM3ParsingError
 from qiskit import QuantumCircuit, qasm2, qasm3, qpy
 
-from qscore.errors import InvalidInput, SandboxError
-from qscore.intake.sandbox import BuilderRequest, run_builder
+from qscore.errors import ConfigError, InvalidInput, SandboxError
+from qscore.intake.compat import describe, removed_apis
+from qscore.intake.discover import parse_source
+from qscore.intake.sandbox import BuilderRequest, project_python, run_builder
+from qscore.intake.script import prefix, script_text
 from qscore.schemas.common import sha256_hex
 from qscore.schemas.manifest import BuilderSource, CircuitItem, Runner
 
@@ -28,6 +31,7 @@ class LoadedCircuit:
     circuit_sha256: str
     qasm_version: int | None
     rebuild: Callable[[int], QuantumCircuit] | None = None
+    dependency_sha256: str | None = None
 
 
 def qpy_sha256(circuit: QuantumCircuit) -> str:
@@ -114,7 +118,16 @@ def load_builder(
     """Run a curated builder in the sandbox, bind angles, and expose a sandboxed size rebuild."""
     source = item.source
     assert isinstance(source, BuilderSource)
-    assert runner.env == "engine"  # `uv` is refused in validate/pipeline.py before any build
+    python = None
+    dependency_sha256 = None
+    if runner.env == "uv":
+        python = project_python(root, runner.timeout_s, runner.mem_mb)
+        try:
+            dependency_sha256 = sha256_hex((root / ".qscore/deps.json").read_bytes())
+        except OSError as exc:
+            raise ConfigError(
+                f"project dependency record missing/unreadable; run qscore deps {root}"
+            ) from exc
     rel, function = source.builder.split("::")
     args = dict(source.args)
     if size is not None:
@@ -132,9 +145,30 @@ def load_builder(
         ):
             return QasmProblem("Q207", "parameters must map names to finite numeric values")
         values = doc
+    file = root / rel
+    if source.line is None:
+        request = BuilderRequest(root, file, function, args)
+    else:
+        try:
+            text = script_text(file, rel)
+            request = BuilderRequest(
+                root,
+                file,
+                function,
+                args,
+                source_text=prefix(text, source.line, rel),
+                cwd=file.parent,
+                line=source.line,
+            )
+        except InvalidInput as exc:
+            assert exc.code is not None  # script_text and prefix always name Q103 or Q301
+            (issue,) = exc.report.issues
+            return QasmProblem(exc.code, issue.message, issue.location.line, issue.location.column)
     try:
-        built = run_builder(
-            BuilderRequest(root, root / rel, function, args), runner.timeout_s, runner.mem_mb
+        built = (
+            run_builder(request, runner.timeout_s, runner.mem_mb)
+            if python is None
+            else run_builder(request, runner.timeout_s, runner.mem_mb, python=python)
         )
     except SandboxError as exc:
         codes = {
@@ -142,8 +176,13 @@ def load_builder(
             "import_error": "Q301",
             "user_exception": "Q302",
             "not_a_circuit": "Q303",
+            "args_for_circuit": "Q103",
         }
-        return QasmProblem(codes[exc.kind], str(exc))
+        code = codes[exc.kind]
+        message = str(exc)
+        if code in ("Q301", "Q302"):
+            message += _compat_hint(file, rel)
+        return QasmProblem(code, message)
     try:
         circuit = bind_parameters(built.circuit, values)
     except InvalidInput as exc:
@@ -156,4 +195,17 @@ def load_builder(
             raise InvalidInput(f"[{loaded.code}] size {value}: {loaded.message}", report=None)
         return loaded.circuit
 
-    return LoadedCircuit(circuit, qpy_sha256(circuit), None, rebuild)
+    return LoadedCircuit(circuit, qpy_sha256(circuit), None, rebuild, dependency_sha256)
+
+
+def _compat_hint(file: Path, rel: str) -> str:
+    """Removed Qiskit APIs used in the builder's file, joined to its Q301/Q302 (ChP-0037 §2.1 B);
+    empty when there are none. A file that does not parse has no hits (its Q301 says why)."""
+    try:
+        tree = parse_source(script_text(file, rel))
+    except (SyntaxError, UnicodeError):
+        return ""
+    hits = removed_apis(tree)
+    if not hits:
+        return ""
+    return " Removed Qiskit APIs in this file: " + "; ".join(describe(h, rel) for h in hits)

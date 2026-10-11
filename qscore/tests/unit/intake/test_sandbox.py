@@ -105,9 +105,8 @@ def test_secrets_stripped_from_child(repo: Path, monkeypatch: pytest.MonkeyPatch
     [
         "GITHUB_TOKEN",
         "AWS_SECRET_ACCESS_KEY",
-        "QSCORE_NEON_DSN",
+        "QSCORE_PLATFORM_DSN",
         "HF_HOME",
-        "NEON_X",
         "GEMINI_API_KEY",
         "OPENAI_ORG",
         "client_secret",

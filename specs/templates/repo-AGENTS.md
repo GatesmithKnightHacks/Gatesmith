@@ -25,7 +25,7 @@ You are working in the **Gatesmith** repository (KnightHacks IX). Its engine, **
 
 ```bash
 uv sync --frozen                                   # deps (lead does this before delegating)
-uv run pytest -m "not gpu and not neon and not hub and not llm and not slow" -q
+uv run pytest -m "not gpu and not platform and not hub and not llm and not slow" -q
 uv run ruff check . && uv run ruff format --check .
 uv run mypy src
 uv run lint-imports                                # layers: interfaces → services → pipeline → engines → foundations

@@ -23,6 +23,14 @@ body {
   overflow: hidden;
 }
 
+/*
+ * The board is drawn at 1440 × 900 and never reflows. A smaller window shows all of it scaled as
+ * one unit (app/fit.ts sets --fit from the window size); at or above the board's size it is 1:1.
+ */
+#root {
+  zoom: var(--fit, 1);
+}
+
 button {
   font: inherit;
   color: inherit;
@@ -59,9 +67,9 @@ svg {
   outline: none;
 }
 
-/* Keyboard focus: a 2px mint ring 2px outside the control (DS-04). */
+/* Keyboard focus: a 2px yellow ring 2px outside the control, at 0 ms (DS-08). Yellow marks where you are. */
 :focus-visible {
-  outline: 2px solid var(--color-action-primary);
+  outline: 2px solid var(--color-signal-select);
   outline-offset: 2px;
 }
 

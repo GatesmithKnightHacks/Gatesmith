@@ -14,7 +14,7 @@
 
 | Session | When | Length | Goal | Gate |
 |---|---|---|---|---|
-| **S1 · Setup** | Friday night (now) | 2–3 h | Machine checks, Aer ROCm wheel built and uploaded, vLLM serving the 8B model, one benchmark, bootstrap script written | GPU result == CPU result on a smoke test |
+| **S1 · Setup** | Friday night (now) | 2–3 h | Machine checks, Aer ROCm wheel built and uploaded, one benchmark, bootstrap script written | GPU result == CPU result on a smoke test |
 | **S2 · Data and benchmarks** | Saturday (hours ~14–22) | 8–10 h | GPU metrics in the engine, differential tests, profiler, benchmark suite, worker online, compatibility runs, dataset generation | G3 |
 | **S3 · Rehearsal and demo** | Sunday morning (hours ~30–36) | 4–5 h | Warm-up, two full rehearsals, live demo | G5 |
 
@@ -24,7 +24,7 @@ Record every session in `progress.md` → *Credits ledger* (start, end, hours, r
 
 ### 3.0 Before creating the machine (laptop)
 - Repo pushed to GitHub at a commit that installs (`uv sync` works); `scripts/build_aer_rocm.sh` drafted.
-- Secrets ready to paste (not in files in the repo): `HF_TOKEN` (write: `qscore-wheels`, `qscore-runs`; inference), `QSCORE_NEON_DSN` (worker role), the Neon host name for the egress check.
+- Secrets ready to paste (not in files in the repo): `HF_TOKEN` (write: `qscore-wheels`, `qscore-runs`; inference), `QSCORE_WORKER_TOKEN` (issued by the platform), the platform URL for the egress check.
 - Decide how the lead session will drive the machine (§6).
 
 ### 3.1 Machine checks (save outputs to `lab/<date>-s1-machine-check/NOTES.md`)
@@ -38,14 +38,14 @@ python3 -c "import torch,sys; print(sys.version); print(torch.__version__, torch
 ls /opt/rocm*/include/thrust /opt/rocm*/lib/librocblas* 2>/dev/null | head
 # egress
 python3 - <<'PY'
-import socket; socket.create_connection(("<neon-host>", 5432), timeout=5); print("neon 5432 OK")
+import urllib.request; print(urllib.request.urlopen("<platform-url>/api/health", timeout=10).status)  # HTTPS via the proxy
 PY
 curl -sSI https://huggingface.co | head -1
 unshare -n true && echo "unshare -n works" || echo "unshare -n NOT available"
 ```
 
 Decision points (tell the user immediately):
-- **5432 blocked** → the worker cannot reach Neon: FB-03 decision needed (`17-fallbacks.md`).
+- **Platform URL unreachable over HTTPS** → the worker cannot get jobs: raise it (no fallback; HTTPS egress works through the Radeon Cloud proxy, measured 2026-10-11).
 - **Host RAM < 40 GiB** → GPU unitary checks at 15 qubits may not fit on the host side (`08-verification.md` §2, step 4).
 - **Python version** of the image → the engine venv uses it (`--system-site-packages`).
 
@@ -84,13 +84,7 @@ Then one noisy run: `AerSimulator.from_backend(FakeTorino(), device="GPU")` on a
 
 Upload: `huggingface-cli upload <org>/qscore-wheels dist/<wheel> aer/<aer_version>/<python_tag>/<wheel>` (private repo), plus `SHA256SUMS`.
 
-### 3.3 vLLM (timebox: 60 minutes; if it fails, raise FB-02)
-
-- AMD lists the W7900 (gfx1100) for vLLM on ROCm 10 and publishes **Python 3.14** wheels: vLLM 0.27 ↔ PyTorch 2.12 on ROCm 10.0; vLLM 0.29 ↔ PyTorch 2.13 on ROCm 10.1. Pick the pair for the **image's ROCm version**.
-- `uv python install 3.14 && uv venv -p 3.14 /root/venvs/vllm` then install per AMD's page (exact index URL/wheel from the page at install time).
-- Env: `FLASH_ATTENTION_TRITON_AMD_ENABLE=TRUE`; the page's `PYTHONPATH` entry for `amd_smi` (`$VIRTUAL_ENV/lib/python3.14/site-packages/_rocm_sdk_core/share/amd_smi`); try `TORCH_BLAS_PREFER_HIPBLASLT=1` (AMD's workaround for slow decode on RX 7900-series before PyTorch 2.14).
-- Serve: `vllm serve Qiskit/granite-3.3-8b-qiskit --gpu-memory-utilization 0.40 --max-model-len 8192 --host 127.0.0.1 --port 8000` (add `--enforce-eager` if graph capture fails; record it).
-- Smoke: one `/v1/chat/completions` request; measure tokens/s after a warm-up request.
+### 3.3 (removed by ChP-0048: no language model on the instance; the `hf` layer calls Inference Providers)
 
 ### 3.4 One benchmark and the bootstrap script
 
@@ -105,22 +99,21 @@ Upload: `huggingface-cli upload <org>/qscore-wheels dist/<wheel> aer/<aer_versio
 
 `set -euo pipefail`; logs to `/root/bootstrap.log`; idempotent; **no fallbacks** — any failed step stops with a clear message.
 
-1. Read secrets from environment variables entered at session start (`HF_TOKEN`, `QSCORE_NEON_DSN`); refuse to continue if missing. Write nothing secret to disk except `/root/.config/qscore/env` (chmod 600).
-2. Install `uv` if missing; create `/root/venvs/engine` with `--system-site-packages` (reuses the image's ROCm PyTorch); `uv pip install` qscore from GitHub at the pinned commit (or `rsync`ed working tree, see §6) with extras `[neon,hf]`.
+1. Read secrets from environment variables entered at session start (`HF_TOKEN`, `QSCORE_WORKER_TOKEN`); refuse to continue if missing. Write nothing secret to disk except `/root/.config/qscore/env` (chmod 600).
+2. Install `uv` if missing; create `/root/venvs/engine` with `--system-site-packages` (reuses the image's ROCm PyTorch); `uv pip install` qscore from GitHub at the pinned commit (or `rsync`ed working tree, see §6) with extra `[hf]`.
 3. Download the Aer wheel from `<org>/qscore-wheels` (verify SHA256) and install it into the engine venv. If missing: run `scripts/build_aer_rocm.sh` (`AER_ROCM_ARCH=gfx1100`) and upload the result.
-4. Create `/root/venvs/vllm` (Python 3.14 via uv), install the vLLM wheel for the image's ROCm version, pre-download `Qiskit/granite-3.3-8b-qiskit` to the HF cache.
-5. `qscore profile --refresh` (prints the profile) and `qscore db ping`; register the worker in Neon.
-6. Start tmux session `qscore` with windows `vllm` (serve command, §3.3) and `worker` (`qscore worker`), and print how to attach.
-7. Print a summary: versions (Python, torch, ROCm, Aer, vLLM, qscore commit), profile id, worker id, time taken.
+4. (removed by ChP-0048: no model download or server.)
+5. `qscore profile --refresh` (prints the profile) ; the worker registers itself with the platform on start (`POST /api/worker/register`).
+6. Start tmux session `qscore` with window `worker` (`qscore worker`), and print how to attach.
+7. Print a summary: versions (Python, torch, ROCm, Aer, qscore commit), profile id, worker id, time taken.
 
 ## 5. On-machine layout
 
 ```text
 /root/qscore                repo checkout (pinned commit) or rsync'd tree
 /root/venvs/engine          engine venv (--system-site-packages)
-/root/venvs/vllm            Python 3.14 venv for vLLM
 /root/lab                   experiment scratch (copied back to the laptop's lab/)
-/root/.cache/huggingface    model and wheel cache
+/root/.cache/huggingface    wheel cache
 /root/.qscore               cache/, hardware/, runs/, spool/ (FB-05 only)
 /root/.config/qscore/env    secrets (chmod 600), destroyed with the machine
 ```

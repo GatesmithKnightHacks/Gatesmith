@@ -1,274 +1,251 @@
 /*
- * Pieces shared by the two stretch screens (S-15, S-16). Local to these screens on purpose;
- * the shared Section does not animate yet, so InspSection adds the collapse motion here.
+ * Pieces shared by the two stretch screens (S-15 Candidate screening, S-16 Model bench), drawn as on
+ * their Paper boards (1BKI-0, 1CJS-0) and states boards (1LVA-0, 1LWU-0). Local on purpose: the
+ * glyphs here are the boards' exact ones, a step finer than the shared status chip.
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { GpuStatus } from '../../ui/Shell'
-import { Chevron, SelectCaret } from '../../ui/icons'
+import type { CSSProperties, ReactNode } from 'react'
+import { EditorButton } from '../../ui/parts'
 import './stretch.css'
 
-export function StretchStatus() {
+/* ── Top bar, right side: GPU state and the signed-in handle ─────────── */
+export function AccountStatus({ gpu = 'online' }: { gpu?: 'online' | 'off' }) {
   return (
-    <>
-      <GpuStatus online />
-      <span className="mono">job 7f3a·0412</span>
-      <span className="mono stretch-marker">stretch</span>
-    </>
-  )
-}
-
-/** Inspector section with the 40px header; the body opens and closes on height + fade. */
-export function InspSection({
-  icon,
-  title,
-  meta,
-  defaultOpen = true,
-  children,
-  bodyStyle,
-  inset = false,
-  className = '',
-}: {
-  icon: ReactNode
-  title: string
-  meta?: ReactNode
-  defaultOpen?: boolean
-  children?: ReactNode
-  bodyStyle?: CSSProperties
-  /** header inside the 16px padding (Predictor, Block model): rows run edge to edge of the text lane */
-  inset?: boolean
-  className?: string
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <section className={`insp-section st-section${inset ? ' is-inset' : ''} ${className}`}>
-      <button className="insp-section-header" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {icon}
-        <span className="insp-section-title">{title}</span>
-        {meta != null && <span className="insp-section-meta">{meta}</span>}
-        <span className={`st-chevron${open ? '' : ' is-closed'}`}>
-          <Chevron open />
+    <span className="st-topbar-status">
+      <span className="st-gpu">
+        <span className={`st-gpu-dot${gpu === 'off' ? ' is-off' : ''}`} />
+        {gpu === 'online' ? 'GPU online' : 'GPU off'}
+      </span>
+      <span className="st-account">
+        <span className="st-account-disc">
+          <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden>
+            <path
+              d="M7 7.2a2.4 2.4 0 100-4.8a2.4 2.4 0 000 4.8zM2.8 12.2c.6-2 2.2-3.1 4.2-3.1s3.6 1.1 4.2 3.1"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+          </svg>
         </span>
-      </button>
-      {children != null && (
-        <div className={`st-collapse${open ? '' : ' is-closed'}`} aria-hidden={!open}>
-          <div className="st-collapse-inner">
-            <div className="st-section-body" style={bodyStyle}>
-              {children}
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
-  )
-}
-
-/** label · value rows, 28 tall, 1px rule above each, the last one ruled below too. */
-export function KV({ rows, style }: { rows: [ReactNode, ReactNode][]; style?: CSSProperties }) {
-  return (
-    <div className="st-kv" style={style}>
-      {rows.map(([k, v], i) => (
-        <div key={i} className={`st-kv-row${i === rows.length - 1 ? ' is-last' : ''}`}>
-          <span className="st-kv-label">{k}</span>
-          <span className="st-kv-value mono">{v}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/** A select that opens a small menu on the popover surface. */
-export function SelectField<T extends string>({
-  value,
-  options,
-  onChange,
-  label,
-}: {
-  value: T
-  options: { value: T; label: string }[]
-  onChange: (v: T) => void
-  label: string
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const close = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false)
-    }
-    window.addEventListener('mousedown', close)
-    return () => window.removeEventListener('mousedown', close)
-  }, [open])
-  const current = options.find((o) => o.value === value)
-  return (
-    <div className="st-select" ref={ref}>
-      <button
-        className="field st-field-btn"
-        style={{ width: 180 }}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={label}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => {
-          const i = options.findIndex((o) => o.value === value)
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            onChange(options[Math.min(options.length - 1, i + 1)].value)
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            onChange(options[Math.max(0, i - 1)].value)
-          } else if (e.key === 'Escape') setOpen(false)
-        }}
-      >
-        <span className="field-value">{current?.label}</span>
-        <SelectCaret />
-      </button>
-      {open && (
-        <ul className="st-menu" role="listbox">
-          {options.map((o) => (
-            <li key={o.value}>
-              <button
-                role="option"
-                aria-selected={o.value === value}
-                className={`st-menu-item${o.value === value ? ' is-current' : ''}`}
-                onClick={() => {
-                  onChange(o.value)
-                  setOpen(false)
-                }}
-              >
-                {o.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-/** Numeric field with its unit in a fixed slot. Arrow keys step it. */
-export function NumberField({
-  value,
-  unit,
-  min,
-  max,
-  onChange,
-  label,
-}: {
-  value: number
-  unit: string
-  min: number
-  max: number
-  onChange: (v: number) => void
-  label: string
-}) {
-  const [text, setText] = useState(String(value))
-  useEffect(() => setText(String(value)), [value])
-  const commit = (t: string) => {
-    const n = Number(t)
-    if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, Math.round(n))))
-    else setText(String(value))
-  }
-  return (
-    <span className="field st-number" style={{ width: 180 }}>
-      <input
-        className="field-value st-number-input"
-        inputMode="numeric"
-        aria-label={label}
-        value={text}
-        onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, ''))}
-        onBlur={(e) => commit(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit(text)
-          if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            onChange(Math.min(max, value + 1))
-          }
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            onChange(Math.max(min, value - 1))
-          }
-        }}
-      />
-      <span className="field-unit">{unit}</span>
+        <span className="mono">qlab-dev</span>
+      </span>
     </span>
   )
 }
 
-/** Elapsed seconds while something runs: words and seconds, never a spinner. */
-export function useElapsed(running: boolean) {
-  const [ms, setMs] = useState(0)
-  useEffect(() => {
-    if (!running) return
-    const start = performance.now()
-    setMs(0)
-    const id = window.setInterval(() => setMs(performance.now() - start), 100)
-    return () => clearInterval(id)
-  }, [running])
-  return (ms / 1000).toFixed(1)
+/* ── Status glyph + word ─────────────────────────────────────────────── */
+export type Word =
+  | 'queued'
+  | 'screening'
+  | 'verifying'
+  | 'failed'
+  | 'passed'
+  | 'accepted'
+  | 'rejected'
+  | 'inconclusive'
+  | 'proposed'
+  | 'unavailable'
+  | 'warning'
+  | 'running'
+
+const WORD_CLASS: Record<Word, string> = {
+  queued: 'is-secondary',
+  screening: 'is-secondary',
+  verifying: 'is-info',
+  running: 'is-info',
+  failed: 'is-bad',
+  rejected: 'is-bad',
+  passed: 'is-good',
+  accepted: 'is-good',
+  inconclusive: 'is-warn',
+  warning: 'is-warn',
+  proposed: 'is-ai',
+  unavailable: 'is-tertiary',
 }
 
-export function useTimers() {
-  const ids = useRef<number[]>([])
-  useEffect(() => () => ids.current.forEach((t) => clearTimeout(t)), [])
-  return {
-    after(ms: number, fn: () => void) {
-      ids.current.push(window.setTimeout(fn, ms))
-    },
-    clear() {
-      ids.current.forEach((t) => clearTimeout(t))
-      ids.current = []
-    },
+export function Glyph({ word, size = 10 }: { word: Word; size?: number }) {
+  const s = { width: size, height: size, viewBox: '0 0 10 10', 'aria-hidden': true, className: 'st-glyph' } as const
+  switch (word) {
+    case 'queued':
+      return (
+        <svg {...s}>
+          <circle cx="5" cy="5" r="3.75" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      )
+    case 'unavailable':
+      return (
+        <svg {...s} width={8} height={8} viewBox="0 0 8 8">
+          <circle cx="4" cy="4" r="3.25" fill="none" stroke="var(--color-text-disabled)" strokeWidth="1.5" />
+        </svg>
+      )
+    case 'screening':
+      return <Spinner size={14} />
+    case 'verifying':
+    case 'running':
+      return <span className="st-dot6" aria-hidden />
+    case 'failed':
+    case 'rejected':
+      return (
+        <svg {...s}>
+          <path d="M2 2l6 6M8 2L2 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      )
+    case 'passed':
+    case 'accepted':
+      return (
+        <svg {...s}>
+          <path d="M1.5 5.2l2.3 2.3L8.5 2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'inconclusive':
+      return (
+        <svg {...s}>
+          <circle cx="5" cy="5" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 1.6" />
+        </svg>
+      )
+    case 'warning':
+      return (
+        <svg {...s}>
+          <path d="M5 1.2L9.2 8.6H.8z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'proposed':
+      return (
+        <svg {...s}>
+          <path d="M5 1.2l3.8 3.8L5 8.8 1.2 5z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+      )
   }
 }
 
-/* Exact status glyphs from the S-15 / S-16 boards (14px viewBox, 10–12px). */
-export function GlyphAccepted({ size = 10 }: { size?: number }) {
+/** Icon + word in its signal color. `label` replaces the word, `gap` follows the board (4 or 5). */
+export function StatusWord({ word, label, gap = 5, className = '' }: { word: Word; label?: ReactNode; gap?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 14 14" aria-hidden>
-      <path d="M3 7.5l2.6 2.6L11 4.5" fill="none" stroke="#5FEEA3" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <span className={`st-word ${WORD_CLASS[word]} ${className}`} style={{ gap }}>
+      <Glyph word={word} />
+      <span>{label ?? word}</span>
+    </span>
   )
 }
-export function GlyphRejected({ size = 10 }: { size?: number }) {
+
+/* ── Loading ─────────────────────────────────────────────────────────── */
+/** Spinner ring: 2 px, 270°, one turn per --motion-spin (linear). Always beside a stage word. */
+export function Spinner({ size = 14 }: { size?: 14 | 20 | 28 }) {
+  const r = size / 2 - 1.5
+  const c = 2 * Math.PI * r
   return (
-    <svg width={size} height={size} viewBox="0 0 14 14" aria-hidden>
-      <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  )
-}
-export function GlyphInconclusive({ size = 10 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 14 14" aria-hidden>
-      <circle cx="7" cy="7" r="4.5" fill="none" stroke="#FF986E" strokeWidth="1.6" strokeDasharray="2 2" />
-    </svg>
-  )
-}
-export function GlyphWarning({ size = 12, stroke = 1.5 }: { size?: number; stroke?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 14 14" aria-hidden>
-      <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth={stroke} strokeLinejoin="round" />
-    </svg>
-  )
-}
-export function GlyphSent() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
-      <path d="M2 5h6M5.5 2.5L8 5 5.5 7.5" fill="none" stroke="#FFFFFF" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="st-spinner" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-border-subtle)" strokeWidth="2" />
+      <circle
+        className="st-spinner-arc"
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="var(--color-text-secondary)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray={`${(c * 0.75).toFixed(2)} ${c.toFixed(2)}`}
+      />
     </svg>
   )
 }
 
-export function IconHistory() {
+/** A stage word with its spinner: "Loading candidates for finding #3 · about 1 s". */
+export function Stage({ children, meta, style }: { children: ReactNode; meta?: ReactNode; style?: CSSProperties }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-      <path
-        d="M3.5 9a5.5 5.5 0 105.5-5.5A5.5 5.5 0 004.6 5.7M3.5 3v3h3M9 6v3.2l2 1.3"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div className="st-stage" role="status" aria-live="polite" style={style}>
+      <Spinner />
+      <span className="st-stage-word">{children}</span>
+      {meta != null && <span className="st-stage-meta mono">{meta}</span>}
+    </div>
+  )
+}
+
+/**
+ * Skeleton block sized to the content it stands for. On an inset (#0F1F23) the block steps up to the
+ * panel and the band to #2A383D, never brighter (fix round 3, R2). Reduced motion: the opacity pulse.
+ */
+export function Block({ w, h = 10, style }: { w: number | string; h?: number; style?: CSSProperties }) {
+  return <span aria-hidden className="st-block" style={{ width: w, height: h, ...style }} />
+}
+
+/* ── Banner: 28 tall, 2 px rail in the signal color, word, message, one editor button ── */
+export function Banner({
+  word,
+  label,
+  children,
+  action,
+  onAction,
+  style,
+}: {
+  word: 'warning' | 'failed' | 'offline' | 'unavailable'
+  label?: string
+  children: ReactNode
+  action?: string
+  onAction?: () => void
+  style?: CSSProperties
+}) {
+  return (
+    <div className={`st-banner is-${word}`} role={word === 'failed' ? 'alert' : 'status'} style={style}>
+      {word === 'offline' ? (
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className="st-glyph">
+          <path d="M1 3.6a6 6 0 018 0M2.6 5.4a3.6 3.6 0 014.8 0M4.3 7.2a1.2 1.2 0 011.4 0M1.2 1.2l7.6 7.6" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+      ) : (
+        <Glyph word={word === 'unavailable' ? 'warning' : word} />
+      )}
+      <span className="st-banner-word">{label ?? word}</span>
+      <span className="st-banner-text">{children}</span>
+      {action && (
+        <EditorButton onClick={onAction} style={{ background: 'var(--color-surface-panel)' }}>
+          {action}
+        </EditorButton>
+      )}
+    </div>
+  )
+}
+
+/* ── Fact rows: label left, value + unit right ───────────────────────── */
+export function Fact({
+  label,
+  value,
+  unit,
+  height = 24,
+  last,
+  mono = true,
+  small,
+}: {
+  label: ReactNode
+  value: ReactNode
+  unit?: ReactNode
+  height?: number
+  last?: boolean
+  mono?: boolean
+  /** value at 11 px (ids, short lists) */
+  small?: boolean
+}) {
+  return (
+    <div className={`st-fact${last ? ' is-last' : ''}`} style={{ height }}>
+      <span className="st-fact-label">{label}</span>
+      <span className="st-fact-value">
+        <span className={`${mono ? 'mono' : ''}${small ? ' is-small' : ''}`}>{value}</span>
+        {unit != null && <span className="mono st-unit">{unit}</span>}
+      </span>
+    </div>
+  )
+}
+
+/** Layer dot: blue for the engine, violet for anything a model proposed. */
+export function LayerDot({ layer }: { layer: 'engine' | 'model' | 'white' }) {
+  return <span className={`st-layer-dot is-${layer}`} aria-hidden />
+}
+
+/** 56 × 6 probability bar in the model color (predicted, not verified). */
+export function ProbBar({ value, width = 56 }: { value: number; width?: number }) {
+  return (
+    <span className="st-prob" style={{ width }}>
+      <span style={{ width: Math.round(value * width) }} />
+    </span>
   )
 }

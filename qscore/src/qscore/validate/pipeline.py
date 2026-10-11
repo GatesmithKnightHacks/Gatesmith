@@ -33,8 +33,6 @@ def run_validation(
     issues: list[IssueModel] = []
     work: list[tuple[ResolvedItem, LoadedCircuit]] = []
     registry = all_metrics()
-    if manifest.project.runner.env != "engine":  # before any builder runs (05 §3)
-        raise ConfigError("project.runner.env: uv is not supported yet; use env: engine")
     for index, (item, root, origins) in enumerate(merge_items(manifest, manifest_dir)):
         at = index if positions is not None else None
 

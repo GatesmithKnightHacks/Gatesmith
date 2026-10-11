@@ -5,6 +5,12 @@ export const SCREENS = {
   'S-02': '/scan',
   'S-03': '/preflight',
   'S-04': '/workspace',
+  'S-04-never-run': '/workspace?state=never-run',
+  'S-04-loading': '/workspace?state=loading',
+  'S-04-scoring': '/workspace?state=scoring',
+  'S-04-partial': '/workspace?state=partial',
+  'S-04-gpu-off': '/workspace?state=gpu-off',
+  'S-04-keyboard-focus': '/workspace?state=focus',
   'S-05': '/estimate',
   'S-06': '/fix',
   'S-07': '/loop',
@@ -16,4 +22,9 @@ export const SCREENS = {
   'S-14': '/leaderboard',
   'S-15': '/screening',
   'S-16': '/bench',
+  'S-17': '/signin',
+  'S-18': '/signup',
+  'S-19': '/account',
+  /** The small-screen gate (S-20/S-21); its target is drawn at phone and tablet sizes, so diff skips it. */
+  'S-20': '/gate',
 }

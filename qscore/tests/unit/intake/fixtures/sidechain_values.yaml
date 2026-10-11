@@ -1,0 +1,8 @@
+# Values for examples/sidechain_qaoa (qscore.values/v0.1, specs/04 §14): with these, the drafted
+# entry matches the hand-written qscore.yaml's args, sweep and parameters.
+schema: qscore.values/v0.1
+builders:
+  src/packing/qaoa.py::build_qaoa:
+    args: {rotamers: 3, p: 2}
+    sweep: {n_residues: "2..6"}
+    parameters: {file: params/qaoa_p2.json}

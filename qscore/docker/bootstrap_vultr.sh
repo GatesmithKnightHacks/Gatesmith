@@ -66,7 +66,7 @@ main() {
   bash "$repo_dir/qscore/docker/deploy.sh"
 
   echo
-  echo "Next: fill in the secrets with  nano $env_file  (QSCORE_NEON_DSN, QSCORE_PLATFORM_TOKEN, HF_TOKEN),"
+  echo "Next: fill in the secrets with  nano $env_file  (QSCORE_PLATFORM_TOKEN, QSCORE_PLATFORM_WORKER_TOKENS, HF_TOKEN),"
   echo "then redeploy with  bash $repo_dir/qscore/docker/deploy.sh"
 }
 

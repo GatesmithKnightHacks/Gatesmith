@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from typing import Literal
 
 # Same patterns the sandbox strips from builder environments (specs/05-pipeline.md §4.2).
-_SECRET_ENV = re.compile(r"(_TOKEN|_KEY|_DSN|SECRET|^HF_|^NEON_|^GEMINI_|^OPENAI_)", re.IGNORECASE)
+_SECRET_ENV = re.compile(r"(_TOKEN|_KEY|_DSN|SECRET|^HF_|^GEMINI_|^OPENAI_)", re.IGNORECASE)
 _URL_CREDENTIALS = re.compile(r"(?P<scheme>[a-z][a-z0-9+.-]*://)[^/\s:@]+:[^/\s@]+@", re.IGNORECASE)
 REDACTED = "***"
 

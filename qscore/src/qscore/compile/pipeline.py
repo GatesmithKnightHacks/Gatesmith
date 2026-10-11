@@ -41,13 +41,19 @@ class CompileSet:
         return [r.seed for r in self.results]
 
 
+# Preset level of every seeded compile (05 §6); the compiled circuit export records it (ChP-0034).
+OPTIMIZATION_LEVEL = 3
+
+
 def _pool_init() -> None:
     os.environ["RAYON_NUM_THREADS"] = "1"  # avoid oversubscription with Qiskit's Rust threads
 
 
 def _compile_one(circuit: QuantumCircuit, target: Target, seed: int) -> CompiledResult:
     start = time.perf_counter()
-    pm = generate_preset_pass_manager(optimization_level=3, target=target, seed_transpiler=seed)
+    pm = generate_preset_pass_manager(
+        optimization_level=OPTIMIZATION_LEVEL, target=target, seed_transpiler=seed
+    )
     out = pm.run(circuit)
     return CompiledResult(
         seed,
