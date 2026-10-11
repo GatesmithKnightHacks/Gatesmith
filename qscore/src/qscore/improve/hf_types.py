@@ -48,9 +48,10 @@ class CallRecord(StrictHfModel):
     provider: str
     prompt_version: str
     latency_ms: float = Field(ge=0)
-    prompt_tokens: int = Field(ge=0)
-    completion_tokens: int = Field(ge=0)
-    cost_usd_estimate: float = Field(ge=0)
+    prompt_tokens: int | None = Field(default=None, ge=0)
+    completion_tokens: int | None = Field(default=None, ge=0)
+    cost_usd_estimate: float | None = Field(default=None, ge=0)
+    accounting_known: bool = False
     retries: int = Field(ge=0, le=2)
     http_status: int | None
     outcome: Literal["proposals", "empty", "parse_failure", "layer_error"]
