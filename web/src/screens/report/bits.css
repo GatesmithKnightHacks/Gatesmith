@@ -1,73 +1,176 @@
-.rp-section {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  padding: 0 16px 16px;
+/*
+ * Shared report and export pieces. Motion values are the DS-08 system; until the shared motion.css carries them
+ * these local copies use the same names (proposed tokens: --motion-hover 150, --motion-tile 200, --motion-load 400,
+ * --motion-spin 1000, --motion-shimmer 1200).
+ */
+.rp-screen {
+  --rp-hover: var(--motion-hover, 150ms);
+  --rp-tile: var(--motion-tile, 200ms);
+  --rp-load: var(--motion-load, 400ms);
+  --rp-spin: var(--motion-spin, 1000ms);
+  --rp-shimmer: var(--motion-shimmer, 1200ms);
+  display: contents;
 }
-.rp-section.has-top {
-  border-top: 1px solid var(--color-surface-app);
+
+/* Keyboard focus everywhere on these screens: 2 px yellow, 2 px out, nothing else (DS-08). */
+.rp-screen :focus-visible,
+.rp-focus {
+  outline: 2px solid var(--color-signal-select) !important;
+  outline-offset: 2px;
 }
-.rp-section.has-bottom {
-  border-bottom: 1px solid var(--color-surface-app);
-}
-.rp-section-header {
-  display: flex;
+
+/* ── Status marks ──────────────────────────────────────────────────────── */
+.rp-mark {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
   flex-shrink: 0;
-  height: 40px;
-  width: 100%;
-}
-.rp-section-title {
-  flex: 1 1 0;
-  color: var(--color-text-primary);
-  font-size: var(--text-base);
-  font-weight: var(--font-weight-medium);
-  line-height: 18px;
-}
-.rp-section-meta {
-  color: var(--color-text-tertiary);
-  font-family: var(--font-mono);
-  font-size: var(--text-label);
   line-height: 14px;
   white-space: nowrap;
 }
-.rp-chevron {
-  transition: transform var(--motion-base) var(--ease-standard);
-}
-.rp-chevron.is-closed {
-  transform: rotate(180deg);
-}
-.rp-collapse {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows var(--motion-base) var(--ease-standard), opacity var(--motion-base) var(--ease-standard);
-}
-.rp-collapse.is-closed {
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition-timing-function: var(--ease-exit);
-  transition-duration: var(--motion-fast);
-}
-.rp-collapse-inner {
+
+/* ── Banner ────────────────────────────────────────────────────────────── */
+.rp-banner {
   display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 0 var(--spacing-2) 0 10px;
+  background: var(--color-surface-inset);
+  border-left: 2px solid;
+  animation: rp-fade-in var(--rp-tile) ease both;
 }
-/* sections lose their bottom padding when closed */
-.rp-section:has(.rp-collapse.is-closed) {
-  padding-bottom: 0;
+.rp-banner-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.rp-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.rp-btn-inset {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  transition: background-color var(--rp-hover) ease;
+}
+.rp-btn-inset:hover {
+  background: var(--color-surface-raised);
+}
+.rp-btn-inset:active {
+  background: var(--color-surface-selected);
+}
+.rp-btn-inset:disabled {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
+/* ── Spinner and stage line ────────────────────────────────────────────── */
+.rp-spinner {
+  flex-shrink: 0;
+  animation: rp-spin var(--rp-spin) linear infinite;
+}
+@keyframes rp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.rp-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 20px;
+}
+.rp-stage-word {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-signal-info);
+  white-space: nowrap;
+}
+.rp-stage-estimate {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+
+/* ── Shimmer: #0F1F23 blocks, a #243237 band at 24 % sweeping 1200 ms linear (DS-08) ── */
+.rp-sk {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface-inset);
+  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-panel) 50%, transparent 100%);
+  background-size: 24% 100%;
+  background-repeat: no-repeat;
+  animation: rp-sweep var(--rp-shimmer) linear infinite;
+}
+/* on panel-colored header strips the block is the panel and the band one step up */
+.rp-sk.is-on-panel {
+  background-color: var(--color-surface-panel);
+  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-raised) 50%, transparent 100%);
+}
+@keyframes rp-sweep {
+  from {
+    background-position: -31.6% 0;
+  }
+  to {
+    background-position: 131.6% 0;
+  }
+}
+@keyframes rp-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+@keyframes rp-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+/* content replacing a skeleton crossfades in 400 ms */
+.rp-arrive {
+  animation: rp-fade-in var(--rp-load) ease both;
+}
+
+/* Reduced motion: the ring stops, the shimmer becomes a pulse, fades stay. */
+:root[data-reduce-motion] .rp-spinner {
+  animation: none;
+}
+:root[data-reduce-motion] .rp-sk {
+  background-image: none;
+  animation: rp-pulse var(--rp-shimmer) ease infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rp-spinner {
+    animation: none;
+  }
+  .rp-sk {
+    background-image: none;
+    animation: rp-pulse var(--rp-shimmer) ease infinite;
+  }
+}
+
+/* ── Inspector facts ───────────────────────────────────────────────────── */
 .rp-fact {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  height: 28px;
-  border-top: 1px solid var(--color-surface-app);
-}
-.rp-fact.is-last {
+  height: 22px;
   border-bottom: 1px solid var(--color-surface-app);
 }
 .rp-fact-label {
@@ -76,10 +179,81 @@
   white-space: nowrap;
 }
 .rp-fact-value {
-  display: flex;
-  justify-content: flex-end;
-  flex: 1 1 0;
+  flex-shrink: 0;
   color: var(--color-text-primary);
-  text-align: right;
   white-space: nowrap;
+}
+
+/* ── Code block ────────────────────────────────────────────────────────── */
+.rp-code {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding-block: 4px;
+  /* a code view scrolls when its tile is shorter than the file */
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-control) transparent;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+}
+.rp-code-line {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 20px;
+}
+.rp-code-n {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 44px;
+  padding-right: 10px;
+  border-right: 2px solid var(--color-surface-panel);
+  color: var(--color-text-disabled);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.rp-code-rail {
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 2px;
+}
+.rp-code-rail.is-accepted {
+  background: var(--color-text-secondary);
+}
+.rp-code-text {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-left: var(--spacing-3);
+  color: var(--color-text-primary);
+  white-space: pre;
+}
+.rp-code-text.is-comment {
+  color: var(--color-text-tertiary);
+}
+
+/* ── Account in the top bar ────────────────────────────────────────────── */
+.rp-account {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.rp-account-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-inset);
 }
