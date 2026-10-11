@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import shlex
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Any
 
 from qscore.errors import RecordError
@@ -102,6 +105,103 @@ def ensure_comparable(loaded: LoadedBundle) -> None:
         for field in ("profile", "thresholds_sha256", "fallbacks_enabled", "qiskit"):
             if getattr(base.provenance, field) != getattr(head.provenance, field):
                 raise RecordError("Incomparable " + field + " for item " + item)
+
+
+def _local_reproduction(loaded: LoadedBundle, config: RepoConfig) -> list[str]:
+    """Render equivalent local commands; never imply CI's absent absolute argv was recorded."""
+    p = loaded.envelope.provenance
+    expected: dict[str, Any] = {
+        "engine_revision": p.engine_revision,
+        "profile": "ci",
+        "device_default": "cpu",
+        "fallbacks": [],
+        "optimization_level": 3,
+        "manifest": config.manifest,
+        "target": config.target,
+    }
+    for side in ("base", "head"):
+        try:
+            settings = json.loads(loaded.payloads[f"{side}/settings.json"])
+        except (KeyError, ValueError, UnicodeDecodeError) as exc:
+            raise RecordError("Missing or invalid reproduction runtime settings") from exc
+        if not isinstance(settings, dict):
+            raise RecordError("Invalid reproduction runtime settings")
+        runtime = {
+            key: value for key, value in settings.items() if key not in {"comparison", "items"}
+        }
+        fingerprint = hashlib.sha256(
+            json.dumps(runtime, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        if runtime != expected or fingerprint != p.settings_sha256:
+            raise RecordError("Unsupported or mismatched reproduction runtime settings")
+    manifest = PurePosixPath(config.manifest)
+    if (
+        manifest.is_absolute()
+        or ".." in manifest.parts
+        or "\\" in config.manifest
+        or "\x00" in config.manifest
+    ):
+        raise RecordError("Unsafe configured reproduction input path")
+    root = f"../gatesmith-review-{p.repository_id}-{p.pull_request}-{p.run_id}-{p.run_attempt}"
+    commands = [
+        "(",
+        shlex.join(["set", "-eu"]),
+        shlex.join(["mkdir", root]),
+        shlex.join(["python3.12", "-m", "venv", root + "/engine"]),
+        shlex.join(
+            [
+                root + "/engine/bin/python",
+                "-m",
+                "pip",
+                "install",
+                "qscore @ git+https://github.com/GatesmithKnightHacks/Gatesmith.git@"
+                + p.engine_revision
+                + "#subdirectory=qscore",
+            ]
+        ),
+    ]
+    for side, sha in (("base", p.base_sha), ("head", p.head_sha)):
+        commands.append(shlex.join(["git", "worktree", "add", "--detach", root + "/" + side, sha]))
+        if getattr(loaded.envelope, side).discovery is not None:
+            commands.append(f"# {side}: discovery only; no manifest was scored.")
+            continue
+        score = [
+            "env",
+            "QSCORE_PROFILE=" + expected["profile"],
+            "QSCORE_DEVICE_DEFAULT=" + expected["device_default"],
+            "QSCORE_FALLBACKS=",
+            "QSCORE_CACHE_DIR=../cache-" + side,
+            "PYTHONNOUSERSITE=1",
+            "../engine/bin/qscore",
+            "score",
+            "./" + config.manifest,
+            "--out",
+            "../results-" + side,
+            "--yes",
+        ]
+        if config.target is not None:
+            score.extend(["--target", config.target])
+        commands.extend(
+            ["(", "  " + shlex.join(["cd", root + "/" + side]), "  " + shlex.join(score), ")"]
+        )
+    commands.append(")")
+    recipe = "\n".join(commands)
+    if SECRET.search(recipe):
+        return [
+            "Equivalent local reproduction omitted: configuration contains credential-like content."
+        ]
+    # Markdown quoting must never alter shell arguments. A longer fence encloses even
+    # multiline/backtick-bearing repository paths without allowing them to escape.
+    fence = "`" * max(3, max((len(run) + 1 for run in re.findall(r"`+", recipe)), default=0))
+    return [
+        "Equivalent local reproduction (not the original absolute CI command):",
+        "Run from a clone containing both exact commits, with Python 3.12 available. "
+        "The fresh sibling directory keeps the current checkout unchanged; base/head "
+        "worktrees, outputs and caches are separate. Pinned engine optimization level: 3.",
+        fence + "sh",
+        recipe,
+        fence,
+    ]
 
 
 def build_summary(
@@ -297,7 +397,8 @@ def build_summary(
             f"- {side}: qscore `{_safe(run.provenance.qscore)}`, "
             f"Qiskit `{_safe(run.provenance.qiskit)}`, `run.json` SHA-256 `{digest}`."
         )
-        lines.append(f"  Command: `{_safe(run.command)}`")
+        lines.append(f"  Recorded engine operation: `{_safe(run.command)}`")
+    lines.extend(["", *_local_reproduction(loaded, config), ""])
     for side, cards in loaded.cards.items():
         for item, card in cards.items():
             if card.compile:
