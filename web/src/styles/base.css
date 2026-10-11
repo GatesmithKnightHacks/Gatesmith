@@ -1,0 +1,87 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--color-surface-app);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis: none;
+  overflow: hidden;
+}
+
+/*
+ * The board is drawn at 1440 × 900 and never reflows. A smaller window shows all of it scaled as
+ * one unit (app/fit.ts sets --fit from the window size); at or above the board's size it is 1:1.
+ */
+#root {
+  zoom: var(--fit, 1);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+pre {
+  margin: 0;
+}
+
+svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+:focus {
+  outline: none;
+}
+
+/* Keyboard focus: a 2px yellow ring 2px outside the control, at 0 ms (DS-08). Yellow marks where you are. */
+:focus-visible {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

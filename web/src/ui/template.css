@@ -1,0 +1,460 @@
+/*
+ * S-00 · Shell template board (17B7-0): measured sizes, type scale, color roles and the three rules
+ * inside the measured shell. Values are the board's; colors come from tokens.css.
+ */
+.s00-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  flex: 1 1 0;
+  min-height: 0;
+}
+.s00-top {
+  display: flex;
+  gap: var(--spacing-1);
+  flex-shrink: 0;
+  height: 434px;
+}
+.s00-top > .tile:nth-child(1) {
+  width: 340px;
+  flex-shrink: 0;
+}
+.s00-top > .tile:nth-child(2) {
+  width: 290px;
+  flex-shrink: 0;
+}
+.s00-top > .tile:nth-child(3) {
+  flex: 1 1 0;
+}
+.s00-main .tile-tab {
+  padding-inline: 10px;
+}
+.s00-main .tile-meta {
+  padding-right: 10px;
+  font-family: var(--font-mono);
+}
+.s00-pad {
+  padding: var(--spacing-3);
+}
+
+/* Measured sizes: an inset table, 21px rows, value right-aligned in mono, unit in its own slot. */
+.s00-inset {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  padding-block: var(--spacing-1);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+  overflow: clip;
+}
+.s00-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 18px;
+  padding-inline: 10px;
+}
+.s00-group + .s00-size,
+.s00-size + .s00-size,
+.s00-size + .s00-group {
+  border-top: 1px solid var(--color-surface-app);
+}
+.s00-caps {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  letter-spacing: var(--tracking-label);
+}
+.s00-axis {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.s00-size {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 21px;
+  padding-inline: 10px;
+}
+.s00-size-name {
+  width: 92px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.s00-size-note {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.s00-size-value {
+  width: 64px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+.s00-size-unit {
+  width: 22px;
+  flex-shrink: 0;
+  padding-left: var(--spacing-1);
+}
+
+/* Type scale: 24px group heads, 40px sample rows. */
+.s00-type {
+  display: flex;
+  flex-direction: column;
+}
+.s00-type-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 40px;
+  border-top: 1px solid var(--color-surface-app);
+  white-space: nowrap;
+}
+.s00-type-row.is-head {
+  height: 24px;
+}
+.s00-type-row:first-child {
+  border-top: 0;
+}
+.s00-t20 {
+  font-size: var(--text-title);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-title);
+}
+.s00-t14 {
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-base);
+}
+.s00-t10 {
+  color: var(--color-text-secondary);
+  font-size: var(--text-axis);
+  line-height: 14px;
+}
+.s00-mono11 {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+
+/* Color roles: 21px rows, a 12px swatch, name, hex, use. */
+.s00-roles {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.s00-role {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 21px;
+  border-top: 1px solid var(--color-surface-app);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.s00-role:first-child {
+  height: 20px;
+  border-top: 0;
+}
+.s00-swatch {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+}
+.s00-swatch.is-dark {
+  border: 1px solid var(--color-border-control);
+}
+.s00-role-name {
+  width: 96px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+}
+.s00-role-hex {
+  width: 52px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+}
+.s00-role-use {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+}
+
+/* Rules: three equal rows, then the footer. */
+.s00-rules-tile {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.s00-rules-tile .tile-header {
+  background: var(--color-surface-inset);
+}
+.s00-rules {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: var(--spacing-1) var(--spacing-3) var(--spacing-3);
+}
+.s00-rule {
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.s00-rule + .s00-rule,
+.s00-rules-foot {
+  border-top: 1px solid var(--color-surface-app);
+}
+.s00-rule-n {
+  display: flex;
+  align-items: flex-start;
+  width: 28px;
+  height: 38px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  line-height: var(--leading-base);
+}
+.s00-rule-what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  width: 460px;
+  flex-shrink: 0;
+}
+.s00-rule-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-base);
+}
+.s00-rule-sub {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.s00-rule-here {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  flex: 1 1 0;
+  min-width: 0;
+}
+.s00-rule-here-text {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.s00-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  white-space: nowrap;
+}
+.s00-rules-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 28px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* Inspector: findings cards as on the master. */
+.s00-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.s00-card-sub {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.s00-accepted {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+.s00-card-open .finding-bottom {
+  padding-top: var(--spacing-0-5);
+}
+.s00-detail {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--spacing-1);
+}
+.s00-detail-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 20px;
+  border-top: 1px solid var(--color-surface-app);
+}
+.s00-detail-label {
+  width: 84px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+.s00-detail-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.s00-ladder {
+  display: flex;
+  align-items: flex-start;
+  padding: 6px var(--spacing-2);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+  overflow: clip;
+}
+.s00-ladder-label {
+  width: 76px;
+  flex-shrink: 0;
+  padding-top: var(--spacing-2);
+  color: var(--color-text-secondary);
+}
+.s00-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  width: 57px;
+  flex-shrink: 0;
+  padding-right: var(--spacing-1);
+  font-size: var(--text-axis);
+  line-height: 13px;
+}
+.s00-step:last-child {
+  padding-right: 0;
+}
+.s00-step-bar {
+  height: 3px;
+  flex-shrink: 0;
+  background: var(--color-surface-selected);
+}
+.s00-step-name {
+  color: var(--color-text-tertiary);
+}
+.s00-step.is-done .s00-step-name,
+.s00-step.is-now .s00-step-name {
+  color: var(--color-text-primary);
+}
+.s00-step-state {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-text-disabled);
+}
+.s00-keep {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding-top: var(--spacing-0-5);
+}
+.s00-keep-text {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.s00-not-evaluated {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 28px;
+  padding-inline: var(--spacing-3);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-disabled);
+  white-space: nowrap;
+}
+
+/* ?state=feedback: every DS-08 part on one board, live. */
+.s00-gallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-1);
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden auto;
+  scrollbar-width: none;
+}
+.s00-gallery .tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+}
+.s00-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+.s00-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+}
+.s00-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  border: 1px dashed var(--color-border-control);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-secondary);
+}
+.s00-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding-inline: var(--spacing-2);
+  border-bottom: 1px solid var(--color-surface-app);
+  background: var(--color-surface-panel);
+}

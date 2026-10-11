@@ -1,0 +1,124 @@
+/*
+ * Gatesmith design tokens — v1.0
+ * Mirrors the "Gatesmith — Design System" page in Paper.
+ *
+ * Two layers:
+ *   1. Primitives — raw values. Never use them directly in components.
+ *   2. Semantic   — what a value is FOR. Components only use these.
+ */
+
+:root {
+  /* ── Primitives · color ─────────────────────────────────────────── */
+  --color-teal-950: #061419; /* ground */
+  --color-teal-900: #0f1f23; /* panel */
+  --color-teal-800: #243237; /* raised */
+  --color-teal-750: #2a383d; /* control */
+  --color-teal-700: #354348; /* subtle border, selected */
+  --color-teal-600: #496166; /* control border */
+  --color-teal-500: #667e83; /* strong border, disabled text */
+  --color-teal-300: #adc5ca; /* tertiary text */
+  --color-teal-200: #c2dadf; /* secondary text */
+  --color-white: #ffffff;
+  --color-onyx: #141414;
+  --color-indigo-800: #2c3456; /* circuit canvas */
+
+  --color-mint-200: #aff7d1;
+  --color-mint-400: #5feea3;
+  --color-mint-500: #37de97;
+  --color-mint-600: #00c887;
+  --color-yellow-400: #f8d441;
+  --color-blue-400: #2ea3f8;
+  --color-violet-300: #b3acfc;
+  --color-violet-400: #867bfa;
+  --color-pink-400: #ff3478;
+  --color-orange-300: #ff986e;
+
+  /* ── Semantic · surfaces ────────────────────────────────────────── */
+  --color-surface-app: var(--color-teal-950); /* ground, 4px gutters */
+  --color-surface-panel: var(--color-teal-800); /* panel bodies, active tabs, top bar, rail, inspector */
+  --color-surface-inset: var(--color-teal-900); /* tab strips, inactive tabs, plots, code */
+  --color-surface-raised: var(--color-teal-750); /* cards inside panels, time-axis row */
+  --color-surface-selected: var(--color-teal-700); /* opened card, selected row */
+  --color-surface-control: var(--color-teal-900); /* input fields */
+  --color-surface-popover: var(--color-teal-950); /* tooltips, menus, selects */
+  --color-surface-canvas: var(--color-indigo-800);
+
+  /* ── Semantic · borders ─────────────────────────────────────────── */
+  --color-border-divider: var(--color-teal-900); /* dark rules between rows and lanes */
+  --color-border-subtle: var(--color-teal-700);
+  --color-border-control: var(--color-teal-600);
+  --color-border-strong: var(--color-teal-500);
+
+  /* ── Semantic · text ────────────────────────────────────────────── */
+  --color-text-primary: var(--color-white);
+  --color-text-secondary: var(--color-teal-200);
+  --color-text-tertiary: var(--color-teal-300);
+  --color-text-disabled: var(--color-teal-500);
+  --color-text-on-accent: var(--color-onyx);
+
+  /* ── Semantic · action (one primary per view) ───────────────────── */
+  --color-action-primary: var(--color-mint-400);
+  --color-action-primary-hover: var(--color-mint-500);
+  --color-action-primary-pressed: var(--color-mint-600);
+
+  /* ── Semantic · signals (always paired with a word + icon) ──────── */
+  --color-signal-select: var(--color-yellow-400); /* selection, focus, cursor */
+  --color-signal-good: var(--color-mint-400); /* passed · accepted */
+  --color-signal-bad: var(--color-pink-400); /* high · failed · rejected */
+  --color-signal-warn: var(--color-orange-300); /* warning · inconclusive */
+  --color-signal-info: var(--color-blue-400); /* info · running · benchmark */
+  --color-signal-ai: var(--color-violet-400); /* anything a model proposed */
+
+  /* ── Semantic · code ────────────────────────────────────────────── */
+  --color-code-keyword: #cc99cd;
+  --color-code-number: #f08d49;
+  --color-code-string: #7ec699;
+  --color-code-name: #f8c555;
+  --color-code-operator: #67cdcc;
+  --color-code-comment: #999999;
+
+  /* ── Type ───────────────────────────────────────────────────────── */
+  --font-ui: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, Monaco, monospace;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+
+  --text-axis: 10px;
+  --text-label: 11px; /* caps labels, +0.08em tracking */
+  --text-body: 12px; /* dense UI default */
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-title: 20px;
+  --text-headline: 30px;
+  --text-doc: 48px; /* docs only */
+
+  --leading-ui: 16px;
+  --leading-base: 20px;
+  --leading-lg: 24px;
+  --leading-title: 28px;
+  --leading-headline: 36px;
+  --tracking-label: 0.08em;
+
+  /* ── Space (4px base) ───────────────────────────────────────────── */
+  --spacing-0-5: 2px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+
+  /* ── Shape ──────────────────────────────────────────────────────── */
+  --radius-xs: 2px;
+  --radius-base: 4px;
+  --radius-sm: 6px; /* max; popovers only */
+
+  /* ── Layout ─────────────────────────────────────────────────────── */
+  --container-rail: 50px; /* six 20px icons on a 78px pitch */
+  --container-topbar: 52px; /* plus a 2px ground-colored bottom border */
+  --container-inspector: 380px; /* mode tabs, primary action, collapsible sections */
+}

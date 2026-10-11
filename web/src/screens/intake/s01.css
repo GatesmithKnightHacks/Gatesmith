@@ -1,0 +1,392 @@
+/* S-01 · New run (Paper 157V-0, states 1OCV-0) */
+
+.nr-ground {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-height: 0;
+  margin-bottom: var(--spacing-1);
+  padding-bottom: var(--spacing-10);
+}
+.nr-tile {
+  width: 640px;
+  flex-shrink: 0;
+}
+.nr-body {
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+}
+
+/* ── Drop zone ── */
+.nr-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 156px;
+  border-radius: var(--radius-xs);
+  border: 1px dashed var(--color-border-control);
+  color: var(--color-text-secondary);
+  transition:
+    border-color var(--motion-hover, 150ms) ease,
+    background-color var(--motion-hover, 150ms) ease;
+}
+.nr-drop.is-over {
+  border-style: solid;
+  border-color: var(--color-text-secondary);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+.nr-drop.is-compact {
+  height: 44px;
+}
+.nr-drop-compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  height: 100%;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.nr-drop-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+  white-space: nowrap;
+}
+.nr-drop-sub {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.nr-drop-facts {
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.nr-drop-actions {
+  display: flex;
+  gap: var(--spacing-2);
+  padding-top: var(--spacing-1);
+}
+
+/* ── Error: the parser's line ── */
+.nr-banner-where {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.nr-code {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding-block: var(--spacing-1);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+}
+.nr-code-line {
+  display: flex;
+  height: 20px;
+  border-left: 2px solid transparent;
+}
+.nr-code-line.is-flagged {
+  border-left-color: var(--color-signal-bad);
+}
+.nr-code-n {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  width: 44px;
+  padding-right: var(--spacing-2);
+  border-right: 2px solid var(--color-surface-panel);
+  color: var(--color-text-disabled);
+  font-size: var(--text-label);
+  line-height: 20px;
+}
+.nr-code-text {
+  padding-left: var(--spacing-2);
+  color: var(--color-text-primary);
+  line-height: 20px;
+  white-space: pre;
+}
+.nr-code-text.is-bad {
+  color: var(--color-signal-bad);
+}
+
+/* ── Repository ── */
+.nr-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.nr-repo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.nr-url {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex: 1 1 0;
+  min-width: 0;
+  height: 26px;
+  padding-inline: var(--spacing-2);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-control);
+  color: var(--color-text-tertiary);
+  transition: border-color var(--motion-hover, 150ms) ease;
+}
+.nr-url svg:last-child {
+  color: var(--color-text-secondary);
+}
+.nr-url input {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.nr-url input::placeholder {
+  color: var(--color-text-disabled);
+}
+.nr-url input:focus {
+  outline: none;
+}
+.nr-url:focus-within {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.nr-repo .btn-editor:disabled {
+  opacity: 0.3;
+  color: var(--color-text-primary);
+}
+
+/* ── Fetch progress: stage list + shimmer rows ── */
+.nr-fetch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nr-stages {
+  display: flex;
+  flex-direction: column;
+  padding-block: var(--spacing-1);
+}
+.nr-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  height: 24px;
+  padding-inline: var(--spacing-2);
+  white-space: nowrap;
+  color: var(--color-text-tertiary);
+}
+.nr-stage-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+.nr-stage-word {
+  flex-shrink: 0;
+  width: 56px;
+}
+.nr-stage-detail {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.nr-stage-end {
+  flex-shrink: 0;
+}
+.nr-stage-end.mono {
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.nr-stage.is-done {
+  color: var(--color-text-secondary);
+}
+.nr-stage.is-done .nr-stage-detail {
+  color: var(--color-text-tertiary);
+}
+.nr-stage.is-running {
+  color: var(--color-text-primary);
+}
+.nr-fetch-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2);
+  border-top: 1px solid var(--color-surface-app);
+}
+.nr-fetch-row {
+  display: flex;
+  gap: var(--spacing-3);
+}
+.nr-grow {
+  flex: 1 1 0;
+}
+
+/* ── Bundled examples ── */
+.nr-examples {
+  display: flex;
+  gap: var(--spacing-2);
+}
+.nr-example {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 10px;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+  text-align: left;
+  transition:
+    border-color var(--motion-hover, 150ms) ease,
+    background-color var(--motion-hover, 150ms) ease;
+}
+.nr-example:hover {
+  border-color: var(--color-border-control);
+}
+.nr-example.is-selected {
+  border-color: var(--color-signal-select);
+  background: var(--color-surface-selected);
+}
+.nr-example-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  white-space: nowrap;
+}
+.nr-example-name {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+.nr-example-facts {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.nr-example-kind {
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.nr-example-desc {
+  padding-top: var(--spacing-0-5);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+/* ── Footer: what is chosen + Continue ── */
+.nr-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-shrink: 0;
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--color-surface-app);
+}
+.nr-chosen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+.nr-chosen.is-on {
+  color: var(--color-text-primary);
+}
+.nr-chosen-file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+
+/* ── Inspector ── */
+.nr-insp {
+  display: flex;
+  flex-direction: column;
+}
+.nr-next {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding-top: var(--spacing-3);
+}
+.nr-pad {
+  padding-inline: var(--spacing-4);
+}
+.nr-steps {
+  display: flex;
+  flex-direction: column;
+}
+.nr-step:first-child {
+  border-top: 1px solid var(--color-surface-app);
+}
+.nr-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  height: 44px;
+  padding-inline: var(--spacing-4);
+  border-bottom: 1px solid var(--color-surface-app);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.nr-step-title {
+  flex-shrink: 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
+.nr-step-meta {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: right;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.nr-machine {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: var(--spacing-5) var(--spacing-4) 0;
+}
+.nr-gpu-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-text-primary);
+}

@@ -1,0 +1,1313 @@
+/*
+ * S-04 · Workspace, measured from the master DS-06 (MVN-0) and the S-04 board (204G-0).
+ * Main column 1000: top tiles 434 (circuit 384 · scorecard 350 · QASM 258 on 4 px gutters), Rounds 364.
+ * Colors come from tokens.css; the few values it has no token for are rgba washes of white noted inline.
+ */
+
+.ws-grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ws-svg-mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Status mark: icon + word ────────────────────────────────────────── */
+.ws-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+
+/* Scoring waits as solid blocks (DS-06 scoring frame): #354348 at .7, radius 2. */
+.ws-wait {
+  display: block;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-selected);
+  opacity: 0.7;
+}
+
+/* ── Tab band with the partial banner ────────────────────────────────── */
+.ws-tabband {
+  position: relative;
+  flex-shrink: 0;
+}
+.ws-banner-slot {
+  position: absolute;
+  top: 4px;
+  right: 60px;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding-inline: 16px;
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.ws-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 28px;
+  padding-inline: 8px;
+  border-left: 2px solid var(--color-signal-warn);
+  background: var(--color-surface-inset);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ws-banner-word {
+  flex-shrink: 0;
+  color: var(--color-signal-warn);
+  font-weight: var(--font-weight-medium);
+}
+.ws-banner-text {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+
+/* ── Top tiles ───────────────────────────────────────────────────────── */
+.ws-top {
+  display: flex;
+  gap: var(--spacing-1);
+  flex: 0 0 434px;
+  min-height: 0;
+}
+.ws-circuit-tile {
+  flex: 0 0 384px;
+}
+.ws-score-tile {
+  flex: 0 0 350px;
+}
+.ws-qasm-tile {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ws-tile-meta {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-right: 12px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ws-circuit-meta {
+  gap: 6px;
+}
+.ws-circuit-dims {
+  display: flex;
+  padding-left: 6px;
+}
+.ws-tile-pad {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  padding: var(--spacing-3);
+}
+
+/* Zoom: two 16 px icons around a 90 px track with a 10 px knob. */
+.ws-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ws-icon-btn {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-xs);
+}
+.ws-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.ws-icon-btn:focus-visible,
+.ws-zoom-track:focus-visible,
+.ws-transport-btn:focus-visible {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.ws-zoom-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 90px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+.ws-zoom-rail {
+  width: 90px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgb(255 255 255 / 30%); /* no token: the slider track wash */
+}
+.ws-zoom-knob {
+  position: absolute;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--color-text-secondary);
+}
+
+/* ── Circuit canvas ──────────────────────────────────────────────────── */
+.ws-canvas {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: clip;
+  border: 1px solid var(--color-surface-app);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-canvas);
+  view-transition-name: circuit-canvas;
+}
+.ws-circuit-svg {
+  flex-shrink: 0;
+  transform-origin: 0 0;
+}
+.ws-region {
+  cursor: pointer;
+}
+.ws-region:hover rect {
+  stroke-width: 1.5;
+}
+.ws-canvas-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 1 1 0;
+}
+.ws-diff-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 0;
+  padding: 16px;
+  text-align: center;
+}
+.ws-diff-title {
+  color: var(--color-text-primary);
+}
+.ws-diff-sub {
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-diff-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* ── Scorecard ───────────────────────────────────────────────────────── */
+.ws-sc-inset {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 6px 6px 0;
+  border: 1px solid var(--color-surface-app);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-inset);
+}
+.ws-sc-inset.is-loading {
+  background: transparent;
+}
+.ws-sc-inset.is-empty {
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.ws-sc-group {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 18px;
+  padding-bottom: 2px;
+}
+.ws-sc-group-label {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+  letter-spacing: var(--tracking-label);
+  white-space: nowrap;
+}
+.ws-sc-group-note {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.ws-sc-group-note.is-11 {
+  font-size: var(--text-label);
+}
+.ws-sc-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 20px;
+  border-bottom: 1px solid var(--color-surface-app);
+  white-space: nowrap;
+}
+.ws-sc-row.is-open,
+.ws-sc-row.is-last {
+  border-bottom-color: transparent;
+}
+.ws-sc-row.is-primary {
+  align-items: baseline;
+}
+.ws-sc-name {
+  width: 150px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+}
+.ws-sc-row.is-primary .ws-sc-name {
+  font-weight: var(--font-weight-medium);
+}
+.ws-sc-bars {
+  display: flex;
+  align-self: stretch;
+  gap: 4px;
+  width: 80px;
+  flex-shrink: 0;
+}
+.ws-sc-aside {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: stretch;
+  width: 80px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+}
+.ws-sc-track {
+  position: relative;
+  width: 36px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+.ws-sc-track > span {
+  position: absolute;
+  left: 0;
+}
+.ws-sc-bg {
+  top: 4px;
+  width: 36px;
+  height: 12px;
+  background: rgb(255 255 255 / 8%); /* no token: the bar track wash */
+}
+.ws-sc-base {
+  top: 5px;
+  height: 4px;
+  background: var(--color-border-control);
+}
+.ws-sc-now {
+  top: 11px;
+  height: 4px;
+  background: var(--color-text-secondary);
+}
+.ws-sc-now.is-fires {
+  background: var(--color-signal-bad);
+}
+.ws-sc-tick {
+  top: 4px;
+  width: 1px;
+  height: 12px;
+  background: var(--color-text-primary);
+}
+.ws-sc-delta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 40px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+}
+.ws-sc-delta .ws-mark {
+  font-family: var(--font-ui);
+}
+.ws-sc-now-value {
+  display: flex;
+  justify-content: flex-end;
+  width: 40px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.ws-sc-row.is-primary .ws-sc-now-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
+.ws-sc-unit {
+  width: 42px;
+  flex-shrink: 0;
+  padding-left: 4px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: var(--leading-ui);
+}
+.ws-sc-caveat {
+  flex-shrink: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-surface-app);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ws-sc-row.is-status {
+  justify-content: space-between;
+}
+.ws-sc-status-name {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+}
+.ws-sc-status-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+.ws-sc-skrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 20px;
+}
+
+/* Seeds tab */
+.ws-seed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-surface-app);
+  white-space: nowrap;
+}
+.ws-seed-name {
+  width: 60px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+}
+.ws-seed-row.is-best .ws-seed-name {
+  color: var(--color-text-primary);
+}
+.ws-seed-track {
+  flex: 1 1 0;
+  height: 6px;
+  background: rgb(255 255 255 / 8%); /* no token: the bar track wash */
+}
+.ws-seed-bar {
+  display: block;
+  height: 6px;
+  background: var(--color-border-control);
+}
+.ws-seed-row.is-best .ws-seed-bar {
+  background: var(--color-text-secondary);
+}
+.ws-seed-flag {
+  display: flex;
+  width: 10px;
+  flex-shrink: 0;
+}
+.ws-seeds .ws-sc-caveat {
+  padding-top: 6px;
+  border-bottom: 0;
+  white-space: normal;
+}
+
+/* ── QASM ────────────────────────────────────────────────────────────── */
+.ws-qasm-inset {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  padding-top: 4px;
+  border: 1px solid var(--color-surface-app);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-inset);
+}
+/* The file scrolls in whole lines: 18 lines of 20 px, so no line is ever cut at the edge. */
+.ws-qasm {
+  display: flex;
+  flex-direction: column;
+  height: 360px;
+  flex-shrink: 0;
+  overflow: hidden auto;
+  scrollbar-width: none;
+}
+.ws-qasm.is-loading {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-surface-app);
+  border-radius: var(--radius-xs);
+  flex: 1 1 0;
+  height: auto;
+  padding-top: 4px;
+}
+.ws-qasm:focus-visible {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.ws-qasm-rule {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 44px;
+  width: 2px;
+  min-height: 100%;
+  background: var(--color-surface-panel);
+}
+.ws-qasm-line {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  height: 20px;
+  border-left: 2px solid transparent;
+  white-space: nowrap;
+}
+.ws-qasm-line.is-open {
+  border-left-color: var(--color-signal-bad);
+}
+.ws-qasm-line.is-accepted {
+  border-left-color: var(--color-text-secondary);
+}
+.ws-qasm-line.is-selected {
+  border-left-color: var(--color-signal-select);
+  background: rgb(248 212 65 / 10%); /* the selected line: 10% yellow */
+}
+.ws-qasm-num {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 44px;
+  flex-shrink: 0;
+  padding-right: 8px;
+  border-right: 2px solid transparent;
+  color: var(--color-text-disabled);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 20px;
+}
+.ws-qasm-line.is-selected .ws-qasm-num {
+  color: var(--color-signal-select);
+}
+.ws-qasm-code {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-left: 8px;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: 20px;
+}
+.ws-qasm-code.is-comment {
+  color: var(--color-text-tertiary);
+}
+
+/* ── Rounds ──────────────────────────────────────────────────────────── */
+.ws-rounds {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.ws-rounds-controls {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 28px;
+  padding-right: 12px;
+}
+.ws-transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-transport-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  transition: background-color var(--motion-hover) var(--ease-motion);
+}
+.ws-transport-btn:hover:not(:disabled) {
+  background: var(--color-surface-raised);
+}
+.ws-transport-btn.is-on {
+  background: rgb(0 0 0 / 25%); /* the current transport state, as the rail's old disc */
+}
+.ws-transport-btn:disabled {
+  cursor: default;
+}
+.ws-sep {
+  display: flex;
+  padding: 0 10px 0 6px;
+}
+.ws-sep::before {
+  content: '';
+  width: 1px;
+  height: 14px;
+  background: var(--color-border-control);
+}
+.ws-readout {
+  display: flex;
+  padding-left: 12px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ws-rounds-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 6px 12px;
+}
+.ws-axis {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.ws-axis-row {
+  display: flex;
+  height: 28px;
+}
+.ws-axis-time {
+  width: 44px;
+  flex-shrink: 0;
+  padding-top: 14px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: 12px;
+}
+.ws-axis-plot {
+  position: relative;
+  width: 932px;
+  height: 28px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.ws-axis-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 28px;
+  background: var(--color-surface-raised);
+}
+.ws-axis-label {
+  position: absolute;
+  top: 14px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: 12px;
+  white-space: nowrap;
+}
+.ws-axis-round {
+  position: absolute;
+  top: 2px;
+  font-size: var(--text-label);
+  font-weight: var(--font-weight-medium);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ws-axis-pipe {
+  position: absolute;
+  top: 2px;
+  width: 1px;
+  height: 12px;
+  background: var(--color-border-control);
+}
+.ws-rule {
+  flex-shrink: 0;
+  height: 1px;
+  background: var(--color-surface-app);
+}
+.ws-lane,
+.ws-primary {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ws-lane {
+  flex: 1 1 0;
+}
+.ws-primary {
+  flex-shrink: 0;
+}
+.ws-lane-sep {
+  flex-shrink: 0;
+  height: 2px;
+  background: var(--color-surface-app);
+}
+.ws-lane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 30px;
+  white-space: nowrap;
+}
+.ws-lane-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.ws-lane-name {
+  display: flex;
+  align-items: center;
+  width: 120px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-lane-name.is-strong {
+  font-weight: var(--font-weight-medium);
+}
+.ws-pipe {
+  width: 1px;
+  height: 12px;
+  flex-shrink: 0;
+  background: var(--color-border-control);
+}
+.ws-lane-note {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-lane-note.is-tertiary {
+  color: var(--color-text-tertiary);
+}
+.ws-lane-model {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-lane-strategies,
+.ws-lane-meta {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-lane-row {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.ws-lane-gutter {
+  width: 44px;
+  flex-shrink: 0;
+}
+.ws-lane-plot {
+  position: relative;
+  width: 932px;
+  flex-shrink: 0;
+  overflow: clip;
+  background: var(--color-surface-inset);
+}
+.ws-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Attempt card: #2A383D, 1 px #354348, radius 4; proposed dashed violet; queued transparent dashed. */
+.ws-card {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: clip;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-base);
+  background: var(--color-surface-raised);
+  text-align: left;
+  white-space: nowrap;
+  transition: border-color var(--motion-hover) var(--ease-motion);
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.ws-card:hover {
+  border-color: var(--color-border-control);
+}
+.ws-card.is-proposed {
+  border: 1px dashed var(--color-signal-ai);
+}
+.ws-card.is-queued {
+  border: 1px dashed var(--color-border-control);
+  background: var(--color-surface-inset);
+}
+.ws-card.is-selected {
+  border: 1px solid var(--color-signal-select);
+}
+.ws-card:focus-visible {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.ws-card-strategy {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-axis);
+  line-height: 14px;
+}
+.ws-card.is-queued .ws-card-strategy {
+  color: var(--color-text-tertiary);
+}
+.ws-card-decision {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 16px;
+}
+.ws-card-note {
+  flex-shrink: 0;
+  padding-left: 4px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-card-values {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 14px;
+}
+.ws-card-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 48px;
+  flex-shrink: 0;
+}
+.ws-card-bar {
+  display: flex;
+  width: 48px;
+  height: 6px;
+  flex-shrink: 0;
+  background: rgb(255 255 255 / 8%); /* no token: the bar track wash */
+}
+.ws-card-bar > span {
+  height: 6px;
+  flex-shrink: 0;
+}
+.ws-card-bar.is-pending {
+  border: 1px dashed;
+  background: transparent;
+}
+.ws-card-value {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-card-value.is-muted {
+  color: var(--color-text-tertiary);
+}
+
+/* Primary metric lane */
+.ws-primary-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ws-primary-now {
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.ws-primary-pct {
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 20px;
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.ws-primary-row {
+  display: flex;
+  height: 66px;
+  flex-shrink: 0;
+}
+.ws-primary-axis {
+  flex-shrink: 0;
+}
+.ws-primary-plot {
+  position: relative;
+  width: 932px;
+  height: 66px;
+  flex-shrink: 0;
+  overflow: clip;
+  background: var(--color-surface-inset);
+}
+
+/* The needle: 2 px yellow, a 14 px knob on the axis rule. Moves at 0 ms (no tween). */
+.ws-needle {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--color-signal-select);
+  pointer-events: none;
+}
+.ws-needle-knob {
+  position: absolute;
+  top: 28px;
+  width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--color-signal-select);
+  pointer-events: none;
+}
+
+.ws-rounds-empty {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  padding-top: 6px;
+  padding-left: 44px;
+}
+.ws-rounds-empty-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 932px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-surface-app);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.ws-loading-lanes {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.ws-lane-skrow {
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.ws-lane-skprimary {
+  display: flex;
+  height: 66px;
+}
+.ws-lane-skaxis {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 44px;
+  flex-shrink: 0;
+  padding: 6px 8px 6px 0;
+}
+
+/* ── Inspector ───────────────────────────────────────────────────────── */
+.ws-stage-line {
+  height: 16px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.ws-stage-id {
+  font-size: var(--text-label);
+}
+.ws-stage-est {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-stages {
+  display: flex;
+  flex-direction: column;
+}
+.ws-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  white-space: nowrap;
+}
+.ws-stage-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.ws-stage-name {
+  width: 72px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+}
+.ws-stage.is-queued .ws-stage-name,
+.ws-stage.is-queued .ws-stage-word {
+  color: var(--color-text-tertiary);
+}
+.ws-stage-word {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-left: 18px;
+  color: var(--color-text-secondary);
+}
+.ws-stage-word.is-running {
+  padding-left: 0;
+  color: var(--color-signal-info);
+}
+.ws-stage .ws-stage-est {
+  color: var(--color-text-secondary);
+}
+
+.ws-check {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ws-check input {
+  position: absolute;
+  opacity: 0;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+.ws-check-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-xs);
+}
+.ws-check input:focus-visible + .ws-check-box {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+
+.ws-findings {
+  flex: 1 1 auto;
+  border-bottom: 0;
+}
+.ws-findings-meta {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ws-findings-meta.is-words {
+  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.ws-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 16px 16px;
+}
+
+/* Finding card (MVN-0 204K-0) */
+.ws-fcard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-base);
+  background: var(--color-surface-raised);
+  cursor: default;
+  transition: border-color var(--motion-hover) var(--ease-motion);
+}
+.ws-fcard.is-selected {
+  border-color: var(--color-signal-select);
+  background: var(--color-surface-selected);
+}
+.ws-fcard:focus-visible,
+.ws-fcard.is-focus {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+.ws-fcard-top,
+.ws-fcard-bottom,
+.ws-fcard-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.ws-fcard-rank {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-fcard-rule {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-fcard-title {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+  white-space: nowrap;
+}
+.ws-fcard-evidence {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ws-fcard-evidence.is-line {
+  flex: none;
+}
+.ws-fcard-accepted {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ws-fcard-accepted-note {
+  flex-shrink: 0;
+  padding-left: 2px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-fcard-details {
+  display: flex;
+  flex-direction: column;
+  padding-top: 4px;
+}
+.ws-fcard-fact {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-surface-app);
+  white-space: nowrap;
+}
+.ws-fcard-fact-label {
+  width: 84px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-fcard-fact-value {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-fcard-fact-value.is-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-fcard-fact-value .ws-mark {
+  font-family: var(--font-ui);
+}
+.ws-ladder {
+  display: flex;
+  align-items: flex-start;
+  overflow: clip;
+  padding: 6px 8px;
+  border: 1px solid var(--color-surface-app);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-inset);
+}
+.ws-ladder-step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 77px;
+  flex-shrink: 0;
+  padding-right: 4px;
+}
+.ws-ladder-step.is-last {
+  padding-right: 0;
+}
+.ws-ladder-bar {
+  height: 2px;
+  flex-shrink: 0;
+  background: var(--color-surface-selected);
+}
+.ws-ladder-bar.is-passed {
+  background: var(--color-text-secondary);
+}
+.ws-ladder-bar.is-running {
+  background: var(--color-signal-info);
+}
+.ws-ladder-bar.is-failed {
+  background: var(--color-signal-bad);
+}
+.ws-ladder-label {
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ws-ladder-label.is-queued {
+  color: var(--color-text-tertiary);
+}
+.ws-ladder-state {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ws-ladder-state.is-passed {
+  color: var(--color-text-secondary);
+}
+.ws-ladder-state.is-running {
+  color: var(--color-signal-info);
+}
+.ws-ladder-state.is-failed {
+  color: var(--color-signal-bad);
+}
+.ws-fcard-foot {
+  padding-top: 2px;
+}
+.ws-fcard-foot-note {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-noteval {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 28px;
+  padding-inline: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-base);
+  white-space: nowrap;
+}
+.ws-noteval-rules {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ws-noteval-label {
+  color: var(--color-text-tertiary);
+}
+.ws-fcard-sk {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 88px;
+  flex-shrink: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-surface-raised);
+  border-radius: var(--radius-base);
+}
+.ws-fcard-sk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+/* Top bar: Retry sits between the GPU message and the job id (it keeps its width while retrying). */
+.ws-retry {
+  margin-inline: 4px 12px;
+}
