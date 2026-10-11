@@ -1,0 +1,301 @@
+/* Intake kit · shared by S-01, S-02, S-03. Values measured on the Paper boards and DS-08. */
+
+/* ── Spinner: 1000 ms linear per turn; reduced motion = static ring ── */
+.ink-spinner {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  animation: ink-spin var(--motion-spin, 1000ms) linear infinite;
+}
+.ink-spinner-track {
+  stroke: var(--color-surface-selected);
+}
+.ink-spinner-arc {
+  stroke: currentColor;
+}
+.ink-spinner.is-on-accent {
+  color: var(--color-text-on-accent);
+}
+.ink-spinner.is-on-accent .ink-spinner-track {
+  stroke: color-mix(in srgb, var(--color-text-on-accent) 25%, transparent);
+}
+@keyframes ink-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Shimmer: #0F1F23 block, #243237 band at 24% width, 1200 ms linear loop ── */
+.ink-shim {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface-inset);
+  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-panel) 50%, transparent 100%);
+  background-size: 24% 100%;
+  background-repeat: no-repeat;
+  animation: ink-sweep var(--motion-shimmer, 1200ms) linear infinite;
+}
+/* on a panel-colored header strip the block is #243237 and the band #2A383D */
+.ink-shim.is-strip {
+  background-color: var(--color-surface-panel);
+  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-raised) 50%, transparent 100%);
+}
+@keyframes ink-sweep {
+  from {
+    background-position: -32% 0;
+  }
+  to {
+    background-position: 132% 0;
+  }
+}
+@keyframes ink-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+/* content arriving where the blocks were: 400 ms crossfade */
+.ink-arrive {
+  animation: ink-fade var(--motion-load, 400ms) ease both;
+}
+/* banners, rows and stage lines appearing in place: 200 ms fade, no slide */
+.ink-fade-in {
+  animation: ink-fade var(--motion-tile, 200ms) ease both;
+}
+@keyframes ink-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-spinner {
+    animation: none;
+  }
+  .ink-shim {
+    background-image: none;
+    animation: ink-pulse 1.2s ease infinite;
+  }
+}
+:root[data-reduce-motion] .ink-spinner {
+  animation: none;
+}
+:root[data-reduce-motion] .ink-shim {
+  background-image: none;
+  animation: ink-pulse 1.2s ease infinite;
+}
+
+/* ── Keyboard focus: 2 px yellow outline, 2 px offset, at 0 ms ── */
+.ink-scope :focus-visible,
+.ink-scope .is-focus {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+
+/* ── Banner ── */
+.ink-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 var(--spacing-2) 0 10px;
+  border-left: 2px solid currentColor;
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  animation: ink-fade var(--motion-tile, 200ms) ease both;
+}
+.ink-banner.is-bad {
+  border-left-color: var(--color-signal-bad);
+}
+.ink-banner.is-warn {
+  border-left-color: var(--color-signal-warn);
+}
+.ink-banner.is-info {
+  border-left-color: var(--color-signal-info);
+}
+.ink-banner.is-good {
+  border-left-color: var(--color-text-secondary);
+}
+.ink-banner-word {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  font-weight: var(--font-weight-medium);
+}
+.ink-banner.is-bad .ink-banner-word {
+  color: var(--color-signal-bad);
+}
+.ink-banner.is-warn .ink-banner-word {
+  color: var(--color-signal-warn);
+}
+.ink-banner.is-info .ink-banner-word {
+  color: var(--color-signal-info);
+  font-weight: var(--font-weight-regular);
+}
+.ink-banner.is-good .ink-banner-word {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-regular);
+}
+.ink-banner-meta {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ink-banner-grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* editor buttons on a banner sit one step up, on the panel */
+.ink-banner .btn-editor {
+  background: var(--color-surface-panel);
+}
+.ink-banner .btn-editor:hover {
+  background: var(--color-surface-raised);
+}
+
+/* ── Group header ── */
+.ink-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 18px;
+  white-space: nowrap;
+}
+.ink-group-label {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+  letter-spacing: var(--tracking-label);
+}
+.ink-group-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-axis);
+  line-height: 14px;
+}
+
+/* ── Inspector run block ── */
+.ink-run {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  flex-shrink: 0;
+  padding: 18px var(--spacing-4) 14px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.ink-run-line {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.ink-powered {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-text-secondary);
+  font-size: var(--text-axis);
+  line-height: 14px;
+  white-space: nowrap;
+}
+.ink-powered.is-center {
+  justify-content: center;
+}
+.ink-powered-name {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ── Fact rows ── */
+.ink-facts {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-surface-app);
+}
+.ink-fact {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  height: 28px;
+  border-bottom: 1px solid var(--color-surface-app);
+  white-space: nowrap;
+}
+.ink-fact-label {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+.ink-fact-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+
+/* ── Collapsible inspector section ── */
+.ink-sec {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.ink-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  width: 100%;
+  height: 44px;
+  padding-inline: var(--spacing-4);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.ink-sec-title {
+  flex: 1 1 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
+.ink-sec-meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.ink-chev {
+  color: var(--color-text-secondary);
+  transition: transform var(--motion-tile, 200ms) ease;
+}
+.ink-chev.is-closed {
+  transform: rotate(180deg);
+}
+.ink-sec-body {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--spacing-4) var(--spacing-4);
+  animation: ink-fade var(--motion-tile, 200ms) ease both;
+}
+
+/* ── Account handle in the top bar ── */
+.ink-account {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.ink-account-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-inset);
+}

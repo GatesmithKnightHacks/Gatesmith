@@ -1,336 +1,384 @@
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
+/*
+ * S-01 · New run (Paper 157V-0, states 1OCV-0). Pick a source: drop or choose a .qasm file, fetch a
+ * GitHub repo, or start from a bundled example. Continue stays disabled (opacity .3) until a source
+ * is chosen. States at #/new?state=drag-over | bad-file | fetching | chosen | offline | focus.
+ */
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
-import { actions, useRun, type RunState } from '../data/run'
-import { Chevron } from '../ui/icons'
-import { EditorButton, ModeBlock, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
-import { Content, Shell, TabStrip } from '../ui/Shell'
-import { IkIcons } from './intake/icons'
-import { EXAMPLE_PREVIEWS } from './intake/previews'
-import './intake/intake.css'
+import { actions } from '../data/run'
+import { EditorButton, ModeTabs, PrimaryButton, Tile } from '../ui/parts'
+import { GpuStatus, Shell, TabStrip } from '../ui/Shell'
+import { InkIcons } from './intake/icons'
+import { AccountHandle, Banner, Glyph, GroupHeader, Facts, RunBlock, Shim, Spinner } from './intake/kit'
+import { useOnline } from './intake/online'
 import './intake/s01.css'
 
-type ExampleId = RunState['selectedExample']
+type S01State = 'empty' | 'drag-over' | 'bad-file' | 'fetching' | 'chosen' | 'offline' | 'focus'
+type ExampleId = 'sidechain_qaoa' | 'sbox_oracle'
+type Source = { kind: 'example'; id: ExampleId } | { kind: 'file'; name: string; lines: number; qubits: number | null }
+type BadFile = { name: string; firstLine: string; line: number; column: number }
 
-const EXAMPLES: { id: ExampleId; meta: string; qubits: number; desc: string }[] = [
-  {
-    id: 'sidechain_qaoa',
-    meta: '12 q · expectation',
-    qubits: 12,
-    desc: 'Protein side-chain packing as a two-layer QAOA. Routing heavy on FakeTorino.',
-  },
-  {
-    id: 'grover_5q',
-    meta: '5 q · search',
-    qubits: 5,
-    desc: 'Grover search over 32 items. Small and quick, so it makes a good first run.',
-  },
-  {
-    id: 'sbox_oracle',
-    meta: '20 q · reversible',
-    qubits: 20,
-    desc: 'A reversible S-box oracle. The engine checks every one of its 2^16 inputs.',
-  },
+const CANONICAL_REPO = 'https://github.com/qlab/sidechain-packing'
+
+const EXAMPLES: { id: ExampleId; facts: string; kind: string; desc: string; qubits: number }[] = [
+  { id: 'sidechain_qaoa', facts: '88 lines · 12 q', kind: 'expectation task', desc: 'A packing problem solved with QAOA, p = 2', qubits: 12 },
+  { id: 'sbox_oracle', facts: '20 q', kind: 'reversible · 100 toffoli gates', desc: 'An S-box lookup built from Toffolis', qubits: 20 },
 ]
 
-const READS = [
-  ['01 · file', '.qasm file', 'OpenQASM 2.0 or 3.0. Parsed and drawn, never executed.'],
-  ['02 · repo', 'GitHub repo', 'Finds .qasm files and Qiskit builder functions. Read-only.'],
-  ['03 · manifest', 'qscore.yaml', 'Optional. Gatesmith drafts one from the circuit.'],
-] as const
-
-const STEPS = [
-  ['1', 'Validate', 'about 1 s'],
-  ['2', 'Confirm the plan', 'you'],
-  ['3', 'Compile on FakeTorino', '8 seeds'],
-  ['4', 'Measure and diagnose', 'D01 to D10'],
-  ['5', 'Fix, check, repeat', 'up to 4 rounds'],
-] as const
-
-const MACHINE: [string, string, boolean?][] = [
-  ['Hardware', '8 CPU · 1 GPU 48 GB'],
-  ['Simulates up to', '31 q · statevector'],
-  ['Local model', 'granite-8b · loaded', true],
-  ['Qiskit', '1.3.2 · aer 0.15.1'],
-  ['Engine', 'qscore-2026.1'],
+const NEXT = [
+  { icon: InkIcons.score, title: 'Score', meta: '10 rules · 8 seeds · qscore-2026.1' },
+  { icon: InkIcons.fix, title: 'Fix', meta: 'engine + local model propose' },
+  { icon: InkIcons.verify, title: 'Verify', meta: 'equivalent · re-scored · decided' },
+  { icon: InkIcons.report, title: 'Report', meta: 'before and after · final .qasm' },
 ]
 
-const RECENT = [
-  ['6c19·0398', 'sidechain_qaoa', '44 → 38'],
-  ['5a02·0371', 'sidechain_qaoa', 'score only'],
-  ['4e77·0350', 'sbox_oracle', 'score only'],
-] as const
+/* The fetch's stage list: clone, search, parse. Stage index = the one running. */
+const STAGES = [
+  { word: 'clone', done: '2.4 MB in 3.1 s · commit 4e1c2a9', running: 'cloning qlab/sidechain-packing', queued: 'shallow clone, default branch', est: 'about 3 s' },
+  { word: 'search', done: '1,280 files · 7 circuits found', running: '412 of 1,280 files · .qasm and Qiskit sources', queued: '.qasm and Qiskit sources', est: 'about 2 s' },
+  { word: 'parse', done: '7 circuits read', running: 'reads each circuit, counts qubits', queued: 'reads each circuit, counts qubits', est: 'about 4 s' },
+]
+const STAGE_LEFT = ['about 9 s left', 'about 6 s left', 'about 4 s left']
 
-/** States from the S-01 states board, as ?state=… on #/new. */
-type S01State = 'none' | 'drag-over' | 'bad-file' | 'fetching' | 'offline' | 'focus' | 'no-circuits'
-
-function Section({
-  icon,
-  title,
-  meta,
-  children,
-}: {
-  icon: ReactNode
-  title: string
-  meta?: string
-  children: ReactNode
-}) {
-  const [open, setOpen] = useState(true)
-  return (
-    <section className="insp-section">
-      <button className="insp-section-header" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {icon}
-        <span className="insp-section-title">{title}</span>
-        {meta && <span className="insp-section-meta">{meta}</span>}
-        <span className={`s01-chevron${open ? '' : ' is-closed'}`}>
-          <Chevron open />
-        </span>
-      </button>
-      <div className={`s01-collapse${open ? ' is-open' : ''}`}>
-        <div className="s01-collapse-inner">
-          <div className="s01-section-body">{children}</div>
-        </div>
-      </div>
-    </section>
-  )
+/** Read a dropped or chosen file the way the parser would: header first, then qreg widths. */
+async function readQasm(file: File): Promise<{ ok: true; source: Source } | { ok: false; bad: BadFile }> {
+  const text = await file.text()
+  const lines = text.split(/\r?\n/)
+  const first = lines.findIndex((l) => l.trim() !== '' && !l.trim().startsWith('//'))
+  const header = first >= 0 ? lines[first].trim() : ''
+  if (!/^OPENQASM\s+[23](\.\d)?\s*;/.test(header)) {
+    return { ok: false, bad: { name: file.name, firstLine: header || '(empty file)', line: first >= 0 ? first + 1 : 1, column: 1 } }
+  }
+  const widths = [...text.matchAll(/qreg\s+\w+\[(\d+)\]|qubit\[(\d+)\]/g)].map((m) => Number(m[1] ?? m[2]))
+  const qubits = widths.length ? widths.reduce((a, b) => a + b, 0) : null
+  const count = lines.length && lines[lines.length - 1] === '' ? lines.length - 1 : lines.length
+  return { ok: true, source: { kind: 'file', name: file.name, lines: count, qubits } }
 }
 
 export function S01NewRun() {
-  const run = useRun()
   const params = useHashParams()
-  const forced = (params.get('state') ?? 'none') as S01State
-  const [drag, setDrag] = useState(false)
-  const [url, setUrl] = useState('')
-  const exampleRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const forced = (params.get('state') ?? 'empty') as S01State
+  // A forced state starts from a clean screen.
+  return <NewRun key={forced} forced={forced} />
+}
 
-  const state: S01State = drag ? 'drag-over' : forced
-  const selected = EXAMPLES.find((e) => e.id === run.selectedExample) ?? EXAMPLES[0]
+function NewRun({ forced }: { forced: S01State }) {
+  const online = useOnline()
+
+  const [source, setSource] = useState<Source | null>(null)
+  const [bad, setBad] = useState<BadFile | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [url, setUrl] = useState('')
+  const [stage, setStage] = useState<number | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const chooseRef = useRef<HTMLButtonElement>(null)
+  const timers = useRef<number[]>([])
 
   useEffect(() => {
-    const el = exampleRefs.current.sidechain_qaoa
-    if (forced === 'focus') el?.focus()
-    else if (el && document.activeElement === el) el.blur()
+    if (forced === 'focus') chooseRef.current?.focus()
+    const pending = timers.current
+    return () => pending.forEach(clearTimeout)
   }, [forced])
+
+  const offline = forced === 'offline' || !online
+  const dragOver = dragging || forced === 'drag-over'
+  const badFile: BadFile | null =
+    bad ?? (forced === 'bad-file' ? { name: 'notes.txt', firstLine: 'Notes from the Oct 9 group meeting', line: 1, column: 1 } : null)
+  const fetchStage = forced === 'fetching' ? 1 : stage
+  const chosen: Source | null = forced === 'chosen' ? { kind: 'example', id: 'sidechain_qaoa' } : source
+  const compactDrop = !!badFile || offline
+  const repoUrl = fetchStage != null || forced === 'offline' ? url || CANONICAL_REPO : url
+
+  const take = async (file: File | undefined) => {
+    if (!file) return
+    const result = await readQasm(file)
+    if (result.ok) {
+      setBad(null)
+      setSource(result.source)
+    } else {
+      setSource(null)
+      setBad(result.bad)
+    }
+  }
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault()
-    setDrag(false)
+    setDragging(false)
+    void take(e.dataTransfer.files[0])
+  }
+  const onPick = (e: ChangeEvent<HTMLInputElement>) => {
+    void take(e.target.files?.[0])
+    e.target.value = ''
+  }
+
+  const pickExample = (id: ExampleId) => {
+    setBad(null)
+    setSource((s) => (s?.kind === 'example' && s.id === id ? null : { kind: 'example', id }))
+    if (id === 'sidechain_qaoa' || id === 'sbox_oracle') actions.selectExample(id)
+  }
+
+  const fetchRepo = () => {
+    if (offline || fetchStage != null) return
+    if (!url) setUrl(CANONICAL_REPO)
+    setStage(0)
+    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
+    at(900, () => setStage(1))
+    at(1700, () => setStage(2))
+    at(2300, () => setStage(3))
+    at(2500, () => navigate(ROUTES.repoScan, { transition: 'forward' }))
+  }
+
+  const proceed = () => {
+    if (!chosen) return
     actions.continueToPreflight()
   }
 
-  const fetchRepo = () => navigate(ROUTES.repoScan, { transition: 'forward' })
-
-  const urlValue = state === 'fetching' ? 'https://github.com/knighthacks/qaoa-packing' : url
+  const chosenLabel =
+    chosen?.kind === 'example'
+      ? `${chosen.id}.qasm · ${EXAMPLES.find((x) => x.id === chosen.id)!.qubits} q · bundled`
+      : chosen
+        ? `${chosen.name} · ${chosen.lines} lines${chosen.qubits != null ? ` · ${chosen.qubits} q` : ''}`
+        : ''
 
   return (
     <Shell
       rail="new"
-      tabs={
-        <TabStrip
-          tabs={[
-            { id: 'new', label: 'New run', active: true },
-            { id: 'sbox', label: 'sbox_oracle.qasm' },
-          ]}
-        />
-      }
-      inspector={
+      status={
         <>
-          <ModeTabs />
-          <ModeBlock line="Runs on this machine" />
-          <Section icon={IkIcons.steps} title="What happens next">
-            <p className="s01-next-lead">Nothing runs until you confirm the plan.</p>
-            <div className="s01-steps">
-              {STEPS.map(([n, label, meta]) => (
-                <div key={n} className="s01-step">
-                  <span className="mono s01-step-n">{n}</span>
-                  <span className="s01-step-label">{label}</span>
-                  <span className="mono s01-step-meta">{meta}</span>
-                </div>
-              ))}
-            </div>
-          </Section>
-          <Section icon={IkIcons.chip} title="This machine">
-            <div className="ik-insp-rows">
-              {MACHINE.map(([label, value, ok]) => (
-                <div key={label} className="ik-insp-row">
-                  <span className="ik-insp-row-label">{label}</span>
-                  <span className="ik-insp-row-value s01-machine-value">
-                    {ok && IkIcons.smallCheck}
-                    {value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Section>
-          <Section icon={IkIcons.history} title="Recent runs" meta="two-qubit gates">
-            <div className="s01-recent">
-              {RECENT.map(([id, name, result]) => (
-                <button key={id} className="s01-recent-row" onClick={() => navigate(ROUTES.runs)}>
-                  <span className="mono s01-recent-id">{id}</span>
-                  <span className="mono s01-recent-name">{name}</span>
-                  <span className="mono s01-recent-result">{result}</span>
-                </button>
-              ))}
-            </div>
-            <div className="s01-recent-foot">
-              <span>Runs stay on this machine</span>
-              <EditorButton onClick={() => navigate(ROUTES.runs)} style={{ height: 26, paddingBlock: 0 }}>
-                Open all runs
-              </EditorButton>
-            </div>
-          </Section>
+          <GpuStatus online />
+          <AccountHandle />
         </>
       }
+      tabs={<TabStrip tabs={[{ id: 'new', label: 'New run', active: true }]} />}
+      inspector={
+        <div className="ink-scope nr-insp">
+          <ModeTabs />
+          <RunBlock line="Runs on this machine · CPU" />
+          <div className="nr-next">
+            <GroupHeader label="what happens next" note="after you confirm" className="nr-pad" />
+            <div className="nr-steps">
+              {NEXT.map((s) => (
+                <div key={s.title} className="nr-step">
+                  {s.icon}
+                  <span className="nr-step-title">{s.title}</span>
+                  <span className="mono nr-step-meta">{s.meta}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="nr-machine">
+            <GroupHeader label="this machine" note="Laptop mode" />
+            <Facts
+              rows={[
+                ['Processor', 'CPU · 8 cores'],
+                ['Memory free', '24.0 GB'],
+                ['Simulation limit', '34 qubits'],
+                [
+                  'GPU machine',
+                  <>
+                    <span className="nr-gpu-dot" />
+                    online · 0 jobs waiting
+                  </>,
+                ],
+              ]}
+            />
+          </div>
+        </div>
+      }
     >
-      <Content>
+      <div className="nr-ground ink-scope">
         <Tile
-          className="s01-tile"
-          tabs={[{ id: 'new', label: 'New run', active: true }]}
-          meta={<span className="ik-meta-mono">Qiskit only</span>}
-          bodyClassName="s01-body"
+          className="nr-tile"
+          tabs={[{ id: 'source', label: 'Source', active: true }]}
+          meta={<span className="mono">step 1 of 3 · source</span>}
+          bodyClassName="nr-body"
         >
+          {offline && (
+            <Banner tone="warn" word="offline" meta="retry in 10 s">
+              <span className="ink-banner-grow">You are offline. Fetch waits for the connection.</span>
+            </Banner>
+          )}
+          {badFile && (
+            <>
+              <Banner
+                tone="bad"
+                word="Not OpenQASM"
+                action={
+                  <EditorButton onClick={() => fileInput.current?.click()}>Choose another file</EditorButton>
+                }
+              >
+                <span className="mono nr-banner-where">
+                  (Q101) · {badFile.name} line {badFile.line}, column {badFile.column}
+                </span>
+                <span>·</span>
+              </Banner>
+              <div className="nr-code ink-fade-in" aria-label={`${badFile.name}, line ${badFile.line}`}>
+                <div className="nr-code-line is-flagged">
+                  <span className="mono nr-code-n">{badFile.line}</span>
+                  <span className="mono nr-code-text">{badFile.firstLine}</span>
+                </div>
+                <div className="nr-code-line">
+                  <span className="nr-code-n" />
+                  <span className="mono nr-code-text is-bad">^ expected "OPENQASM 2.0;" or "OPENQASM 3;"</span>
+                </div>
+              </div>
+            </>
+          )}
+
           <div
-            className={`s01-drop${state === 'drag-over' ? ' is-over' : ''}`}
+            className={`nr-drop${compactDrop ? ' is-compact' : ''}${dragOver ? ' is-over' : ''}`}
             onDragEnter={(e) => {
               e.preventDefault()
-              setDrag(true)
+              setDragging(true)
             }}
             onDragOver={(e) => e.preventDefault()}
             onDragLeave={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDrag(false)
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false)
             }}
             onDrop={onDrop}
           >
-            {state === 'drag-over' ? (
+            {dragOver ? (
               <>
-                <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden>
-                  <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5" fill="none" stroke="#F8D441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M5 16v3h14v-3" fill="none" stroke="#F8D441" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                <div className="s01-drop-title">Release to add 2 files</div>
-                <div className="mono s01-drop-files">sidechain_qaoa.qasm · sbox_oracle.qasm</div>
+                {InkIcons.upload()}
+                <div className="nr-drop-title">Drop to add sidechain_qaoa.qasm</div>
+                <div className="mono nr-drop-facts">1 file · 18.4 kB · OpenQASM 2.0</div>
               </>
+            ) : compactDrop ? (
+              <button className="nr-drop-compact" onClick={() => fileInput.current?.click()}>
+                {InkIcons.upload(14, 1.8)}
+                <span>{offline ? 'Drop .qasm files · bundled examples work offline' : 'Drop .qasm files or paste a GitHub URL'}</span>
+              </button>
             ) : (
               <>
-                {IkIcons.download}
-                <div className="s01-drop-title">Drop .qasm files or paste a GitHub URL</div>
-                <div className="s01-drop-sub">Qiskit · OpenQASM 2 or 3 · nothing runs until you confirm</div>
-                <div className="s01-spacer" />
-                <div className="s01-reads">
-                  {READS.map(([k, title, text]) => (
-                    <div key={k} className="s01-read">
-                      <div className="mono s01-read-k">{k}</div>
-                      <div className="s01-read-title">{title}</div>
-                      <div className="s01-read-text">{text}</div>
-                    </div>
-                  ))}
+                {InkIcons.upload()}
+                <div className="nr-drop-title">Drop .qasm files or paste a GitHub URL</div>
+                <div className="nr-drop-sub">Qiskit · OpenQASM 2 or 3 · nothing runs until you confirm</div>
+                <div className="nr-drop-actions">
+                  <button ref={chooseRef} className={`btn-editor${forced === 'focus' ? ' is-focus' : ''}`} onClick={() => fileInput.current?.click()}>
+                    Choose files
+                  </button>
                 </div>
               </>
             )}
+            <input ref={fileInput} type="file" accept=".qasm,.txt,text/plain" hidden onChange={onPick} />
           </div>
 
-          {state === 'bad-file' && (
-            <div className="s01-error" role="alert">
-              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-                <path d="M4 4l6 6M10 4l-6 6" fill="none" stroke="#FF3478" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              <div className="s01-error-text">
-                <div className="s01-error-title">Not OpenQASM</div>
-                <div className="mono s01-error-detail">Q101 · notes.txt line 1 · expected OPENQASM 2.0 or 3.0 header</div>
-              </div>
-            </div>
-          )}
-
-          {state === 'offline' && (
-            <div className="s01-banner" role="status">
-              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-                <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.5" strokeLinejoin="round" />
-              </svg>
-              <span>You are offline. Uploads and bundled examples still work; repo fetch waits.</span>
-            </div>
-          )}
-
-          <form
-            className={`s01-url${state === 'offline' ? ' is-disabled' : ''}`}
-            onSubmit={(e) => {
-              e.preventDefault()
-              fetchRepo()
-            }}
-          >
-            <input
-              className={`s01-url-input${state === 'fetching' ? ' is-filled' : ''}`}
-              placeholder="https://github.com/owner/repo"
-              value={urlValue}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={state === 'offline'}
-              aria-label="GitHub repository URL"
-              spellCheck={false}
+          <div className="nr-block">
+            <GroupHeader
+              label="repository"
+              note={fetchStage != null ? `public · ${STAGE_LEFT[Math.min(fetchStage, 2)]}` : 'public repos · private needs a token'}
             />
-            <EditorButton disabled={state === 'offline'} style={{ height: 26, paddingBlock: 0 }}>
-              {state === 'fetching' ? 'Fetching (40%)' : 'Fetch'}
-            </EditorButton>
-          </form>
-
-          {state === 'fetching' && (
-            <div className="mono s01-stages">
-              <span className="s01-stage is-done">✓ clone</span>
-              <span className="s01-stage is-running">● search</span>
-              <span className="s01-stage is-pending">○ parse</span>
-              <span className="s01-spacer-grow" />
-              <span className="s01-stage-left">about 6 s left</span>
-            </div>
-          )}
-
-          {state === 'no-circuits' && (
-            <div className="s01-warning" role="alert">
-              <div className="s01-warning-title">
-                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-                  <path d="M7 2.5l5 9H2z" fill="none" stroke="#FF986E" strokeWidth="1.5" strokeLinejoin="round" />
-                </svg>
-                <span>No .qasm file detected</span>
-              </div>
-              <p>Gatesmith searched 214 files in owner/repo. Point it at a Qiskit builder function, or start from an example.</p>
-            </div>
-          )}
-
-          <div className="s01-examples-label">Or start from a bundled example</div>
-          <div className="s01-examples" role="radiogroup" aria-label="Bundled examples">
-            {EXAMPLES.map((ex) => {
-              const on = ex.id === run.selectedExample
-              return (
-                <button
-                  key={ex.id}
-                  ref={(el) => {
-                    exampleRefs.current[ex.id] = el
-                  }}
-                  role="radio"
-                  aria-checked={on}
-                  className={`s01-example${on ? ' is-selected' : ''}${forced === 'focus' && ex.id === 'sidechain_qaoa' ? ' is-focus' : ''}`}
-                  onClick={() => actions.selectExample(ex.id)}
-                  onDoubleClick={() => actions.continueToPreflight()}
-                >
-                  <span className="s01-preview" dangerouslySetInnerHTML={{ __html: EXAMPLE_PREVIEWS[ex.id] }} />
-                  <span className="s01-example-head">
-                    <span className="mono s01-example-name">{ex.id}</span>
-                    <span className="mono s01-example-meta">{ex.meta}</span>
-                  </span>
-                  <span className="s01-example-desc">{ex.desc}</span>
-                </button>
-              )
-            })}
+            <form
+              className="nr-repo"
+              onSubmit={(e) => {
+                e.preventDefault()
+                fetchRepo()
+              }}
+            >
+              <label className="nr-url">
+                {InkIcons.link}
+                <input
+                  className="mono"
+                  placeholder="https://github.com/owner/repo"
+                  value={repoUrl}
+                  onChange={(e) => setUrl(e.target.value)}
+                  readOnly={fetchStage != null}
+                  aria-label="GitHub repository URL"
+                  spellCheck={false}
+                />
+                {!offline && InkIcons.caret}
+              </label>
+              <EditorButton disabled={offline} style={{ width: 76, height: 24 }}>
+                {fetchStage != null ? 'Fetching' : 'Fetch'}
+              </EditorButton>
+            </form>
+            {fetchStage != null && <FetchProgress stage={fetchStage} />}
           </div>
 
-          <div className="s01-foot">
-            <div className="s01-selected">
-              <span className="s01-selected-label">Selected</span>
-              <span className="mono s01-selected-file">{selected.id}.qasm</span>
-              <span className="mono s01-selected-meta">{selected.qubits} q · 1 file</span>
+          <div className="nr-block">
+            <GroupHeader label="bundled examples" note="2 circuits · work offline" />
+            <div className="nr-examples" role="radiogroup" aria-label="Bundled examples">
+              {EXAMPLES.map((ex) => {
+                const on = chosen?.kind === 'example' && chosen.id === ex.id
+                return (
+                  <button
+                    key={ex.id}
+                    role="radio"
+                    aria-checked={on}
+                    className={`nr-example${on ? ' is-selected' : ''}`}
+                    onClick={() => pickExample(ex.id)}
+                    onDoubleClick={() => {
+                      actions.selectExample(ex.id)
+                      actions.continueToPreflight()
+                    }}
+                  >
+                    <span className="nr-example-head">
+                      <span className="mono nr-example-name">{ex.id}.qasm</span>
+                      <span className="mono nr-example-facts">{ex.facts}</span>
+                    </span>
+                    <span className="mono nr-example-kind">{ex.kind}</span>
+                    <span className="nr-example-desc">{ex.desc}</span>
+                  </button>
+                )
+              })}
             </div>
-            <PrimaryButton onClick={() => actions.continueToPreflight()} style={{ paddingBlock: 0 }}>
+          </div>
+
+          <div className="nr-foot">
+            <div className={`nr-chosen${chosen ? ' is-on' : ''}`} aria-live="polite">
+              {chosen ? (
+                <>
+                  <Glyph kind="check" />
+                  <span>chosen</span>
+                  <span className="mono nr-chosen-file">{chosenLabel}</span>
+                </>
+              ) : (
+                <>
+                  <Glyph kind="ring" />
+                  <span>No circuit chosen</span>
+                </>
+              )}
+            </div>
+            <PrimaryButton disabled={!chosen} onClick={proceed} name="primary-action" style={{ width: 200, padding: 0 }}>
               Continue
             </PrimaryButton>
           </div>
         </Tile>
-      </Content>
+      </div>
     </Shell>
+  )
+}
+
+function FetchProgress({ stage }: { stage: number }) {
+  return (
+    <div className="nr-fetch ink-fade-in" role="status" aria-live="polite">
+      <div className="nr-stages">
+        {STAGES.map((s, i) => {
+          const state = i < stage ? 'done' : i === stage ? 'running' : 'queued'
+          return (
+            <div key={s.word} className={`nr-stage is-${state}`}>
+              <span className="nr-stage-icon">
+                {state === 'done' ? <Glyph kind="check" /> : state === 'running' ? <Spinner size={14} /> : <Glyph kind="ring" size={8} />}
+              </span>
+              <span className="nr-stage-word">{s.word}</span>
+              <span className="mono nr-stage-detail">{state === 'done' ? s.done : state === 'running' ? s.running : s.queued}</span>
+              <span className={`nr-stage-end${state === 'running' ? ' mono' : ''}`}>
+                {state === 'done' ? 'done' : state === 'running' ? s.est : 'queued'}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <div className="nr-fetch-rows" aria-hidden>
+        {[220, 180, 240].map((w) => (
+          <div key={w} className="nr-fetch-row">
+            <Shim w={w} h={12} />
+            <span className="nr-grow" />
+            <Shim w={64} h={12} />
+            <Shim w={40} h={12} />
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
