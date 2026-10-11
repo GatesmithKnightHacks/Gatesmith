@@ -135,6 +135,7 @@ def fixture_bundle(
         "device_default": "cpu",
         "fallbacks": [],
         "manifest": "qscore.yaml",
+        "target": None,
     }
     settings_bytes = json.dumps(settings, sort_keys=True, separators=(",", ":")).encode()
     payloads = {}
@@ -146,7 +147,19 @@ def fixture_bundle(
         raw = json.dumps(card(count, high)).encode()
         path = f"{side}/scorecards/demo.json"
         payloads[path] = raw
-        payloads[f"{side}/settings.json"] = settings_bytes
+        payloads[f"{side}/settings.json"] = json.dumps(
+            dict(
+                settings,
+                comparison="conservative_declared_evaluation/v1",
+                items={
+                    "demo": {
+                        "defaults": {},
+                        "declared": {"objective": {"primary": "two_qubit_count"}},
+                        "referenced_files": {},
+                    }
+                },
+            )
+        ).encode()
         run = {
             "schema": "qscore.run/v0.3",
             "run_id": side,

@@ -60,13 +60,29 @@ def ensure_comparable(loaded: LoadedBundle) -> None:
             raise RecordError("Missing evaluation settings provenance")
     base_settings = json.loads(loaded.payloads["base/settings.json"])
     head_settings = json.loads(loaded.payloads["head/settings.json"])
-    if base_settings != head_settings:
-        raise RecordError("Incomparable evaluation settings")
+    runtime = {}
+    item_settings = {}
+    for side, settings in (("base", base_settings), ("head", head_settings)):
+        if (
+            not isinstance(settings, dict)
+            or settings.get("comparison") != "conservative_declared_evaluation/v1"
+            or not isinstance(settings.get("items"), dict)
+        ):
+            raise RecordError("Incomparable declared settings provenance")
+        runtime[side] = {
+            key: value for key, value in settings.items() if key not in {"comparison", "items"}
+        }
+        item_settings[side] = settings["items"]
+    if runtime["base"] != runtime["head"]:
+        raise RecordError("Incomparable evaluation runtime settings")
     expected = hashlib.sha256(
-        json.dumps(base_settings, sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(runtime["base"], sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
     if expected != loaded.envelope.provenance.settings_sha256:
         raise RecordError("Evaluation settings fingerprint mismatch")
+    for item in item_settings["base"].keys() & item_settings["head"].keys():
+        if item_settings["base"][item] != item_settings["head"][item]:
+            raise RecordError("Incomparable declared evaluation for item " + item)
     for item in loaded.cards["base"].keys() & loaded.cards["head"].keys():
         base, head = loaded.cards["base"][item], loaded.cards["head"][item]
         if base.target != head.target:
@@ -98,18 +114,25 @@ def build_summary(
     regressions: list[str] = []
     new_high = False
     head_errors = False
-    engine_failed = loaded.envelope.base.exit_code in (3, 4) or (
-        loaded.envelope.head.exit_code in (3, 4)
+    engine_failed = loaded.envelope.base.exit_code in (2, 3, 4) or (
+        loaded.envelope.head.exit_code in (2, 3, 4)
     )
+    evaluated = {
+        side: side in loaded.runs and getattr(loaded.envelope, side).exit_code in (0, 1)
+        for side in ("base", "head")
+    }
+    unevaluated = not all(evaluated.values())
     if not engine_failed:
         ensure_comparable(loaded)
     for item in sorted(loaded.cards["base"].keys() | loaded.cards["head"].keys()):
         base, head = loaded.cards["base"].get(item), loaded.cards["head"].get(item)
+        head_status = (
+            _safe(head.status) if head else ("removed" if evaluated["head"] else "not evaluated")
+        )
         lines.extend(
             [
                 f"### `{_safe(item)}`",
-                f"Status: {_safe(base.status) if base else 'added'}"
-                f" → {_safe(head.status) if head else 'removed'}.",
+                f"Status: {_safe(base.status) if base else 'not present'} → {head_status}.",
                 "",
                 "Metric | Base | Head | Comparison",
                 "--- | ---: | ---: | ---",
@@ -122,7 +145,14 @@ def build_summary(
             bv, hv = b.value if b else None, h.value if h else None
             context = "unavailable"
             vals = [value for value in (bv, hv) if _numeric(value)]
-            if b and h and b.status == h.status == "computed" and _numeric(bv) and _numeric(hv):
+            if (
+                not unevaluated
+                and b
+                and h
+                and b.status == h.status == "computed"
+                and _numeric(bv)
+                and _numeric(hv)
+            ):
                 if bv == hv:
                     context = "unchanged"
                 elif metric in SPREAD_METRICS and base and base.compile:
@@ -160,10 +190,12 @@ def build_summary(
             status = (
                 "unchanged" if rule in bg and rule in hg else ("new" if rule in hg else "resolved")
             )
+            if unevaluated:
+                status = "unassessed (incomplete evaluation)"
             findings = hg.get(rule, bg.get(rule, []))
             high_head = any(f.severity == "high" for f in hg.get(rule, []))
             high_base = any(f.severity == "high" for f in bg.get(rule, []))
-            new_high |= high_head and not high_base
+            new_high |= high_head and not high_base and not unevaluated
             regions = [f.region.model_dump() if f.region else None for f in findings]
             numbers: list[int | float] = []
             for finding in findings:
@@ -217,15 +249,21 @@ def build_summary(
             )
     if engine_failed:
         lines.append(
-            "- **Evaluation failed**: engine exit 3/4 or failed scorecard; no passing score."
+            "- **Evaluation failed**: invalid input, engine exit 3/4 or failed scorecard; "
+            "no passing score."
+        )
+    if unevaluated:
+        lines.append(
+            "- **Not evaluated**: discovery or incomplete scoring cannot establish a passing gate."
         )
     policy_failure = (
-        (config.fail_on == "new_high" and new_high)
+        (config.fail_on is not None and unevaluated)
+        or (config.fail_on == "new_high" and new_high)
         or (config.fail_on == "regression" and bool(regressions))
         or (config.fail_on == "error" and head_errors)
     )
     conclusion = "failure" if engine_failed or policy_failure else "neutral"
-    if config.fail_on and not engine_failed and not policy_failure:
+    if config.fail_on and not engine_failed and not policy_failure and not unevaluated:
         conclusion = "success"
     if p.fork:
         conclusion = "neutral"
@@ -237,6 +275,8 @@ def build_summary(
             f"Engine revision `{p.engine_revision}`; "
             f"score version `{_safe(p.score_version)}`; "
             f"evaluation fingerprint `{p.settings_sha256}`.",
+            "Comparability uses conservative declared evaluation settings under the pinned engine; "
+            "equivalent declaration edits may still be reported as incomparable.",
         ]
     )
     for side, run in loaded.runs.items():

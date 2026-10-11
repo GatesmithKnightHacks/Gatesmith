@@ -59,6 +59,12 @@ class Settings(StrictModel):
                     os.environ.get("QSCORE_BOT_STATE_PATH", "/var/lib/gatesmith/review.sqlite3")
                 ),
                 gemini_api_key=os.environ.get("GEMINI_API_KEY"),
+                knowledge_path=Path(
+                    os.environ.get(
+                        "QSCORE_BOT_KNOWLEDGE_PATH",
+                        str(Path(__file__).resolve().parents[2] / "knowledge/qiskit.json"),
+                    )
+                ),
             )
         except (ValueError, ValidationError) as exc:
             raise ConfigError("Invalid bot environment configuration") from exc
