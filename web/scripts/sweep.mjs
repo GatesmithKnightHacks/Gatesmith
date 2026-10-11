@@ -32,6 +32,7 @@ for (const id of ids) {
     const clipped = await page.evaluate(() => {
       const out = []
       for (const el of document.querySelectorAll('body *')) {
+        if (el.classList.contains('sr-only')) continue // screen-reader text is 1 px by design
         const cs = getComputedStyle(el)
         if (cs.whiteSpace !== 'nowrap' && cs.whiteSpace !== 'pre') continue
         if (!el.childNodes.length || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue

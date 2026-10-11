@@ -199,9 +199,9 @@ export const actions = {
       [4100, 1, 'done'],
     ]
     ticks.forEach(([ms, p, st]) => after(ms, () => set({ scoreProgress: p, scoreStage: st })))
-    // M2: the count is final first, then cards land 40 ms apart.
+    // M2: the count reads 4 open first; the card list then fades in as one block (no stagger).
     after(4100, () => set({ phase: 'findings', findingsShown: 0 }))
-    for (let i = 1; i <= 4; i++) after(4100 + 80 + (i - 1) * 40, () => set({ findingsShown: i }))
+    after(4180, () => set({ findingsShown: 4 }))
     after(4800, () => actions.runRounds())
   },
 
