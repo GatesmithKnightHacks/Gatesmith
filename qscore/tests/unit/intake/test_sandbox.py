@@ -34,6 +34,13 @@ def sleepy():
     time.sleep(30)
 
 
+def adder():
+    from qiskit.circuit.library import FullAdderGate
+    qc = QuantumCircuit(4)
+    qc.append(FullAdderGate(1), range(4))
+    return qc
+
+
 def env_probe():
     qc = QuantumCircuit(1)
     qc.name = ",".join(sorted(k for k in os.environ if k.startswith("QSCORE_TEST_")))
@@ -87,6 +94,14 @@ def test_not_a_circuit(repo: Path) -> None:
     assert err.value.kind == "not_a_circuit"
 
 
+def test_qpy_the_engine_cannot_reload_is_q306_kind(repo: Path) -> None:
+    # Qiskit's QPY cannot rebuild arithmetic library gates (FullAdderGate) — 05 §4.1 Q306.
+    with pytest.raises(SandboxError) as err:
+        call(repo, "adder")
+    assert err.value.kind == "qpy_incompatible"
+    assert "builders.py::adder" in str(err.value) and "FullAdderGate" in str(err.value)
+
+
 def test_timeout(repo: Path) -> None:
     with pytest.raises(SandboxError) as err:
         call(repo, "sleepy", timeout_s=2)
@@ -105,9 +120,8 @@ def test_secrets_stripped_from_child(repo: Path, monkeypatch: pytest.MonkeyPatch
     [
         "GITHUB_TOKEN",
         "AWS_SECRET_ACCESS_KEY",
-        "QSCORE_NEON_DSN",
+        "QSCORE_PLATFORM_DSN",
         "HF_HOME",
-        "NEON_X",
         "GEMINI_API_KEY",
         "OPENAI_ORG",
         "client_secret",

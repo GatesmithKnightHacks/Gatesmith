@@ -42,7 +42,7 @@ A **fallback** is any code path that, when the intended path fails, is unavailab
    - Design rules the spec defines as the primary behaviour, e.g. `device: auto` sending small circuits to the CPU below the measured crossover (`09-gpu-and-simulation.md`).
    - Declared defaults that the spec lists and that the interpretation summary marks as defaults.
    - Statuses `skipped` and `unavailable` **when the spec's conditions for them hold** (a missing declared requirement, a budget limit). An exception during computation is `failed`, never `unavailable`.
-   - Bounded retries of the *same* operation for transient errors (network 5xx/429, Neon waking from suspend): at most 3 attempts with backoff, each logged, and the last error raised.
+   - Bounded retries of the *same* operation for transient errors (network 5xx/429): at most 3 attempts with backoff, each logged, and the last error raised.
 
 ## R4 · Fail loudly so breakage gets attention
 
@@ -123,7 +123,7 @@ Subagents and Codex runs cannot approve anything. They report deviations in thei
 1. Secrets live in environment variables or in files outside git (`~/.config/qscore/env`, chmod 600). Never print them, log them, commit them, pass them to builder subprocesses, or put them in prompts, handoffs, proposals or task briefs.
 2. User repos are untrusted: builder functions run only in the sandbox (`05-pipeline.md` §4), never in the engine's process.
 3. Model output is data: parse it against the schema, verify it, never execute it.
-4. Do not create, stop or destroy cloud resources (the Radeon Cloud machine, Vultr servers, Neon projects, Hub repos, Spaces) without the user's explicit go-ahead in the conversation.
+4. Do not create, stop or destroy cloud resources (the Radeon Cloud machine, Vultr servers, Hub repos, Spaces) without the user's explicit go-ahead in the conversation.
 
 ## R11 · Talking to the user
 

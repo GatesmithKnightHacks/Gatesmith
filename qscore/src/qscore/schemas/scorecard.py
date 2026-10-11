@@ -177,11 +177,23 @@ class Scorecard(QDocument):
     @model_validator(mode="after")
     def _status_consistent(self) -> Scorecard:
         any_failed = any(m.status is Status.FAILED for m in self.metrics)
+        reference = (self.model_extra or {}).get("x-reference")
+        if isinstance(reference, dict):
+            benchmark = reference.get("benchpress")
+            if isinstance(benchmark, dict) and "error" in benchmark:
+                # ChP-0038: a reference measurement failure has the same partial
+                # status consequence, although it is deliberately not a metric.
+                ErrorInfo.model_validate(benchmark["error"])
+                any_failed = True
         if self.status == "failed":
             if self.error is None:
                 raise issue_error("Q103", "a failed scorecard needs an error")
         elif self.status == "partial" and not any_failed:
-            raise issue_error("Q103", "status partial needs at least one failed metric")
+            raise issue_error(
+                "Q103", "status partial needs a failed metric or reference measurement"
+            )
         elif self.status == "complete" and any_failed:
-            raise issue_error("Q103", "status complete cannot contain a failed metric")
+            raise issue_error(
+                "Q103", "status complete cannot contain a failed metric or reference measurement"
+            )
         return self

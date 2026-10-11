@@ -19,8 +19,8 @@
 |---|---|---|
 | A · Intake and validation | Discover, draft, validate, resolve, sandbox, interpret, issue catalog | B: resolved items; D: issues and summaries |
 | B · Compile, metrics, diagnosis | Targets, compile, CPU metrics, rules, scorecard assembly, requests | C: simulation jobs; D: scorecards |
-| C · GPU and simulation | GPU sessions, Aer ROCm build, profiler, planner, simulation metrics, verification ladder, bench, vLLM | B: task scores; D: telemetry and bench |
-| D · Records, UI, platform | Worker, Neon, Hub, loop service, UI, Vultr, Space, model clients, leaderboard | Everyone |
+| C · GPU and simulation | GPU sessions, Aer ROCm build, profiler, planner, simulation metrics, verification ladder, bench | B: task scores; D: telemetry and bench |
+| D · Records, UI, platform | Worker, platform job API client, Hub, loop service, UI, Vultr, Space, model clients, leaderboard | Everyone |
 
 ## 3. Tasks
 
@@ -44,7 +44,7 @@ Legend — **Tier** (0/1/2) · **WS** workstream · **Dep** dependencies · **De
 | T02 | Issue model and catalog: `validate/issues.py`, `catalog.py`, `locate.py`; `qscore explain`; `docs/issues.md` generation | 0 | A | T01 | codex or sub | Every code in `05-pipeline.md` §12 present with message/hint; `qscore explain Q202` prints it; doc generated and committed |
 | T03 | Fixtures: `examples/sidechain_qaoa` (builder, params, Hamiltonian generator, yaml), `examples/sbox_oracle` (generator + QASM + yaml), `examples/broken/*` (one per code, `expected.json`); `tests/golden/values.yaml` with the spec's approved values | 0 | A/B | T01 | sub (generators), lead (golden file) | Both example manifests load into `ProjectManifest`; generators are deterministic (hash of outputs stable across two runs); sbox generator self-verifies; golden file matches `06-metrics.md` §4 exactly |
 | T04 | Service stubs + CLI skeleton: every command in `05-pipeline.md` §11 wired to a `services.py` stub that returns fixture objects which validate; `Event` emission; exit codes | 0 | D | T01 | codex or sub | CLI tests for exit codes 0/2/3/4 with stubs; `--json` outputs validate against schemas |
-| T05 | Neon: migrations `scripts/neon/0001–0003` (tables, functions, roles), `qscore db migrate`/`db ping`, `record/neon.py` skeleton; create Hub repos (user provides tokens) | 0 | D | T01 | lead (needs the user's secrets) | Migrations apply cleanly to a fresh dev branch twice (idempotent runner); `claim_job` returns a job for matching caps and none for non-matching; roles can do only what §3.2 grants (tested) |
+| T05 | Platform job API contract (11 §3) agreed with the platform owner; `record/jobs_client.py` skeleton + fake job API fixture; create Hub repos (user provides tokens) | 0 | D | T01 | lead (needs the user's secrets) | Against the fake job API: claim returns a job for matching caps and none for non-matching; a second claimant gets nothing; heartbeat after lost claim → 409 handled |
 | T06 | CI: ruff, mypy, import-linter, pytest CPU, schema drift | 0 | — | T00 | any | Workflow green on a PR |
 
 **G1:** schemas export; both examples load; CI green; stubs validate. Tag `g1`.
@@ -71,22 +71,25 @@ Legend — **Tier** (0/1/2) · **WS** workstream · **Dep** dependencies · **De
 
 | ID | Task | Tier | WS | Dep | Delegable | Acceptance criteria |
 |---|---|---|---|---|---|---|
-| T17 | **GPU session S1 (tonight, parallel to P1):** machine checks, Aer ROCm wheel, smoke tests, vLLM serving the 8B model, one benchmark, `scripts/build_aer_rocm.sh` and `bootstrap_radeon.sh`; teardown | 0 | C | — | lead + user | Checks recorded in `lab/`; wheel on the private Hub repo with SHA256; GPU==CPU smoke passes; vLLM answers; credits ledger updated; machine destroyed (user's go) |
+| T17 | **GPU session S1 (tonight, parallel to P1):** machine checks, Aer ROCm wheel, smoke tests, one benchmark, `scripts/build_aer_rocm.sh` and `bootstrap_radeon.sh`; teardown | 0 | C | — | lead + user | Checks recorded in `lab/`; wheel on the private Hub repo with SHA256; GPU==CPU smoke passes; credits ledger updated; machine destroyed (user's go) |
 | T18b | Profiler GPU part: crossover, time-vs-qubits, cache knee, fusion sweep, overhead factor, `probe_rocm_options()`, telemetry source | 0 | C | T17, T18a | lead (on the GPU) | Profile with GPU fields recorded; options probe results recorded |
 | T19 | `sim/`: backends, planner (memory modes, grouping, batching), tasks (known_output, distribution, expectation, mirror), jobs (GPU thread + CPU pool; OOM → `GpuOutOfMemory`), telemetry | 0 | C | T18a | sub (CPU parts) + lead (GPU validation) | Planner unit tests reproduce `09` §2 tables exactly; CPU runs of every task type; OOM path raises in `ci` |
 | T20 | `metrics/research/simulated.py` + `mirror_score` + D10; differential tests | 0 | C | T19, T14 | lead | `pytest -m gpu` differential suite passes on the W7900 within tolerances; scorecards show GPU method and CI |
-| T21 | Benchmark suite + charts data; results to Hub and Neon | 0 | C | T19, T18b | lead | Dated bench run on the Hub; crossover, cache knee and precision × fusion grid present |
-| T22 | Records + worker: `record/neon.py`, `record/hub.py`, `worker.py`; queue fault tests | 0 | D | T05, T15 | sub (Neon/Hub code), lead (worker loop) | `pytest -m neon` passes (kill → requeue; replay idempotent); a score job submitted on the laptop runs on the W7900 worker and lands in Neon + Hub |
+| T21 | Benchmark suite + charts data; results to the Hub | 0 | C | T19, T18b | lead | Dated bench run on the Hub; crossover, cache knee and precision × fusion grid present |
+| T22 | Records + worker: `record/jobs_client.py`, `record/hub.py`, `worker.py`; queue fault tests | 0 | D | T05, T15 | sub (job client/Hub code), lead (worker loop) | `pytest -m platform` passes (kill → requeue; replay idempotent); a score job submitted on the platform runs on the W7900 worker and lands on the Hub |
 | T23 | Verification ladder: `verify/reduce.py`, `equivalence.py`, `permitted.py`, `task.py`, `ladder.py` | 0 | C | T12 | codex (CPU rungs) + lead (GPU rung) | Mutation tests fail every broken candidate; positive tests pass; QCEC mapping; GPU rung passes 13–15 q tests on the W7900 |
 
-**G3:** GPU task scores match CPU; benchmark + sweep recorded; Neon + Hub records; worker survives a kill. Tag `g3`.
+**G3:** GPU task scores match CPU; benchmark + sweep recorded; Hub records; worker survives a kill. Tag `g3`.
 
 ### P4 · Consumers (→ G4, feature freeze)
 
 | ID | Task | Tier | WS | Dep | Delegable | Acceptance criteria |
 |---|---|---|---|---|---|---|
 | T24 | `improve/protocol.py`, `reference_qiskit.py` (all six strategies), `loop.py`, `services.improve_item()`; attempts recorded | 1 | D/B | T16, T23 | lead + sub | One D01/D03 finding on the QAOA example yields a verified, accepted `reference-qiskit` proposal; sbox `reversible_rewrite` verified classically; stop rules tested |
-| T25 | `openai_compat.py` (local + hf), `prompts.py`, `improve/models.yaml`, privacy guard | 1 | D | T24 | codex or sub | Recorded-response tests; live smoke against vLLM (gpu/llm marker) and the router (llm marker); parse failures counted, never repaired |
+| T25 | `hf` layer (`improve/hf_layer.py`), `prompts.py`, `improve/models.yaml` + catalog check, `qscore models check`, privacy guard, budgets (ChP-0048) | 1 | D | T24 | lead | Recorded-response tests (valid, unparsable, bad QASM, wrong width, retries, auth, catalog, privacy, budget); live smoke `-m llm` on the ★ model with `HF_TOKEN` |
+| C39a | `--not NAME` negation + `--pick not:` exclusion (`cli.py`, `intake/draft.py`) (ChP-0039) | 1 | F1 | T09 | lead/codex | Invalid names/picks, repeats, exclusions, empty selection, mode guards, trust/confirm parity tested |
+| C39b | `qscore deps`: `intake/deps.py`, `services.prepare_dependencies` (ChP-0039, 05 §4.5) | 1 | F1 | C39a | lead/codex | Offline synthetic projects: conflict, decline, no declarations, missing uv, failed upgrade keeps env, exact manifest diff |
+| C39c | `runner.env: uv` builder runs with Python/Qiskit version checks (ChP-0039, 05 §4) | 1 | F1 | C39b | lead/codex | A builder importable only from the prepared env scores end to end |
 | T26 | `conformance.py`, `qscore conform`, exports (attempts parquet, `leaderboard.parquet`), dataset card | 1 | D | T25, T22 | sub | Kit passes reference + stub, fails the broken layer; leaderboard parquet on the Hub |
 | T27 | UI: `ui/backend.py` (Local + Queue), screens per `12` §1.2 | 1 | D | T15, T22 | sub (screens) + lead (backend) | Full flow in the UI on the laptop (Local) and via the platform (Queue); accessibility checklist items present |
 | T28 | Platform on Vultr: `api/app.py`, compose, Caddy, deploy | 1 | D | T27 | lead (deploy needs the user) | Public HTTPS URL works with the GPU machine off; jobs queue and wait; GPU indicator correct |

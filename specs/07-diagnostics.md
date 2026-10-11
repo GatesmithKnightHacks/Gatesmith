@@ -13,7 +13,7 @@ Each rule: `Rule(id, title, group, metrics_needed, evaluate(metrics, ctx, thresh
 | D03 | Commuting block | A commuting run with `≥ 6` two-qubit ops on `≥ 4` qubits | Run location and size | Logical: the run's qubits/layers | `commutation_aware_routing` |
 | D04 | Resynthesizable blocks | `resynthesis_potential ≥ 1` | Each block's current vs minimum two-qubit gates | Compiled: the top block | `block_resynthesis` |
 | D05 | Clifford or linear block | A Clifford or linear-function block of `3–9` qubits (AI synthesis handles Clifford and linear blocks up to 9 qubits) | Block location, type, size | Logical: the block | `block_resynthesis` (with AI synthesis when available) |
-| D06 | Reliability hot spot | One qubit or edge carries `≥ 25 %` of total `−log reliability` | Top contributors with error rates | Compiled: that qubit/edge's gates | `noise_aware_layout` |
+| D06 | Reliability hot spot | One qubit or edge carries `≥ 25 %` of total `−log reliability`, or the compiled circuit uses a faulty operation (`faulty_ops` non-empty; severity high, or info under `info_rules`; threshold `faulty_ops` 0 with margin = number of distinct faulty ops; evidence lists every faulty op with its count; region: the faulty qubits/edges) (ChP-0041) | Top contributors with error rates | Compiled: that qubit/edge's gates | `noise_aware_layout` |
 | D07 | Decoherence risk | `scheduled_duration` evidence `ratio_to_median_t2 ≥ 0.5` | Duration and T2 values | None | Strategies that cut two-qubit depth (`routing_search`, `commutation_aware_routing`) |
 | D08 | Uneven entanglement | `entanglement_variance` evidence `cv ≥ 0.5` | Per-qubit two-qubit counts | Logical: the busiest qubits | `layout_search` (place busy qubits on well-connected sites) |
 | D09 | Poor scaling | Routing overhead rises monotonically across ≥3 sweep sizes, or `b_compiled − b_logical ≥ 0.3` | Per-size table and fit | None | Routing strategies; flag for the researcher |
@@ -24,7 +24,7 @@ Rules that build **no request**: D02, D07 (MVP), D09, D10. All others build requ
 ## 2. `diagnose/thresholds.yaml`
 
 ```yaml
-score_version: qscore-2026.1
+score_version: qscore-2026.2
 rules:
   D01: {routing_overhead_min: 0.30}
   D02: {seed_spread_min: 0.15}

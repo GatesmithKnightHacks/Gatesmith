@@ -1,0 +1,198 @@
+{
+  "$defs": {
+    "ReferenceBand": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "circuit_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Circuit Ids",
+          "type": "array"
+        },
+        "n": {
+          "minimum": 1,
+          "title": "N",
+          "type": "integer"
+        },
+        "quantiles": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Quantiles",
+          "type": "object"
+        },
+        "values": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "n",
+        "quantiles",
+        "circuit_ids",
+        "values"
+      ],
+      "title": "ReferenceBand",
+      "type": "object"
+    },
+    "ReferenceFailure": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "circuit_id": {
+          "title": "Circuit Id",
+          "type": "string"
+        },
+        "codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Codes",
+          "type": "array"
+        },
+        "error": {
+          "title": "Error",
+          "type": "string"
+        }
+      },
+      "required": [
+        "circuit_id",
+        "codes",
+        "error"
+      ],
+      "title": "ReferenceFailure",
+      "type": "object"
+    },
+    "ReferenceSource": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Commit",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "license": {
+          "title": "License",
+          "type": "string"
+        },
+        "modifications": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Modifications",
+          "type": "array"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "commit",
+        "license"
+      ],
+      "title": "ReferenceSource",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.reference/v0.1",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "failures": {
+      "items": {
+        "$ref": "#/$defs/ReferenceFailure"
+      },
+      "title": "Failures",
+      "type": "array"
+    },
+    "provenance": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Provenance",
+      "type": "object"
+    },
+    "schema": {
+      "const": "qscore.reference/v0.1",
+      "title": "Schema",
+      "type": "string"
+    },
+    "score_version": {
+      "title": "Score Version",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/ReferenceSource"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "targets": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ReferenceBand"
+          },
+          "propertyNames": {
+            "enum": [
+              "2–5",
+              "6–10",
+              "11–20",
+              "21–50",
+              "51+"
+            ]
+          },
+          "type": "object"
+        },
+        "type": "object"
+      },
+      "title": "Targets",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "score_version",
+    "created_at",
+    "sources",
+    "targets",
+    "failures",
+    "provenance"
+  ],
+  "title": "ReferenceCorpus",
+  "type": "object"
+}

@@ -1,0 +1,1 @@
+def ghost(n) -> QuantumCircuit: return QuantumCircuit(n)

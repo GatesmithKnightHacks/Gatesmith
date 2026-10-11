@@ -40,7 +40,7 @@
 
 ## 8. Environment
 - GPU machine: <up since … / destroyed at … · credits used/left · access method · tmux sessions>
-- Neon: <branch used · migrations applied> · Hub: <repos touched> · Vultr: <URL/state> · Space: <state>
+- Platform job API: <URL · state> · Hub: <repos touched> · Vultr: <URL/state> · Space: <state>
 - Codex integration mode: <cli | mcp | plugin | none>
 
 ## 9. Learned the hard way (gotchas worth keeping)

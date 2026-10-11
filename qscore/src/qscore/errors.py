@@ -29,7 +29,14 @@ class ConfigError(QscoreError):
     """Missing settings or secrets, or an incompatible environment (exit code 4)."""
 
 
-SandboxKind = Literal["timeout", "import_error", "user_exception", "not_a_circuit"]
+SandboxKind = Literal[
+    "timeout",
+    "import_error",
+    "user_exception",
+    "not_a_circuit",
+    "args_for_circuit",
+    "qpy_incompatible",
+]
 
 
 class SandboxError(QscoreError):
@@ -69,12 +76,16 @@ class RecordError(QscoreError):
     """Writing or reading records failed, or a replayed write conflicts with stored content."""
 
 
-class NeonError(RecordError):
-    """Neon (Postgres) was unreachable or a query failed after bounded retries."""
+class PlatformError(RecordError):
+    """The platform job API was unreachable or rejected a call after bounded retries (11 §3)."""
 
 
 class HubError(RecordError):
     """A Hugging Face Hub operation failed after bounded retries."""
+
+
+class FetchError(QscoreError):
+    """`git clone` of a repository link failed; carries git's message (ChP-0035, exit code 3)."""
 
 
 class LayerError(QscoreError):

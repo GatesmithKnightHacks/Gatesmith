@@ -111,6 +111,19 @@
           "title": "Builder",
           "type": "string"
         },
+        "line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
         "parameters": {
           "anyOf": [
             {

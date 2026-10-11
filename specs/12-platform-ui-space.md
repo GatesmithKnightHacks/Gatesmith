@@ -20,7 +20,7 @@ class Backend(Protocol):
 ```
 
 - `LocalBackend`: calls `services.py` in-process (laptop; runs builder functions in the local sandbox).
-- `QueueBackend`: talks to the platform API (`api/app.py`), which writes jobs to Neon and reads records.
+- `QueueBackend`: talks to the platform API (`api/app.py`), which owns the job store and the job API (11 §3) and reads records from the Hub.
 - The UI never imports engine modules other than `schemas/` and `ui/backend.py`.
 
 ### 1.2 Screens (the confidence flow)
@@ -32,7 +32,7 @@ class Backend(Protocol):
 | **Confirm** | Per item: the interpretation summary, the circuit drawing (`circuit_drawer` "mpl" → PNG) with the summary as alt text, planned compute (device, method, memory, time), what will not be checked; **Confirm** button | Nothing runs before confirm |
 | **Scorecards** | Per item: four group sections (resources, hardware, opportunities, research), each metric with value, unit, status badge, tooltip (plain line from `docs/metrics.md`); findings with severity, evidence, region highlight; suppress-with-reason (writes to the manifest via a diff) | Statuses use text + icon, never colour alone |
 | **Improve** | Run the loop (layers to use, rounds); attempts table (layer, model, verification status, decision, reason); before/after for accepted changes; re-scored diagnosis | Shows why candidates were rejected/inconclusive |
-| **AMD** | GPU online/offline; live telemetry while a job runs; benchmark charts (time vs qubits, crossover, cache knee, precision × fusion grid) | Reads bench results from Neon/Hub |
+| **AMD** | GPU online/offline; live telemetry while a job runs; benchmark charts (time vs qubits, crossover, cache knee, precision × fusion grid) | Reads bench results from the Hub |
 | **Leaderboard** | Link to the Space and an embedded table | Read-only |
 
 ### 1.3 UX and accessibility (UI/UX track; polish only after G4)
@@ -69,7 +69,7 @@ class Backend(Protocol):
 
 - One small Ubuntu server (the smallest plan that runs Docker comfortably; 2 GB RAM is enough for the platform without the CPU worker).
 - `docker/compose.yaml` services: `platform` (FastAPI + Gradio, port 8080), `caddy` (TLS on 443 → platform; automatic HTTPS with a domain or `<ip>.sslip.io`), optional `worker` (CPU, `QSCORE_CAPABILITIES={"gpu":false,...}`) — Tier 2.
-- Env: `QSCORE_NEON_DSN` (platform role), `QSCORE_PLATFORM_TOKEN`, `HF_TOKEN` (read for the dataset while private), `GEMINI_API_KEY` (Tier 2). Stored in `/opt/qscore/.env` (chmod 600), never in the image.
+- Env: platform job-store settings (platform's choice), per-worker tokens it issues, `QSCORE_PLATFORM_TOKEN`, `HF_TOKEN` (read for the dataset while private), `GEMINI_API_KEY` (Tier 2). Stored in `/opt/qscore/.env` (chmod 600), never in the image.
 - Deploy: `git pull && docker compose up -d --build`; a `make deploy` or script in `docker/`.
 - **Options (★):** ★ Docker Compose + Caddy · plain systemd + uvicorn + Caddy · Vultr's managed Kubernetes (overkill).
 

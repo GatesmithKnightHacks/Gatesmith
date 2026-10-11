@@ -2,7 +2,7 @@
   "$defs": {
     "Confirmation": {
       "additionalProperties": false,
-      "description": "How the run was confirmed before compute (05 §5); modes match Neon `confirmed_mode`.",
+      "description": "How the run was confirmed before compute (05 §5); modes as stored with a job (11 §3).",
       "patternProperties": {
         "^x-": {}
       },
@@ -32,6 +32,115 @@
         "manifest_sha256"
       ],
       "title": "Confirmation",
+      "type": "object"
+    },
+    "ProjectSource": {
+      "additionalProperties": false,
+      "description": "Git state of `project.root` at score time (ChP-0035 §2.1 D).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "commit": {
+          "title": "Commit",
+          "type": "string"
+        },
+        "dirty": {
+          "title": "Dirty",
+          "type": "boolean"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Url"
+        }
+      },
+      "required": [
+        "url",
+        "commit",
+        "dirty"
+      ],
+      "title": "ProjectSource",
+      "type": "object"
+    },
+    "ProjectSourceError": {
+      "additionalProperties": false,
+      "description": "Why the git state could not be read, e.g. \"git not installed\" (ChP-0035 §2.1 D).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "error": {
+          "title": "Error",
+          "type": "string"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "title": "ProjectSourceError",
+      "type": "object"
+    },
+    "RunCompiledRef": {
+      "additionalProperties": false,
+      "description": "One exported compiled circuit (ChP-0034): `<out>/compiled/<item_id>.qasm`.",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "item_id": {
+          "title": "Item Id",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "path",
+        "sha256",
+        "seed"
+      ],
+      "title": "RunCompiledRef",
+      "type": "object"
+    },
+    "RunCompiledSkip": {
+      "additionalProperties": false,
+      "description": "An item without an exported compiled circuit, and why (ChP-0034).",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "item_id": {
+          "title": "Item Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "reason"
+      ],
+      "title": "RunCompiledSkip",
       "type": "object"
     },
     "RunProvenance": {
@@ -129,7 +238,7 @@
       "type": "object"
     }
   },
-  "$id": "qscore.run/v0.2",
+  "$id": "qscore.run/v0.3",
   "additionalProperties": false,
   "description": "One scoring run, written last as `<out>/run.json` (04 §13).",
   "patternProperties": {
@@ -139,6 +248,20 @@
     "command": {
       "title": "Command",
       "type": "string"
+    },
+    "compiled": {
+      "items": {
+        "$ref": "#/$defs/RunCompiledRef"
+      },
+      "title": "Compiled",
+      "type": "array"
+    },
+    "compiled_skipped": {
+      "items": {
+        "$ref": "#/$defs/RunCompiledSkip"
+      },
+      "title": "Compiled Skipped",
+      "type": "array"
     },
     "confirmation": {
       "$ref": "#/$defs/Confirmation"
@@ -202,6 +325,20 @@
       "title": "Manifest Sha256",
       "type": "string"
     },
+    "project_source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProjectSource"
+        },
+        {
+          "$ref": "#/$defs/ProjectSourceError"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Project Source"
+    },
     "provenance": {
       "$ref": "#/$defs/RunProvenance"
     },
@@ -210,7 +347,7 @@
       "type": "string"
     },
     "schema": {
-      "const": "qscore.run/v0.2",
+      "const": "qscore.run/v0.3",
       "title": "Schema",
       "type": "string"
     },
@@ -255,6 +392,9 @@
     "finished_at",
     "status",
     "scorecards",
+    "compiled",
+    "compiled_skipped",
+    "project_source",
     "provenance"
   ],
   "title": "RunRecord",

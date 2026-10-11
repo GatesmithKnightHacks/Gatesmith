@@ -10,14 +10,20 @@ from qscore.schemas.versions import SCHEMA_VERSIONS, SCORE_VERSION, check_compat
 
 
 def test_score_version() -> None:
-    assert SCORE_VERSION == "qscore-2026.1"
+    assert SCORE_VERSION == "qscore-2026.2"
 
 
 def test_all_schema_ids_listed() -> None:
-    # 04 §1: twelve ids plus `qscore.run` (ChP-0004/ChP-0028); scorecard is v0.3 (ChP-0028).
-    assert len(SCHEMA_VERSIONS) == 13
+    # 04 §1: twelve ids plus `qscore.run` (ChP-0004/ChP-0028) and `qscore.values` (ChP-0029);
+    # ChP-0038 adds reference v0.1.
+    # scorecard is v0.3 (ChP-0028), run is v0.3 (ChP-0034/ChP-0035), values is v0.1 (ChP-0029).
+    assert len(SCHEMA_VERSIONS) == 15
     assert SCHEMA_VERSIONS["qscore.scorecard"] == "v0.3"
-    assert {v for k, v in SCHEMA_VERSIONS.items() if k != "qscore.scorecard"} == {"v0.2"}
+    assert SCHEMA_VERSIONS["qscore.run"] == "v0.3"
+    assert SCHEMA_VERSIONS["qscore.values"] == "v0.1"
+    assert SCHEMA_VERSIONS["qscore.reference"] == "v0.1"
+    others = {"qscore.scorecard", "qscore.run", "qscore.values", "qscore.reference"}
+    assert {v for k, v in SCHEMA_VERSIONS.items() if k not in others} == {"v0.2"}
 
 
 @pytest.mark.parametrize(
@@ -45,6 +51,21 @@ def test_migrate_identity_and_missing_step() -> None:
 def test_scorecard_v02_migrates_to_v03_unchanged() -> None:
     doc = {"schema": "qscore.scorecard/v0.2", "status": "complete"}
     assert migrate(doc, "v0.3") == {"schema": "qscore.scorecard/v0.3", "status": "complete"}
+
+
+def test_run_v02_migrates_to_v03_with_empty_lists() -> None:
+    # ChP-0034 §2.1 B: v0.2 → v0.3 adds empty `compiled`/`compiled_skipped`; ChP-0035 §2.1 D adds
+    # `project_source` (null: no source was recorded for a v0.2 run).
+    doc = {"schema": "qscore.run/v0.2", "status": "complete", "scorecards": []}
+    assert migrate(doc, "v0.3") == {
+        "schema": "qscore.run/v0.3",
+        "status": "complete",
+        "scorecards": [],
+        "compiled": [],
+        "compiled_skipped": [],
+        "project_source": None,
+    }
+    assert check_compatible({"schema": "qscore.run/v0.2"}) == "qscore.run/v0.2"
 
 
 def test_canonical_json_sorted_compact_unicode() -> None:

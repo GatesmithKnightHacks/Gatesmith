@@ -88,7 +88,7 @@ codex exec --cd "$PWD/worktrees/T13-metrics" --sandbox read-only \
   "Review the diff of branch agent/T13-metrics against main for spec compliance. Specs: ../../specs/06-metrics.md §2-4, ../../specs/00-operating-rules.md R3-R4, checklist ../../specs/14-testing.md §6. Run: git diff main...HEAD. Report numbered findings with file:line, severity (blocker/major/minor), and the spec clause violated. Do not modify files."
 ```
 
-Use for: `verify/`, `metrics/`, `diagnose/`, `sim/planner.py`, `improve/requests.py`, `record/neon.py` — anywhere a wrong answer would look plausible.
+Use for: `verify/`, `metrics/`, `diagnose/`, `sim/planner.py`, `improve/requests.py`, `record/jobs_client.py` — anywhere a wrong answer would look plausible.
 
 ## 5. Claude subagents: how to brief
 
@@ -111,5 +111,5 @@ Use for: `verify/`, `metrics/`, `diagnose/`, `sim/planner.py`, `improve/requests
 - Time-box every delegation (default 45 minutes for Codex, `maxTurns` for subagents); a time-out is reported as `partial` and the lead decides.
 - Don't paste large outputs into the lead's context; ask delegates for summaries and paths.
 - A delegate that hits a spec problem stops that line of work and reports it under `spec_deviations` — it does not improvise (R1.4).
-- Delegated runs never get secrets. If a task needs Neon or the Hub, the lead runs that part.
+- Delegated runs never get secrets. If a task needs the platform job API or the Hub, the lead runs that part.
 - Keep an eye on usage: Codex and subagents consume the user's quotas; prefer fewer, well-specified delegations over many small ones.

@@ -29,5 +29,5 @@ jobs:
         run: uv run lint-imports
       - name: Tests (CPU; includes tests/contract schema drift)
         run: >
-          uv run pytest -m "not gpu and not neon and not hub and not llm and not slow"
+          uv run pytest -m "not gpu and not platform and not hub and not llm and not slow"
           -W error::DeprecationWarning:qiskit -n auto

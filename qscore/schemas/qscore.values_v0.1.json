@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "BuilderValues": {
+      "additionalProperties": false,
+      "description": "Values for one builder: scalar `args`, at most one `sweep` argument, and an optional\n`parameters` file (path relative to the project root) copied to `source.parameters`.",
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "args": {
+          "additionalProperties": {
+            "type": [
+              "boolean",
+              "integer",
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "parameters": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParametersFile"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sweep": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "title": "Sweep",
+          "type": "object"
+        }
+      },
+      "title": "BuilderValues",
+      "type": "object"
+    },
+    "ParametersFile": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "file": {
+          "title": "File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file"
+      ],
+      "title": "ParametersFile",
+      "type": "object"
+    }
+  },
+  "$id": "qscore.values/v0.1",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "builders": {
+      "additionalProperties": {
+        "$ref": "#/$defs/BuilderValues"
+      },
+      "title": "Builders",
+      "type": "object"
+    },
+    "schema": {
+      "const": "qscore.values/v0.1",
+      "title": "Schema",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema"
+  ],
+  "title": "DraftValues",
+  "type": "object"
+}

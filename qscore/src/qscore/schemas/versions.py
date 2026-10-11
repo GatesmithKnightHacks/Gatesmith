@@ -8,7 +8,7 @@ from typing import Any
 
 from qscore.errors import InvalidInput
 
-SCORE_VERSION = "qscore-2026.1"
+SCORE_VERSION = "qscore-2026.2"
 
 # Every schema id in specs/04 §1, with its current version.
 SCHEMA_VERSIONS: dict[str, str] = {
@@ -24,7 +24,9 @@ SCHEMA_VERSIONS: dict[str, str] = {
     "qscore.profile": "v0.2",
     "qscore.bench": "v0.2",
     "qscore.conformance": "v0.2",
-    "qscore.run": "v0.2",
+    "qscore.run": "v0.3",
+    "qscore.values": "v0.1",  # ChP-0029: draft values, input only
+    "qscore.reference": "v0.1",  # ChP-0038: derived public-circuit distributions
 }
 
 _SCHEMA_ID = re.compile(r"^(?P<name>qscore\.[a-z]+)/v(?P<major>\d+)\.(?P<minor>\d+)$")
@@ -35,10 +37,25 @@ def _scorecard_v02_to_v03(doc: dict[str, Any]) -> dict[str, Any]:
     return {**doc, "schema": "qscore.scorecard/v0.3"}
 
 
+def _run_v02_to_v03(doc: dict[str, Any]) -> dict[str, Any]:
+    """v0.3 adds compiled circuit exports (ChP-0034) and `project_source` (ChP-0035).
+
+    A v0.2 run exported no compiled circuits and recorded no project source.
+    """
+    return {
+        **doc,
+        "schema": "qscore.run/v0.3",
+        "compiled": [],
+        "compiled_skipped": [],
+        "project_source": None,
+    }
+
+
 # One function per version step: (name, from_version) -> function returning the next version's
 # document.
 MIGRATIONS: dict[tuple[str, str], Callable[[dict[str, Any]], dict[str, Any]]] = {
     ("qscore.scorecard", "v0.2"): _scorecard_v02_to_v03,
+    ("qscore.run", "v0.2"): _run_v02_to_v03,
 }
 
 
