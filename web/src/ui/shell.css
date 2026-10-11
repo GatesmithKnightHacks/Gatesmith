@@ -136,7 +136,6 @@
   width: 2px;
   height: 20px;
   background: var(--color-signal-select);
-  view-transition-name: rail-marker;
 }
 .rail-avatar {
   display: flex;
