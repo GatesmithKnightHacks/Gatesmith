@@ -15,6 +15,7 @@ from __future__ import annotations
 import difflib
 import io
 import re
+from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -530,9 +531,17 @@ def _match(candidates: Sequence[Candidate], token: str) -> list[Candidate]:
 # ---------------------------------------------------------------- YAML output
 
 
-def item_id(candidate: Candidate) -> str:
-    """Function name for builders, file stem for QASM; lower-cased to the id pattern."""
-    base = candidate.name if candidate.name is not None else Path(candidate.path).stem
+def item_id(candidate: Candidate, *, with_stem: bool = False) -> str:
+    """Function name for builders (`<file stem>_<name>` with `with_stem`), file stem for QASM;
+    lower-cased to the id pattern."""
+    stem = Path(candidate.path).stem
+    base = (
+        stem
+        if candidate.name is None
+        else f"{stem}_{candidate.name}"
+        if with_stem
+        else candidate.name
+    )
     text = re.sub(r"[^a-z0-9_\-]", "_", base.lower())
     if not re.match(ITEM_ID_PATTERN, text[:64]):
         text = "_" + text
@@ -600,12 +609,16 @@ def draft_items(
     no_input: bool = False,
     taken: Sequence[str] = (),
 ) -> list[CommentedMap]:
-    """Draft every picked candidate; ids are de-duplicated in list order against `taken`."""
+    """Draft every picked candidate; ids are de-duplicated in list order against `taken`.
+    Builders whose function name a picked candidate in another file shares get the file stem
+    as a prefix (`ghz.py::create_circuit` → `ghz_create_circuit`), so ids name their file."""
     used = set(taken)
     items: list[CommentedMap] = []
+    names = Counter(n for n, _ in {(c.name, c.path) for c in candidates if c.name is not None})
     for candidate in candidates:
         resolved = resolve_args(candidate, values, prompt, no_input=no_input)
-        id_ = _unique(item_id(candidate), used)
+        shared = candidate.name is not None and names[candidate.name] > 1
+        id_ = _unique(item_id(candidate, with_stem=shared), used)
         used.add(id_)
         items.append(draft_item(candidate, resolved, id_))
     return items

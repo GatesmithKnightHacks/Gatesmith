@@ -13,6 +13,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
+import click
 import typer
 from rich.console import Console
 
@@ -86,13 +87,19 @@ def discover(
         Path | None, typer.Option(help="Output directory for --score (default <root>/qscore-out).")
     ] = None,
     yes: Annotated[bool, typer.Option("--yes", help="With --score: do not ask.")] = False,
+    allow_partial: Annotated[
+        bool, typer.Option("--allow-partial", help="With --score: exit 0 on partial cards.")
+    ] = False,
+    fail_on: Annotated[
+        FailOn | None, typer.Option(help="With --score: exit 1 on findings at/above this.")
+    ] = None,
 ) -> None:
     """Find circuits without executing code; optionally draft their manifest entries."""
     if not draft and (pick is not None or values is not None or no_input or score_after):
         err.print("--pick, --values, --no-input and --score require --draft")
         raise typer.Exit(2)
-    if not score_after and (out is not None or yes):
-        err.print("--out and --yes require --score")
+    if not score_after and (out is not None or yes or allow_partial or fail_on is not None):
+        err.print("--out, --yes, --allow-partial and --fail-on require --score")
         raise typer.Exit(2)
 
     def prompt(spec: PromptSpec) -> str:
@@ -107,6 +114,7 @@ def discover(
         err.print(summary, markup=False)
         return typer.confirm("Continue?", err=True)
 
+    result: services.ScoreResult | None = None
     try:
         found = services.discover_candidates(
             path,
@@ -129,12 +137,6 @@ def discover(
                 confirm="yes" if yes else confirm,
                 fetched=found.fetched,
             )
-            for card, p in zip(result.scorecards, result.paths, strict=True):
-                typer.echo(f"{card.item.id}: {card.status} → {p}")
-            for compiled in result.compiled_paths:
-                typer.echo(f"compiled → {compiled}")
-            if result.run_record_path is not None:
-                typer.echo(f"report → {result.report_path}")
     except InvalidInput as exc:
         err.print(f"[red]invalid input:[/red] {exc}")
         if exc.report is not None:
@@ -154,6 +156,57 @@ def discover(
     except QscoreError as exc:
         err.print(f"[red]runtime failure:[/red] {type(exc).__name__}: {exc}")
         raise typer.Exit(3) from exc
+    except click.exceptions.Abort:  # Ctrl-C / EOF at a prompt: click's own "Aborted!" exit
+        raise
+    except Exception as exc:  # ChP-0017: anything that is not a QscoreError is a bug → exit 3
+        err.print(f"[red]unexpected error (a bug):[/red]\n{traceback.format_exc()}")
+        raise typer.Exit(3) from exc
+    if result is not None:  # --score ran: same output and exit codes as `qscore score`
+        _finish_run(result, allow_partial=allow_partial, fail_on=fail_on)
+
+
+def _finish_run(
+    result: services.ScoreResult,
+    *,
+    allow_partial: bool,
+    fail_on: FailOn | None,
+    as_json: bool = False,
+    pasted: bool = False,
+) -> None:
+    """Status lines and exit code after a scoring run; shared by `score` and `discover --score`
+    (ChP-0042)."""
+    if not result.scorecards:
+        err.print("not confirmed; nothing scored")
+        return
+    if as_json:
+        sys.stdout.write(
+            json.dumps([c.model_dump(mode="json") for c in result.scorecards], indent=2) + "\n"
+        )
+    for card, p in zip(result.scorecards, result.paths, strict=True):
+        live = [f for f in card.findings if f.suppressed is None]
+        err.print(
+            f"{card.item.id}: {card.status} · {len(live)} finding(s) "
+            f"({', '.join(f'{f.rule}:{f.severity}' for f in live) or 'none'}) → {p}"
+        )
+    for compiled in result.compiled_paths:
+        err.print(f"compiled → {compiled}")
+    err.print(f"report → {result.report_path}")
+    if pasted and not as_json:
+        sys.stdout.write(result.report_path.read_text(encoding="utf-8"))
+    if any(c.status == "partial" for c in result.scorecards) and not allow_partial:
+        raise typer.Exit(3)
+    if fail_on is not None:
+        worst = max(
+            (
+                SEVERITY_ORDER[f.severity]
+                for c in result.scorecards
+                for f in c.findings
+                if f.suppressed is None
+            ),
+            default=-1,
+        )
+        if worst >= SEVERITY_ORDER[fail_on]:
+            raise typer.Exit(1)
 
 
 @app.command()
@@ -223,6 +276,8 @@ def score(
                 err.print(
                     f"  {i.code} {loc.file}:{loc.line}:{loc.column} {loc.field or ''} — {i.message}"
                 )
+                if i.hint:
+                    err.print(f"    {i.hint}", markup=False)
         raise typer.Exit(2) from exc
     except ConfigError as exc:
         err.print(f"[red]configuration error:[/red] {exc}")
@@ -230,38 +285,11 @@ def score(
     except QscoreError as exc:
         err.print(f"[red]runtime failure:[/red] {type(exc).__name__}: {exc}")
         raise typer.Exit(3) from exc
+    except click.exceptions.Abort:  # Ctrl-C / EOF at a prompt: click's own "Aborted!" exit
+        raise
     except Exception as exc:  # ChP-0017: anything that is not a QscoreError is a bug → exit 3
         err.print(f"[red]unexpected error (a bug):[/red]\n{traceback.format_exc()}")
         raise typer.Exit(3) from exc
-    if not result.scorecards:
-        err.print("not confirmed; nothing scored")
-        return
-    if as_json:
-        sys.stdout.write(
-            json.dumps([c.model_dump(mode="json") for c in result.scorecards], indent=2) + "\n"
-        )
-    for card, p in zip(result.scorecards, result.paths, strict=True):
-        live = [f for f in card.findings if f.suppressed is None]
-        err.print(
-            f"{card.item.id}: {card.status} · {len(live)} finding(s) "
-            f"({', '.join(f'{f.rule}:{f.severity}' for f in live) or 'none'}) → {p}"
-        )
-    for compiled in result.compiled_paths:
-        err.print(f"compiled → {compiled}")
-    err.print(f"report → {result.report_path}")
-    if pasted and not as_json:
-        sys.stdout.write(result.report_path.read_text(encoding="utf-8"))
-    if any(c.status == "partial" for c in result.scorecards) and not allow_partial:
-        raise typer.Exit(3)
-    if fail_on is not None:
-        worst = max(
-            (
-                SEVERITY_ORDER[f.severity]
-                for c in result.scorecards
-                for f in c.findings
-                if f.suppressed is None
-            ),
-            default=-1,
-        )
-        if worst >= SEVERITY_ORDER[fail_on]:
-            raise typer.Exit(1)
+    _finish_run(
+        result, allow_partial=allow_partial, fail_on=fail_on, as_json=as_json, pasted=pasted
+    )

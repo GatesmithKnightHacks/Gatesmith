@@ -251,7 +251,34 @@ def test_missing_discovery_files_are_aggregated(tmp_path: Path) -> None:
     for name in ("broken.py", "broken.qasm", "broken.ipynb"):
         (tmp_path / name).symlink_to(tmp_path / "absent")
     result = CliRunner().invoke(app, ["discover", str(tmp_path)])
-    assert result.exit_code == 2, result.output
-    assert "Q200" in result.output
+    # ChP-0044: unreadable files are located warnings; the readable builder is still listed.
+    assert result.exit_code == 0, result.output
+    assert "builder.py::ghz" in result.output
     for name in ("broken.py", "broken.qasm", "broken.ipynb"):
-        assert name in result.output
+        assert f"{name}:" in result.output
+    assert result.output.count("Q200") == 3
+
+
+def test_shared_function_names_get_the_file_stem(tmp_path: Path) -> None:
+    # MQT Bench layout: every builder is `create_circuit`; ids name the file (lead, class B).
+    body = builder_repo(tmp_path / "r")
+    text = (body / "builder.py").read_text().replace("def ghz(", "def create_circuit(")
+    (body / "ghz.py").write_text(text)
+    (body / "qft.py").write_text(text)
+    (body / "builder.py").unlink()
+    result = CliRunner().invoke(
+        app, ["discover", str(body), "--draft", "--pick", "1,2", "--no-input"]
+    )
+    assert result.exit_code == 0, result.output
+    manifest = (body / "qscore.yaml").read_text()
+    assert "id: ghz_create_circuit" in manifest and "id: qft_create_circuit" in manifest
+
+
+def test_discover_lists_the_rest_and_warns_about_a_broken_file(tmp_path: Path) -> None:
+    root = builder_repo(tmp_path / "r")
+    (root / "broken.py").write_text("def build(:\n")
+    result = CliRunner().invoke(app, ["discover", str(root)])
+    assert result.exit_code == 0, result.output
+    assert "builder.py::ghz" in result.output
+    assert "broken.py:1:" in result.output and "Q301" in result.output
+    assert "not scanned" in result.output

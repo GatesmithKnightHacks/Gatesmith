@@ -12,7 +12,7 @@
 | D-006 | Builders run in the engine's own environment in the MVP (`runner.env: engine`), so QPY always matches | Repo's own `uv` env (later; FB-07) | B | 05 §4.2 |
 | D-007 | Sandbox: process mode with rlimits and stripped env; container mode later | Podman/Docker everywhere | B | 05 §4.2 |
 | D-008 | Baseline = Qiskit level 3 across 8 fixed seeds; representative = best by primary objective | Benchpress level-2 settings; single seed | A | 05 §6 |
-| D-009 | Metric definitions and thresholds belong to score version `qscore-2026.1` | Unversioned | A | 06, 07 |
+| D-009 | Metric definitions and thresholds belong to score version `qscore-2026.2` (2026.1 until ChP-0041) | Unversioned | A | 06, 07 |
 | D-010 | `mirror_score` is a separate labelled metric, never a substitute for `simulated_task_score` | Mirror as fallback (retired FB-06) | A | 06 §2.4 |
 | D-011 | Verification ladder: reversible classical ≤ 24 input bits; Operator ≤ 12 q; GPU unitary 13–15 q double; QCEC beyond; four statuses | Random-state tests as proof (rejected) | A | 08 |
 | D-012 | Acceptance: strictly better primary, constraints hold, ties keep current, statistical needs ≥ 5 trials and non-overlapping CIs | Score sums; Pareto acceptance | A | 08 §4 |

@@ -18,6 +18,7 @@ import importlib.util
 import json
 import os
 import re
+import warnings
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -35,6 +36,21 @@ Signal = Literal["annotation", "returns_circuit", "library_builder", "module_var
 SKIP_DIRS = frozenset({".venv", ".git", "build", "dist", "node_modules", ".ipynb_checkpoints"})
 SIZE_LIKE = frozenset({"n", "num_qubits", "n_qubits", "size", "n_residues", "depth", "p", "reps"})
 CIRCUIT_CLASS = "QuantumCircuit"
+# QuantumCircuit methods that return a new circuit (Qiskit 1.x/2.x API).
+CIRCUIT_METHODS = frozenset(
+    {
+        "assign_parameters",
+        "compose",
+        "control",
+        "copy",
+        "decompose",
+        "inverse",
+        "power",
+        "repeat",
+        "reverse_bits",
+        "reverse_ops",
+    }
+)  # each checked to return a QuantumCircuit with default arguments (Qiskit 2.x)
 # Qiskit circuit-library constructors whose result is a QuantumCircuit (05 §1 "known library
 # builder"): the classes and their function-style replacements.
 LIBRARY_BUILDERS = frozenset(
@@ -216,24 +232,40 @@ def _own_nodes(body: Sequence[ast.stmt]) -> Iterator[ast.AST]:
         ]
 
 
+def _derived_kind(node: ast.expr | None, bound: dict[str, Signal]) -> Signal | None:
+    """`_call_kind`, or a circuit-returning method called on a name bound to a circuit
+    (`qc.decompose()`, `qc.inverse()`, ...; QED-C kernels return `qc.decompose()`)."""
+    if (kind := _call_kind(node)) is not None:
+        return kind
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in CIRCUIT_METHODS
+        and isinstance(node.func.value, ast.Name)
+    ):
+        return bound.get(node.func.value.id)
+    return None
+
+
 def _return_signal(func: ast.FunctionDef) -> Signal | None:
     """The strongest return-based signal: a returned constructor call, or a returned name that
-    the function binds to one."""
+    the function binds to one (directly or through a circuit-returning method of a bound
+    circuit)."""
     bound: dict[str, Signal] = {}
     returns: list[ast.expr] = []
     for node in _own_nodes(func.body):
-        if isinstance(node, ast.Assign) and (kind := _call_kind(node.value)) is not None:
+        if isinstance(node, ast.Assign) and (kind := _derived_kind(node.value, bound)) is not None:
             for target in node.targets:
                 if isinstance(target, ast.Name):
                     bound[target.id] = kind
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            if (kind := _call_kind(node.value)) is not None:
+            if (kind := _derived_kind(node.value, bound)) is not None:
                 bound[node.target.id] = kind
         elif isinstance(node, ast.Return) and node.value is not None:
             returns.append(node.value)
     kinds: set[Signal] = set()
     for value in returns:
-        kind = _call_kind(value)
+        kind = _derived_kind(value, bound)
         if kind is None and isinstance(value, ast.Name):
             kind = bound.get(value.id)
         if kind is not None:
@@ -387,9 +419,18 @@ def call_site_suggestions(
     return {arg: sorted(values, key=lambda s: s.line) for arg, values in found.items()}
 
 
+def parse_source(source: str | bytes, filename: str = "<unknown>") -> ast.Module:
+    """`ast.parse` of researcher code without Python's SyntaxWarnings about it (e.g. invalid
+    escapes in notebook cells): the code is only read here, and the warnings are not qscore's
+    to report. SyntaxError still propagates."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast.parse(source, filename=filename)
+
+
 def _parse(source: str | bytes, rel: str) -> ast.Module:
     try:
-        return ast.parse(source, filename=rel)
+        return parse_source(source, rel)
     except SyntaxError as exc:
         raise _fail(
             "Q301", rel, f"{rel}: {exc.msg} (not parsed for discovery)", exc.lineno, exc.offset
@@ -591,10 +632,18 @@ def is_test_file(rel: str) -> bool:
     )
 
 
-def discover(root: Path, subdir: Path | str | None = None) -> list[Candidate]:
+def discover(
+    root: Path,
+    subdir: Path | str | None = None,
+    *,
+    unreadable: list[IssueModel] | None = None,
+) -> list[Candidate]:
     """Candidates under `root` (a folder, or a single `.py`/`.qasm`/`.ipynb` file), optionally
     limited to `root/subdir`. Ordered by path, then line; numbered from 1. Every file that cannot
-    be read is reported at once (one `InvalidInput` with each located issue)."""
+    be read is reported at once (one `InvalidInput` with each located issue). With `unreadable`
+    given, a folder scan that still finds candidates appends those issues to it instead and
+    returns the candidates (ChP-0044); a single file, or a scan with no candidates, still
+    raises."""
     root = Path(root)
     if not root.exists():
         raise _fail("Q200", str(root), f"path not found: {root}")
@@ -624,6 +673,9 @@ def discover(root: Path, subdir: Path | str | None = None) -> list[Candidate]:
             tests.append((rel, _parse(_read_bytes(path, rel), rel)))
         except InvalidInput as exc:
             issues += exc.report.issues
+    if issues and unreadable is not None and root.is_dir() and found:
+        unreadable.extend(issues)
+        issues = []
     if issues:
         report = IssueReportModel.model_validate(
             {
@@ -738,7 +790,7 @@ def missing_imports(candidate: Candidate, root: Path) -> list[MissingImport]:
         if candidate.source_kind == "notebook"
         else file.read_text(encoding="utf-8")
     )
-    tree = ast.parse(text)
+    tree = parse_source(text)
     dirs = _search_dirs(file, root)
     seen: set[str] = set()
     missing: list[MissingImport] = []

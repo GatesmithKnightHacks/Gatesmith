@@ -434,7 +434,8 @@ def test_ambiguous_name_needs_number(tmp_path: Path) -> None:
         pick_candidates(found, "b", None, no_input=True)
     assert exc.value.code == "Q103"
     items = draft_items(found, None, None, no_input=True)
-    assert [i["id"] for i in items] == ["b", "b_2"]  # de-duplicated in list order
+    # The same name in two files: ids carry the file stem (lead, class B, 2026-10-10).
+    assert [i["id"] for i in items] == ["x_b", "y_b"]
 
 
 # ---------------------------------------------------------------- YAML output

@@ -120,7 +120,7 @@ An `improve` job adds one step between Run and Finish: proposers answer the requ
 - Four versioned public schemas form the standard: **project manifest** (`qscore.project/v0.2`), **scorecard** (`qscore.scorecard/v0.2`), **improvement request** (`qscore.request/v0.2`), **proposal** (`qscore.proposal/v0.2`). Internal records: attempt, job, event, plan, issue report, hardware profile, bench result. See `04-contracts.md`.
 - Pydantic models are the source of truth; JSON Schemas are exported to `qscore/schemas/` and checked for drift in CI.
 - Neon holds small records under per-host roles; the Hub holds anything large, named by content hash. Nothing crosses a host boundary in any other form. See `11-records-and-queue.md`.
-- **Score version** (`qscore-2026.1`) covers metric definitions and diagnostic thresholds; changing any threshold bumps it.
+- **Score version** (`qscore-2026.2`) covers metric definitions and diagnostic thresholds; changing any threshold bumps it.
 
 ## 7. Compute on the W7900 `[T0]`
 

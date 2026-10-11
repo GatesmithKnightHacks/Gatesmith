@@ -12,6 +12,7 @@ from typer.testing import CliRunner
 from qscore.cli import app
 from qscore.errors import InvalidInput
 from qscore.intake.fetch import clone, is_repo_url, repo_name
+from qscore.metrics.resources.counts import Depth
 from qscore.schemas.run import RunRecord
 
 GHZ = (
@@ -168,3 +169,89 @@ def test_interactive_trust_notice_declined_runs_nothing(tmp_path: Path) -> None:
     assert code == 0, out
     assert "will run as your user" in out
     assert not (dest / "qscore-out").exists()
+
+
+def test_outputs_inside_the_clone_do_not_make_it_dirty(tmp_path: Path) -> None:
+    # 04 §13: dirty = uncommitted changes in the user's tree; qscore's own outputs don't count.
+    draft_url, _ = make_repo(tmp_path / "a", {"ghz.py": GHZ})
+    first = tmp_path / "first"
+    code, out = run("discover", draft_url, "--into", str(first), "--draft", "--no-input")
+    assert code == 0, out
+    manifest = (first / "qscore.yaml").read_text()
+    url, head = make_repo(tmp_path / "b", {"ghz.py": GHZ, "qscore.yaml": manifest})
+    dest = tmp_path / "c"
+    clone(url, dest, timeout_s=60)
+    code, out = run("score", str(dest), "--out", str(dest / "qscore-out"), "--yes")
+    assert code == 0, out
+    record = RunRecord.model_validate(json.loads((dest / "qscore-out/run.json").read_text()))
+    assert record.project_source is not None and not hasattr(record.project_source, "error")
+    assert record.project_source.commit == head
+    assert record.project_source.dirty is False
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        ["--score"],  # --score needs --draft
+        ["--ref", "main"],  # --ref needs a repository link
+        ["--into", "x"],  # --into needs a repository link
+        ["--out", "x"],  # --out needs --score
+        ["--yes"],  # --yes needs --score
+    ],
+)
+def test_flag_misuse_is_invalid_input(tmp_path: Path, extra: list[str]) -> None:
+    (tmp_path / "ghz.py").write_text(GHZ)
+    code, out = run("discover", str(tmp_path), *extra)
+    assert code == 2, out
+
+
+def test_credentials_in_ssh_url_are_refused(tmp_path: Path) -> None:
+    code, out = run(
+        "discover", "ssh://u:p@example.invalid/org/repo.git", "--into", str(tmp_path / "c")
+    )
+    assert code == 2, out
+    assert "credentials" in out
+    assert not (tmp_path / "c").exists()
+
+
+def _boom(self: object, ctx: object) -> object:
+    raise RuntimeError("injected failure")
+
+
+def test_discover_score_exit_codes_match_score(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # ChP-0042: with --score, exit codes, --allow-partial and --fail-on are those of `score`.
+    url, _ = make_repo(tmp_path, {"ghz.py": GHZ})
+    base = ["discover", url, "--draft", "--no-input", "--score", "--yes"]
+    code, out = run(*base, "--into", str(tmp_path / "high"), "--fail-on", "info")
+    assert code == 1, out  # a GHZ chain on FakeTorino has at least an info finding
+    monkeypatch.setattr(Depth, "compute", _boom)
+    code, out = run(*base, "--into", str(tmp_path / "p"))
+    assert code == 3, out
+    assert "partial" in out
+    code, out = run(*base, "--into", str(tmp_path / "ok"), "--allow-partial")
+    assert code == 0, out
+
+
+def test_discover_score_declined_says_so(tmp_path: Path) -> None:
+    url, _ = make_repo(tmp_path, {"ghz.py": GHZ})
+    code, out = run(
+        "discover",
+        url,
+        "--into",
+        str(tmp_path / "c"),
+        "--draft",
+        "--no-input",
+        "--score",
+        stdin="n\n",
+    )
+    assert code == 0, out
+    assert "not confirmed; nothing scored" in out
+
+
+@pytest.mark.parametrize("extra", [["--allow-partial"], ["--fail-on", "high"]])
+def test_run_flags_need_score(tmp_path: Path, extra: list[str]) -> None:
+    (tmp_path / "ghz.py").write_text(GHZ)
+    code, out = run("discover", str(tmp_path), "--draft", "--no-input", *extra)
+    assert code == 2, out

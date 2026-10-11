@@ -118,7 +118,11 @@ def clone(url: str, dest: Path, ref: str | None = None, *, timeout_s: float) -> 
             ["fetch", "-q", "--depth", "1", "--no-recurse-submodules", "origin", ref],
             ["checkout", "-q", "FETCH_HEAD"],
         ):
-            _run(["-C", str(dest), *args], timeout_s)
+            try:
+                _run(["-C", str(dest), *args], timeout_s)
+            except FetchError as exc:
+                # The partial checkout stays (qscore never deletes it); say where it is.
+                raise FetchError(f"{exc}; the incomplete checkout is left in {dest}") from exc
     else:
         args = ["clone", "-q", "--depth", "1", "--no-recurse-submodules"]
         args += ["-c", "core.symlinks=false"]
@@ -139,6 +143,7 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
         text=True,
         check=False,
         timeout=_READ_TIMEOUT_S,
+        env={**os.environ, "LC_ALL": "C"},  # stderr is matched below; keep git's messages English
     )
 
 

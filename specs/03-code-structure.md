@@ -123,7 +123,7 @@ Public names below are part of the spec (R1). Private helpers are the implemente
 | `schemas/improvement.py` | `ImprovementRequest`, `CircuitPayload`, `Proposal`, `Claims`, `LayerInfo`, `ConformanceReport`. |
 | `schemas/run.py` | `Plan`, `ItemPlan`, `MetricPlan`, `RunRecord`, `Event`, `BenchResult`, `HardwareProfile`, `ItemSummary`, `IssueReportModel`. |
 | `schemas/records.py` | `AttemptRecord`, `VerificationResult`, `JobSpec`, `JobRequirements`, `JobResultSummary`. |
-| `schemas/versions.py` | `SCHEMA_VERSIONS` (dict), `SCORE_VERSION = "qscore-2026.1"`, `check_compatible(document)`, `migrate(document, to_version)` with one function per version step. |
+| `schemas/versions.py` | `SCHEMA_VERSIONS` (dict), `SCORE_VERSION = "qscore-2026.2"`, `check_compatible(document)`, `migrate(document, to_version)` with one function per version step. |
 | `schemas/export.py` | `export_json_schemas(out_dir)` via `model_json_schema()`; used by `qscore` CI drift test. |
 | `hardware/profiler.py` | `profile_hardware(refresh=False) -> HardwareProfile` (cached per machine under `cache_dir/hardware/`), `refit_from_telemetry()`. See `09-gpu-and-simulation.md` §6. |
 

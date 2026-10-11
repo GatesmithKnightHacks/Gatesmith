@@ -3,7 +3,6 @@ Builders via the sandbox arrive with M3 (ChP-0023); packages and line mode with 
 
 from __future__ import annotations
 
-import ast
 import io
 import json
 import math
@@ -17,6 +16,7 @@ from qiskit import QuantumCircuit, qasm2, qasm3, qpy
 
 from qscore.errors import InvalidInput, SandboxError
 from qscore.intake.compat import describe, removed_apis
+from qscore.intake.discover import parse_source
 from qscore.intake.sandbox import BuilderRequest, run_builder
 from qscore.intake.script import prefix, script_text
 from qscore.schemas.common import sha256_hex
@@ -188,7 +188,7 @@ def _compat_hint(file: Path, rel: str) -> str:
     """Removed Qiskit APIs used in the builder's file, joined to its Q301/Q302 (ChP-0037 §2.1 B);
     empty when there are none. A file that does not parse has no hits (its Q301 says why)."""
     try:
-        tree = ast.parse(script_text(file, rel))
+        tree = parse_source(script_text(file, rel))
     except (SyntaxError, UnicodeError):
         return ""
     hits = removed_apis(tree)

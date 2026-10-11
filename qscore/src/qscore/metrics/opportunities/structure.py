@@ -180,12 +180,15 @@ class Structure:
 
 
 def block_potential(block: QuantumCircuit, two_qubit_gate: str) -> int:
-    """Current 2q gates in a ≤2-qubit block minus the KAK minimum for `two_qubit_gate`."""
+    """Current 2q gates in a ≤2-qubit block minus the KAK minimum for `two_qubit_gate`: the
+    two-qubit gates of the exact synthesis. (`num_basis_gates` is not used: in Qiskit 2.5.2
+    it returns 0 for SWAP-class blocks at some global phases; ChP-0043.)"""
     current = c.two_qubit_count(block)
     if block.num_qubits != 2 or current == 0:
         return 0
     decomposer = TwoQubitBasisDecomposer(KAK_GATES[two_qubit_gate])
-    return current - int(decomposer.num_basis_gates(Operator(block).data))
+    minimum = decomposer(Operator(block).data).count_ops().get(two_qubit_gate, 0)
+    return current - int(minimum)
 
 
 def _blocks(qc: QuantumCircuit) -> list[tuple[QuantumCircuit, list[int]]]:
@@ -222,7 +225,8 @@ class ResynthesisPotential:
 
     Sum over two-qubit blocks of the compiled circuit (`Collect2qBlocks` +
     `ConsolidateBlocks`) of the block's current two-qubit gates minus
-    `TwoQubitBasisDecomposer(<target's two-qubit gate>).num_basis_gates(block unitary)`.
+    the two-qubit gates in `TwoQubitBasisDecomposer(<target's two-qubit gate>)(block unitary)`
+    (exact KAK synthesis; ChP-0043).
     Evidence: the top blocks with locations, and the same sum on the raw translation
     (`raw_potential`, informational).
 

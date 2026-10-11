@@ -25,7 +25,7 @@
 - Every document carries `schema: "<id>"` as its first field.
 - **Semantic versioning:** new optional fields bump the minor version; any change of meaning bumps the major; each step ships a `migrate()` function and `qscore migrate`.
 - Unknown fields are rejected, except keys starting with `x-`, which are preserved and ignored (extension point for other tools).
-- **Score version** `SCORE_VERSION = "qscore-2026.1"` covers metric definitions (`06-metrics.md`) and diagnostic thresholds and profiles (`07-diagnostics.md`). Any change to either bumps it (`qscore-2026.2`, …). Scorecards from different score versions are never compared silently: `diff` refuses unless `--allow-score-version-mismatch`.
+- **Score version** `SCORE_VERSION = "qscore-2026.2"` covers metric definitions (`06-metrics.md`) and diagnostic thresholds and profiles (`07-diagnostics.md`). Any change to either bumps it (`qscore-2026.3`, …; 2026.1 → 2026.2 by ChP-0041). Scorecards from different score versions are never compared silently: `diff` refuses unless `--allow-score-version-mismatch`.
 
 ## 2. Project manifest `qscore.project/v0.2`
 
@@ -152,7 +152,7 @@ Pauli strings use Qiskit's `SparsePauliOp` label order (qubit 0 is the rightmost
 {
   "schema": "qscore.scorecard/v0.3",
   "item": {"id": "packing_qaoa_p2", "item_sha256": "…", "circuit_sha256": "…",
-           "manifest_sha256": "…", "score_version": "qscore-2026.1"},
+           "manifest_sha256": "…", "score_version": "qscore-2026.2"},
   "status": "complete",
   "target": {"name": "FakeTorino", "num_qubits": 133, "basis": ["cz", "rz", "sx", "x"],
              "calibration_id": "…", "calibration_assumed": false},
@@ -211,7 +211,7 @@ Pauli strings use Qiskit's `SparsePauliOp` label order (qubit 0 is the rightmost
 {
   "schema": "qscore.request/v0.2",
   "request_id": "packing_qaoa_p2/r0/D01#1",
-  "item": {"id": "packing_qaoa_p2", "item_sha256": "…", "score_version": "qscore-2026.1"},
+  "item": {"id": "packing_qaoa_p2", "item_sha256": "…", "score_version": "qscore-2026.2"},
   "finding": {"id": "D01#1", "rule": "D01", "severity": "high",
               "region": {"scope": "compiled", "qubits": [3, 4, 5, 6], "layers": [12, 40]},
               "evidence": {"routing_overhead": 0.38}},
@@ -346,7 +346,7 @@ Written last by every confirmed scoring run.
   "compiled": [{"item_id": "sbox_oracle", "path": "compiled/sbox_oracle.qasm", "sha256": "…", "seed": 37}],
   "compiled_skipped": [],
   "project_source": {"url": "https://github.com/org/repo", "commit": "…", "dirty": false},
-  "provenance": {"qscore": "0.1.0", "score_version": "qscore-2026.1", "git_commit": "…", "git_dirty": false,
+  "provenance": {"qscore": "0.1.0", "score_version": "qscore-2026.2", "git_commit": "…", "git_dirty": false,
                  "lock_sha256": "…", "python": "3.12.3", "qiskit": "2.x"}
 }
 ```

@@ -11,7 +11,7 @@ two-qubit depth, then seed order), and computes the metrics below. Every metric 
   with a 95 % interval; `context` values describe the circuit and are never scored.
 - **Scope.** `logical` = the circuit as submitted; `compiled` = the representative compile.
   Counts exclude directives (barriers) everywhere.
-- **Score version.** These definitions are score version `qscore-2026.1`; changing one is a
+- **Score version.** These definitions are score version `qscore-2026.2`; changing one is a
   class A change and bumps the version. The source of truth is `specs/06-metrics.md`.
 
 This file is generated from the metric class docstrings (`src/qscore/metrics/`); do not edit it
@@ -147,9 +147,11 @@ Rough calibration-based estimate of how error-prone the compiled circuit is; a h
 
 `exp(sum(log(1 - e_op)))` over the compiled circuit's gates and measurements that have error data (`target[op][qargs].error`; `None` or 0, e.g. virtual `rz`, contributes nothing). Evidence: per-qubit and per-edge contributions of `-log(1 - e)`, the five largest contributors, `ops_without_error`. Labelled everywhere "calibration-based reliability heuristic, not a success probability".
 
+An op with `e = 1` is faulty: the value is exactly 0, the op is listed in `faulty_ops` (`{op, qargs, error, count}`, sorted by qargs, then op) instead of the contributions, and `total_neg_log` is null; `e > 1` fails the metric (ChP-0041).
+
 | Kind | Scope | Unit | Requires | Version |
 |---|---|---|---|---|
-| heuristic | compiled | probability-like, in (0, 1] | calibration, compiled | 1 |
+| heuristic | compiled | probability-like, in [0, 1] (0 only with faulty ops) | calibration, compiled | 1 |
 
 Reference: Expected-fidelity style of mapomatic (Nation & Treinish, PRX Quantum 4, 010327, 2023) and MQT Predictor.
 
@@ -219,7 +221,7 @@ Reference: Qiskit `CollectCliffords`, `CollectLinearFunctions`; qscore commuting
 
 How many two-qubit gates could be saved by re-synthesizing small two-qubit blocks optimally.
 
-Sum over two-qubit blocks of the compiled circuit (`Collect2qBlocks` + `ConsolidateBlocks`) of the block's current two-qubit gates minus `TwoQubitBasisDecomposer(<target's two-qubit gate>).num_basis_gates(block unitary)`. Evidence: the top blocks with locations, and the same sum on the raw translation (`raw_potential`, informational).
+Sum over two-qubit blocks of the compiled circuit (`Collect2qBlocks` + `ConsolidateBlocks`) of the block's current two-qubit gates minus the two-qubit gates in `TwoQubitBasisDecomposer(<target's two-qubit gate>)(block unitary)` (exact KAK synthesis; ChP-0043). Evidence: the top blocks with locations, and the same sum on the raw translation (`raw_potential`, informational).
 
 | Kind | Scope | Unit | Requires | Version |
 |---|---|---|---|---|

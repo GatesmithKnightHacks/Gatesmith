@@ -10,7 +10,12 @@ Every deviation from the specs is written here first (rule R5 in `../00-operatin
 
 | ChP | Title | Class | Status | Date |
 |---|---|---|---|---|
-| [ChP-0040](ChP-0040-github-review-bot.md) | qscore review bot: Gemini-powered GitHub App reviewing quantum-circuit PRs from CI-produced qscore results (teammate-owned) | A | proposed | 2026-10-11 |
+| [ChP-0044](ChP-0044-discovery-continues-past-unreadable-files.md) | Folder discovery continues past unreadable files (located warnings) | A | approved, applied | 2026-10-11 |
+| [ChP-0043](ChP-0043-resynthesis-minimum-by-synthesis.md) | `resynthesis_potential`: KAK minimum from synthesis (Qiskit `num_basis_gates` undercounts SWAP-class blocks) | A | approved, applied | 2026-10-11 |
+| [ChP-0038](ChP-0038-reference-backed-standard.md) | Reference-backed standard: metrics mapped to Benchpress/QASMBench/MQT Bench/SupermarQ/mapomatic, Benchpress-convention block, placement against a public corpus | A | approved | 2026-10-11 |
+| [ChP-0042](ChP-0042-discover-score-exit-codes.md) | `discover --score` exit codes/flags as `qscore score`; trust-notice scope; failed SHA fetch | A | approved, applied | 2026-10-11 |
+| [ChP-0041](ChP-0041-reliability-faulty-operations.md) | `reliability_heuristic` and D06 when a compiled op is calibrated faulty (error ≥ 1) | A | approved, applied | 2026-10-11 |
+| [ChP-0040](ChP-0040-github-review-bot.md) | qscore review bot: Gemini-powered GitHub App reviewing quantum-circuit PRs from CI-produced qscore results (teammate-owned) | A | approved, applied | 2026-10-11 |
 | [ChP-0037](ChP-0037-scripts-notebooks-packages.md) | Scripts, notebooks and packages as builders (line mode, package import, removed-API hints) | A | approved, applied | 2026-10-10 |
 | [ChP-0036](ChP-0036-score-path-accepts-manifest.md) | `qscore score PATH` accepts a manifest or a project directory | A | approved, applied | 2026-10-10 |
 | [ChP-0035](ChP-0035-repository-link-intake.md) | Repository link → discover → pick → score in one flow | A | approved, applied | 2026-10-10 |

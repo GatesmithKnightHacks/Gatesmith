@@ -76,6 +76,15 @@ def _package(file: Path, user_root: Path) -> tuple[Path, str] | None:
         directory = directory.parent
     if directory == file.parent:
         return None
+    # src layout: namespace directories (no __init__.py) between an enclosing src/ and the top
+    # regular package are part of the dotted name (src/mqt/bench/... -> mqt.bench..., 05 §4.1).
+    namespace: list[str] = []
+    above = directory
+    while above.name != "src" and above != user_root and above.is_relative_to(user_root):
+        namespace.insert(0, above.name)
+        above = above.parent
+    if above.name == "src" and above.is_relative_to(user_root):
+        return above, ".".join([*namespace, *parts])
     return directory, ".".join(parts)
 
 

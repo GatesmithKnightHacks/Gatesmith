@@ -13,7 +13,7 @@ import tokenize
 from pathlib import Path
 
 from qscore.errors import InvalidInput
-from qscore.intake.discover import notebook_source
+from qscore.intake.discover import notebook_source, parse_source
 from qscore.manifest.yamlio import single_issue_report
 from qscore.schemas.common import Location
 from qscore.schemas.run import IssueModel
@@ -85,7 +85,7 @@ def first_line(node: ast.stmt) -> int:
 def parse_script(text: str, rel: str) -> ast.Module:
     """The script's syntax tree; a syntax error is Q301 located in the file."""
     try:
-        return ast.parse(text, filename=rel)
+        return parse_source(text, rel)
     except SyntaxError as exc:
         raise _error(
             "Q301",

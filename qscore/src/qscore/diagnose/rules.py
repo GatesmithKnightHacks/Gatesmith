@@ -292,8 +292,27 @@ def evaluate(metrics: dict[str, MetricResult], policy: Policy) -> Diagnosis:
         out.skipped.append({"rule": "D06", "reason": why})
     else:
         ev = metrics["reliability_heuristic"].evidence or {}
-        total, thr = float(ev["total_neg_log"]), t["D06"]["share_min"]
-        if total > 0:
+        thr = t["D06"]["share_min"]
+        if ev["faulty_ops"]:  # the circuit uses ops the calibration marks unusable (ChP-0041)
+            faulty = ev["faulty_ops"]
+            out.findings.append(
+                _finding(
+                    "D06",
+                    1,
+                    FindingSeverity.INFO
+                    if "D06" in policy.severity["info_rules"]
+                    else FindingSeverity.HIGH,
+                    Threshold(name="faulty_ops", value=0, margin=float(len(faulty))),
+                    {"faulty_ops": faulty, "top_contributors": ev["top_contributors"]},
+                    Region(
+                        scope="compiled",
+                        qubits=sorted({q for f in faulty for q in f["qargs"]}),
+                        layers=_full_layers(metrics, False),
+                    ),
+                    ["noise_aware_layout"],
+                )
+            )
+        elif (total := float(ev["total_neg_log"])) > 0:
             key, share_raw = max(ev["top_contributors"].items(), key=lambda kv: (kv[1], kv[0]))
             share = share_raw / total
             if share >= thr:

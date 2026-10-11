@@ -8,7 +8,7 @@ from typing import Any
 
 from qscore.errors import InvalidInput
 
-SCORE_VERSION = "qscore-2026.1"
+SCORE_VERSION = "qscore-2026.2"
 
 # Every schema id in specs/04 §1, with its current version.
 SCHEMA_VERSIONS: dict[str, str] = {

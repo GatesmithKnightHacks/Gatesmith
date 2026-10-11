@@ -10,7 +10,7 @@ from qscore.schemas.versions import SCHEMA_VERSIONS, SCORE_VERSION, check_compat
 
 
 def test_score_version() -> None:
-    assert SCORE_VERSION == "qscore-2026.1"
+    assert SCORE_VERSION == "qscore-2026.2"
 
 
 def test_all_schema_ids_listed() -> None:

@@ -176,12 +176,13 @@ def discover_candidates(
         path = (path / subdir).resolve()
         if not path.is_dir():
             raise InvalidInput(f"--path {subdir}: no such directory under {root}", report=None)
+    unreadable: list[IssueModel] = []  # files skipped by a folder scan (ChP-0044)
     if path.is_file() or subdir is not None:
         if not path.is_relative_to(root):
             raise InvalidInput(f"{path} is outside project.root {root}", report=None)
-        candidates = discover(root, subdir=path.relative_to(root))
+        candidates = discover(root, subdir=path.relative_to(root), unreadable=unreadable)
     else:
-        candidates = discover(root)
+        candidates = discover(root, unreadable=unreadable)
     lines = []
     hinted: set[str] = set()
     compat_warnings: list[str] = []
@@ -204,6 +205,14 @@ def discover_candidates(
     emit("stage_finished", "\n".join(lines) or "No circuit candidates found.", stage="discover")
     for warning in compat_warnings:
         emit("warning", warning, stage="discover")
+    for issue in unreadable:
+        loc = issue.location
+        emit(
+            "warning",
+            f"{loc.file}:{loc.line}:{loc.column}: {issue.code} {issue.message} — not scanned; "
+            "its circuits are not listed (fix the file, or limit discovery with --path)",
+            stage="discover",
+        )
     if not draft:
         return DiscoveryResult(candidates, None, "", [], [], root, fetched)
     if pick is None and len(candidates) == 1:
@@ -266,6 +275,8 @@ def _score(
     notice: str | None = None,
 ) -> ScoreResult:
     started = datetime.now(UTC)
+    # Read git state before anything is written, so qscore's own outputs never count as dirty.
+    project_source = source_of((manifest_dir / manifest.project.root).resolve())
     work = run_validation(manifest, manifest_dir, settings, manifest_file, positions)
     blocks = render_items(work, manifest)
     summary = render_text(work, manifest)
@@ -356,7 +367,7 @@ def _score(
             "scorecards": refs,
             "compiled": exported,
             "compiled_skipped": not_exported,
-            "project_source": source_of((manifest_dir / manifest.project.root).resolve()),
+            "project_source": project_source,
             "provenance": RunProvenance(
                 qscore=first.qscore,
                 score_version=SCORE_VERSION,

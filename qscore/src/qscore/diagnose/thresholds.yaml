@@ -1,4 +1,4 @@
-score_version: qscore-2026.1
+score_version: qscore-2026.2
 rules:
   D01: {routing_overhead_min: 0.30}
   D02: {seed_spread_min: 0.15}

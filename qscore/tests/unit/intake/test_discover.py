@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -312,3 +313,48 @@ def test_attribute_suggestions_require_the_builders_import_alias(tmp_path: Path)
     )
     [candidate] = discover(tmp_path)
     assert candidate.suggestions == {"n": (Suggestion(3, "tests/test_use.py", 4),)}
+
+
+def test_syntax_warnings_in_researcher_code_are_not_printed(
+    tmp_path: Path, recwarn: pytest.WarningsRecorder
+) -> None:
+    # Invalid escapes in user code (common in notebook LaTeX strings) are not qscore's to report.
+    (tmp_path / "m.py").write_text(
+        'from qiskit import QuantumCircuit\nLABEL = "\\m"\n\n\n'
+        "def b() -> QuantumCircuit:\n    return QuantumCircuit(1)\n"
+    )
+    assert [c.name for c in discover(tmp_path)] == ["b"]
+    assert not [w for w in recwarn if issubclass(w.category, SyntaxWarning)]
+
+
+def test_circuit_methods_on_a_bound_circuit_are_builders(tmp_path: Path) -> None:
+    # QED-C kernels: `qc2 = qc.decompose(); return qc2` (class B lead decision, 05 §1).
+    (tmp_path / "k.py").write_text(
+        "from qiskit import QuantumCircuit\n\n\n"
+        "def bv(n: int):\n    qc = QuantumCircuit(n)\n    qc.h(0)\n"
+        "    qc2 = qc.decompose()\n    return qc2\n\n\n"
+        "def inv(n: int):\n    qc = QuantumCircuit(n)\n    return qc.inverse()\n\n\n"
+        "def not_a_circuit(n: int):\n    x = [n]\n    return x.copy()\n"
+    )
+    found = {c.name: c.signal for c in discover(tmp_path)}
+    assert found == {"bv": "returns_circuit", "inv": "returns_circuit"}
+
+
+def test_unreadable_file_is_a_warning_when_others_have_candidates(tmp_path: Path) -> None:
+    # ChP-0044: one broken file (QED-C has a notebook with a syntax error) does not hide the rest.
+    (tmp_path / "bad.py").write_text("def build(:\n", encoding="utf-8")
+    (tmp_path / "good.py").write_text(
+        "from qiskit import QuantumCircuit\n\n\ndef b() -> QuantumCircuit:\n"
+        "    return QuantumCircuit(1)\n"
+    )
+    unreadable: list[Any] = []
+    assert [c.name for c in discover(tmp_path, unreadable=unreadable)] == ["b"]
+    assert [(i.code, i.location.file, i.location.line) for i in unreadable] == [
+        ("Q301", "bad.py", 1)
+    ]
+    # Without the collector, or when nothing readable has candidates, it still fails loudly.
+    with pytest.raises(InvalidInput):
+        discover(tmp_path)
+    (tmp_path / "good.py").unlink()
+    with pytest.raises(InvalidInput):
+        discover(tmp_path, unreadable=[])

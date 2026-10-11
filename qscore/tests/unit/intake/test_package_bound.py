@@ -30,3 +30,22 @@ def test_walk_stops_at_project_root(tmp_path: Path) -> None:
 def test_not_a_package(tmp_path: Path) -> None:
     (tmp_path / "m.py").write_text("")
     assert _package(tmp_path / "m.py", tmp_path) is None
+
+
+def test_src_layout_namespace_package(tmp_path: Path) -> None:
+    # MQT Bench layout: src/mqt/ is a PEP 420 namespace package (no __init__.py) above the
+    # regular package bench/; the spec example imports mqt.bench.benchmarks.ghz with src/ on
+    # the path (05 §4.1, ChP-0037).
+    src = tmp_path / "src"
+    bench = _pkg(src / "mqt" / "bench" / "benchmarks")
+    (src / "mqt" / "bench" / "__init__.py").write_text("")
+    (bench / "ghz.py").write_text("")
+    assert _package(bench / "ghz.py", tmp_path) == (src, "mqt.bench.benchmarks.ghz")
+    # The project root may itself be src/.
+    assert _package(bench / "ghz.py", src) == (src, "mqt.bench.benchmarks.ghz")
+
+
+def test_namespace_dirs_without_src_are_not_climbed(tmp_path: Path) -> None:
+    pkg = _pkg(tmp_path / "ns" / "pkg")
+    (pkg / "m.py").write_text("")
+    assert _package(pkg / "m.py", tmp_path) == (tmp_path / "ns", "pkg.m")

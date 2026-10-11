@@ -51,6 +51,7 @@ def test_directory_without_manifest_is_q200(tmp_path: Path) -> None:
     code, out = _run(str(tmp_path), "--yes", "--out", str(tmp_path / "o"))
     assert code == 2
     assert "Q200" in out and "qscore.yaml" in out
+    assert "qscore discover" in out and "--draft" in out  # the hint says how to make one
 
 
 def test_path_and_manifest_together_exit_2(tmp_path: Path) -> None:

@@ -21,6 +21,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from qscore.errors import InvalidInput
+from qscore.intake.discover import parse_source
 from qscore.intake.script import bound_names, check_line, first_line, parse_script, script_text
 from qscore.schemas.manifest import BuilderSource, CircuitItem, QasmSource
 from qscore.schemas.run import IssueModel
@@ -137,7 +138,7 @@ def _builder_issues(
         function = found
     else:
         try:
-            tree = ast.parse(path.read_bytes(), filename=rel)
+            tree = parse_source(path.read_bytes(), rel)
         except SyntaxError as exc:
             add_syntax = make_issue(
                 "Q301",

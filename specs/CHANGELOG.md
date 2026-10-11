@@ -4,6 +4,12 @@ Every approved change to `specs/` gets one line here: date, files, proposal id, 
 
 | Date | Files | Proposal | Summary |
 |---|---|---|---|
+| 2026-10-11 | 05 §1 | ChP-0044 | Folder discovery lists candidates past unreadable files and warns per file (located); single file or no candidates still exit 2. Approved by the user. |
+| 2026-10-11 | 06 §2.3 | ChP-0043 | `resynthesis_potential` takes the KAK minimum from the synthesized block (Qiskit 2.5.2 `num_basis_gates` undercounts SWAP-class blocks); folded into score version `qscore-2026.2`. Approved by the user. |
+| 2026-10-11 | 05 §1 | lead (class B) | Builder signal: returned names bound to circuit-returning methods (`qc.decompose()` etc.); found on QED-C. |
+| 2026-10-11 | 05 §4.1 | lead (class B) | Packages: src-layout namespace directories join the dotted name (the section's own MQT Bench example); found in the F1 demo run. |
+| 2026-10-11 | 06 §2.2 (reliability_heuristic), 07 §1 D06, 02/03/04/06/07 score version, decisions D-009 | ChP-0041 | Faulty calibrated ops (error ≥ 1) → reliability 0, `faulty_ops` evidence, D06 high; `e > 1` fails; score version `qscore-2026.2`. Decided by the lead under the user's delegation. |
+| 2026-10-11 | 05 §2, §11 | ChP-0042 | `discover --score` output and exit codes as `qscore score` (+ `--allow-partial`, `--fail-on`); trust-notice scope; failed SHA fetch names the leftover checkout. Decided by the lead under the user's delegation. |
 | 2026-10-10 | 03 (fetch/discover/errors rows), 04 §13, 05 §1/§2/§4.1/§4.2/§11, proposals/ | ChP-0035 (+ audit fixes) | Repository links: clone → discover → draft → `--score`; single-candidate auto-pick; missing-import warnings; trust notice confirmed before fetched builders run; `FetchError`; `project_source` errors for any git read failure; package walk stops below `project.root`; notebooks §1 bullet aligned with ChP-0037; score row prints compiled paths. |
 | 2026-10-10 | 05 §11 | ChP-0036 | `qscore score PATH` accepts a manifest or a project directory; the CLI names the input mode before running. |
 | 2026-10-10 | 03 (intake rows), 04 §2, 05 §2/§4.1/§4.2, proposals/ | ChP-0037 | Scripts, notebooks, packages: `source.line` line mode, `.ipynb` builders, package-aware import (walk bounded at `project.root`), removed-Qiskit-API hints (discover + Q301/Q302), drafting of module variables and notebooks; line-mode execution errors are Q301. |
