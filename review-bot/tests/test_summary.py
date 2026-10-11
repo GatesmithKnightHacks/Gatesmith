@@ -2,6 +2,9 @@ import hashlib
 import json
 import re
 import shlex
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 from qscore.errors import RecordError
@@ -155,6 +158,8 @@ def test_local_recipe_uses_exact_engine_commits_and_isolated_runtime_without_tar
             + ENGINE
             + "#subdirectory=qscore"
         ),
+        "qiskit==2.5.0",
+        "qiskit-aer==0.17",
     ] in commands
     assert ["python3.12", "-m", "venv", root + "/engine"] in commands
     assert ["git", "worktree", "add", "--detach", root + "/base", BASE] in commands
@@ -164,6 +169,21 @@ def test_local_recipe_uses_exact_engine_commits_and_isolated_runtime_without_tar
     for side, command in zip(("base", "head"), scores, strict=True):
         assert command == [
             "env",
+            "-i",
+            *[
+                f"${{{name}+{name}=${name}}}"
+                for name in (
+                    "PATH",
+                    "HOME",
+                    "TMPDIR",
+                    "TMP",
+                    "TEMP",
+                    "SYSTEMROOT",
+                    "WINDIR",
+                    "LANG",
+                    "LC_ALL",
+                )
+            ],
             "QSCORE_PROFILE=ci",
             "QSCORE_DEVICE_DEFAULT=cpu",
             "QSCORE_FALLBACKS=",
@@ -179,6 +199,117 @@ def test_local_recipe_uses_exact_engine_commits_and_isolated_runtime_without_tar
     assert "Equivalent local reproduction (not the original absolute CI command)" in result.body
     assert "Recorded engine operation:" in result.body and "Command:" not in result.body
     assert ["set", "-eu"] in commands
+
+
+@pytest.mark.parametrize("side", ["base", "head"])
+def test_generated_score_launch_strips_extra_flags_and_credentials(tmp_path, side):
+    config = RepoConfig(
+        manifest="circuits/a'b; $(touch unwanted) `literal` | example.qasm", target="line-4"
+    )
+    result = build_summary(reproduction_fixture(config), config, run_url="url", docs_url="url")
+    _, recipe = shell_recipe(result.body)
+    launches = [line.strip() for line in recipe.splitlines() if line.strip().startswith("env ")]
+    launch = launches[0 if side == "base" else 1]
+    engine = tmp_path / "engine" / "bin"
+    engine.mkdir(parents=True)
+    fake = engine / "qscore"
+    fake.write_text(
+        f"#!{Path(sys.executable).resolve()}\n"
+        "import json, os, pathlib, sys\n"
+        "pathlib.Path('../captured.json').write_text(json.dumps("
+        "{'env': dict(os.environ), 'argv': sys.argv[1:]}))\n"
+    )
+    fake.chmod(0o755)
+    working = tmp_path / side
+    working.mkdir()
+    allowed = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": "/synthetic/home with 'quotes' $(literal)",
+        "TMPDIR": "/synthetic/tmp with spaces",
+        "TMP": "",
+        "SYSTEMROOT": "C:\\Synthetic Windows",
+        "LANG": "C",
+        "LC_ALL": "C",
+    }
+    environment = {
+        **allowed,
+        "QSCORE_SANDBOX_MODE": "process-unlimited",
+        "QSCORE_PROFILE": "demo",
+        "QSCORE_DEVICE_DEFAULT": "gpu",
+        "QSCORE_FALLBACKS": "FB-04",
+        "QSCORE_CACHE_DIR": "/synthetic/wrong-cache",
+        "PYTHONNOUSERSITE": "0",
+        "PYTHONPATH": "/synthetic/untrusted-python",
+        "GITHUB_TOKEN": "synthetic-token",
+        "HF_TOKEN": "synthetic-token",
+        "GEMINI_API_KEY": "synthetic-token",
+    }
+    subprocess.run(["/bin/sh", "-eu", "-c", launch], cwd=working, env=environment, check=True)
+    captured = json.loads((tmp_path / "captured.json").read_text())
+    expected_environment = {
+        **allowed,
+        "QSCORE_PROFILE": "ci",
+        "QSCORE_DEVICE_DEFAULT": "cpu",
+        "QSCORE_FALLBACKS": "",
+        "QSCORE_CACHE_DIR": "../cache-" + side,
+        "PYTHONNOUSERSITE": "1",
+    }
+    expected_arguments = [
+        "score",
+        "./" + config.manifest,
+        "--out",
+        "../results-" + side,
+        "--yes",
+        "--target",
+        "line-4",
+    ]
+    # Compare with the producer's direct clean-environment launch. Python/macOS
+    # may add its own runtime variable; no caller variables may survive either path.
+    subprocess.run(
+        [str(fake), *expected_arguments], cwd=working, env=expected_environment, check=True
+    )
+    direct = json.loads((tmp_path / "captured.json").read_text())
+    assert captured == direct
+    assert all(captured["env"][name] == value for name, value in expected_environment.items())
+    assert not (set(environment) - set(expected_environment)) & set(captured["env"])
+    assert "TEMP" not in captured["env"] and "WINDIR" not in captured["env"]
+    assert captured["argv"] == expected_arguments
+    assert not (working / "unwanted").exists()
+    assert BASE in recipe and HEAD in recipe and ENGINE in recipe
+
+
+def test_reproduction_pins_changed_recorded_qiskit_and_aer_versions():
+    loaded = load_bundle(fixture_bundle())
+    for run in loaded.runs.values():
+        run.provenance.qiskit = "2.6.1"
+    for cards in loaded.cards.values():
+        for card in cards.values():
+            card.provenance.qiskit = "2.6.1"
+            card.provenance.qiskit_aer = "0.18.2"
+    result = build_summary(loaded, RepoConfig(), run_url="url", docs_url="url")
+    _, recipe = shell_recipe(result.body)
+    assert "qiskit==2.6.1" in recipe and "qiskit-aer==0.18.2" in recipe
+    assert "qiskit==2.5.0" not in recipe and "qiskit-aer==0.17" not in recipe
+    assert "unrecorded transitive dependencies and hardware are not reconstructed" in result.body
+
+
+@pytest.mark.parametrize("package", ["qiskit", "qiskit_aer"])
+@pytest.mark.parametrize("version", ["invalid; $(literal)", "2.7.1"])
+def test_reproduction_rejects_invalid_or_inconsistent_recorded_versions(package, version):
+    loaded = load_bundle(fixture_bundle())
+    setattr(loaded.cards["head"]["demo"].provenance, package, version)
+    # Failed evaluation must not bypass version validation for the reproduction.
+    loaded.envelope.head.exit_code = 2
+    with pytest.raises(RecordError, match=r"recorded .* versions? for reproduction"):
+        build_summary(loaded, RepoConfig(), run_url="url", docs_url="url")
+
+
+def test_reproduction_never_guesses_unrecorded_aer_version():
+    loaded = load_bundle(fixture_bundle())
+    loaded.cards = {"base": {}, "head": {}}
+    result = build_summary(loaded, RepoConfig(), run_url="url", docs_url="url")
+    _, recipe = shell_recipe(result.body)
+    assert "qiskit==2.5.0" in recipe and "qiskit-aer==" not in recipe
 
 
 def test_shell_quoting_preserves_manifest_and_optional_target_without_markdown_escaping():

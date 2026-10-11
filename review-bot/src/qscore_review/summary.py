@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
+from packaging.version import InvalidVersion, Version
 from qscore.errors import RecordError
 from qscore.schemas.scorecard import Scorecard
 
@@ -142,7 +143,40 @@ def _local_reproduction(loaded: LoadedBundle, config: RepoConfig) -> list[str]:
         or "\x00" in config.manifest
     ):
         raise RecordError("Unsafe configured reproduction input path")
+    recorded_packages: dict[str, list[str]] = {"qiskit": [], "qiskit-aer": []}
+    for run in loaded.runs.values():
+        recorded_packages["qiskit"].append(run.provenance.qiskit)
+    for cards in loaded.cards.values():
+        for card in cards.values():
+            recorded_packages["qiskit"].append(card.provenance.qiskit)
+            recorded_packages["qiskit-aer"].append(card.provenance.qiskit_aer)
+    package_pins = []
+    for package, recorded in recorded_packages.items():
+        try:
+            versions = {Version(value) for value in recorded}
+        except InvalidVersion as exc:
+            raise RecordError("Invalid recorded " + package + " version for reproduction") from exc
+        if len(versions) > 1:
+            raise RecordError("Inconsistent recorded " + package + " versions for reproduction")
+        if versions:
+            package_pins.append(package + "==" + str(versions.pop()))
     root = f"../gatesmith-review-{p.repository_id}-{p.pull_request}-{p.run_id}-{p.run_attempt}"
+    # These trusted shell references mirror the producer's environment allowlist.
+    # The + form preserves an existing empty value while omitting an unset variable.
+    preserved_environment = " ".join(
+        f'${{{name}+"{name}=${name}"}}'
+        for name in (
+            "PATH",
+            "HOME",
+            "TMPDIR",
+            "TMP",
+            "TEMP",
+            "SYSTEMROOT",
+            "WINDIR",
+            "LANG",
+            "LC_ALL",
+        )
+    )
     commands = [
         "(",
         shlex.join(["set", "-eu"]),
@@ -157,6 +191,7 @@ def _local_reproduction(loaded: LoadedBundle, config: RepoConfig) -> list[str]:
                 "qscore @ git+https://github.com/GatesmithKnightHacks/Gatesmith.git@"
                 + p.engine_revision
                 + "#subdirectory=qscore",
+                *package_pins,
             ]
         ),
     ]
@@ -166,7 +201,6 @@ def _local_reproduction(loaded: LoadedBundle, config: RepoConfig) -> list[str]:
             commands.append(f"# {side}: discovery only; no manifest was scored.")
             continue
         score = [
-            "env",
             "QSCORE_PROFILE=" + expected["profile"],
             "QSCORE_DEVICE_DEFAULT=" + expected["device_default"],
             "QSCORE_FALLBACKS=",
@@ -182,7 +216,12 @@ def _local_reproduction(loaded: LoadedBundle, config: RepoConfig) -> list[str]:
         if config.target is not None:
             score.extend(["--target", config.target])
         commands.extend(
-            ["(", "  " + shlex.join(["cd", root + "/" + side]), "  " + shlex.join(score), ")"]
+            [
+                "(",
+                "  " + shlex.join(["cd", root + "/" + side]),
+                "  env -i " + preserved_environment + " " + shlex.join(score),
+                ")",
+            ]
         )
     commands.append(")")
     recipe = "\n".join(commands)
@@ -197,7 +236,9 @@ def _local_reproduction(loaded: LoadedBundle, config: RepoConfig) -> list[str]:
         "Equivalent local reproduction (not the original absolute CI command):",
         "Run from a clone containing both exact commits, with Python 3.12 available. "
         "The fresh sibling directory keeps the current checkout unchanged; base/head "
-        "worktrees, outputs and caches are separate. Pinned engine optimization level: 3.",
+        "worktrees, outputs and caches are separate. Pinned engine optimization level: 3. "
+        "Only recorded Qiskit/Aer versions are constrained; unrecorded transitive dependencies "
+        "and hardware are not reconstructed, so this is not a byte-identical environment.",
         fence + "sh",
         recipe,
         fence,
