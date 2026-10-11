@@ -5,9 +5,9 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0" /></a>
   <a href="https://github.com/GatesmithKnightHacks/Gatesmith/actions/workflows/ci.yml"><img src="https://github.com/GatesmithKnightHacks/Gatesmith/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status" /></a>
-  <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB" alt="Python 3.11 and 3.12" />
-  <img src="https://img.shields.io/badge/qiskit-%E2%89%A5%202.5-6929C4" alt="Qiskit 2.5 or newer" />
-  <img src="https://img.shields.io/badge/Knight%20Hacks-Fall%202026-0B0B0B" alt="Knight Hacks Fall 2026" />
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB" alt="Python 3.11 and 3.12" /></a>
+  <a href="https://www.ibm.com/quantum/qiskit"><img src="https://img.shields.io/badge/qiskit-%E2%89%A5%202.5-6929C4" alt="Qiskit 2.5 or newer" /></a>
+  <a href="https://2026.knighthacks.org/"><img src="https://img.shields.io/badge/Knight%20Hacks-Fall%202026-0B0B0B" alt="Knight Hacks Fall 2026" /></a>
   <img src="https://img.shields.io/badge/status-hackathon%20prototype-orange" alt="Status: hackathon prototype" />
 </p>
 
