@@ -319,8 +319,9 @@
   align-items: center;
   gap: var(--spacing-2);
   flex-shrink: 0;
-  height: 28px;
-  padding: 0 var(--spacing-2) 0 10px;
+  /* 28 tall on one line; on a narrow window the message wraps instead of being cut */
+  min-height: 28px;
+  padding: 6px var(--spacing-2) 6px 10px;
   background: var(--color-surface-inset);
   border-left: 2px solid var(--acc-banner-color);
   white-space: nowrap;
@@ -345,10 +346,9 @@
 }
 .acc-banner-text {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--color-text-primary);
   font-size: var(--text-label);
+  white-space: normal;
 }
 .acc-banner-btn {
   display: grid;
@@ -390,29 +390,6 @@
 }
 
 /* ── Spinner and stage ──────────────────────────────────────────────── */
-.acc-spinner {
-  animation: acc-spin var(--motion-spin) linear infinite;
-}
-.acc-spinner-track {
-  stroke: var(--color-spinner-track, var(--color-teal-700));
-}
-.acc-spinner-arc {
-  stroke: var(--color-spinner-arc, var(--color-teal-200));
-}
-.acc-spinner-track-accent {
-  stroke: var(--color-spinner-track-on-accent, color-mix(in srgb, var(--color-onyx) 25%, transparent));
-}
-.acc-spinner-arc-accent {
-  stroke: var(--color-spinner-arc-on-accent, var(--color-onyx));
-}
-:root[data-reduce-motion] .acc-spinner {
-  animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .acc-spinner {
-    animation: none;
-  }
-}
 .acc-stage {
   display: flex;
   align-items: center;
@@ -434,11 +411,6 @@
   flex: 1 1 0;
 }
 
-@keyframes acc-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 @keyframes acc-fade-in {
   from {
     opacity: 0;

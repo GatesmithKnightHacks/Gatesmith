@@ -4,7 +4,9 @@
  */
 import { useState, type ReactNode, type RefObject } from 'react'
 import { useAccount } from '../../data/account'
+import { ErrorCode } from '../../ui/Banner'
 import { GpuStatus } from '../../ui/Shell'
+import { SpinnerRing } from '../../ui/Spinner'
 import './account.css'
 
 /* ── Top bar right side ─────────────────────────────────────────────── */
@@ -205,23 +207,18 @@ function BannerIcon({ kind }: { kind: BannerKind }) {
   )
 }
 
-/* ── Spinner (DS-08): 2 px ring, 270° arc, always beside a stage word ── */
+/* ── Spinner (DS-08): the shared 2 px ring with its 270° arc, always beside a stage word ── */
 export function Spinner({ size = 14, onAccent }: { size?: 14 | 20 | 28; onAccent?: boolean }) {
-  const r = (size - 2) / 2
-  const c = 2 * Math.PI * r
+  return <SpinnerRing size={size} tone={onAccent ? 'accent' : 'panel'} />
+}
+
+/** Error codes in mono inside copy ("Could not reach the database (Q901). …"), per the copy rule. */
+export function WithCodes({ text }: { text: string }) {
+  const parts = text.split(/(\(Q\d{3}\))/)
   return (
-    <svg className="acc-spinner" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth="2" className={onAccent ? 'acc-spinner-track-accent' : 'acc-spinner-track'} />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        strokeWidth="2"
-        strokeDasharray={`${0.75 * c} ${c}`}
-        className={onAccent ? 'acc-spinner-arc-accent' : 'acc-spinner-arc'}
-      />
-    </svg>
+    <>
+      {parts.map((part, i) => (/^\(Q\d{3}\)$/.test(part) ? <ErrorCode key={i} code={part.slice(1, -1)} /> : part))}
+    </>
   )
 }
 

@@ -6,7 +6,7 @@ import { navigate, ROUTES } from '../../app/router'
 import { ACCOUNT_DATA_MODEL, kb, mb, type Activity, type ActivityIcon, type AccountCopy, type NewToken, type SavedRun } from '../../data/account'
 import { EditorButton } from '../../ui/parts'
 import { Sk, SkRegion } from '../../ui/Skeleton'
-import { copyText, useDone } from './hooks'
+import { copyText } from './hooks'
 import { Banner, StageLine, TextLink } from './parts'
 
 /* ── Tile frame ─────────────────────────────────────────────────────── */
@@ -25,8 +25,11 @@ function AccTile({ title, meta, className = '', children }: { title: string; met
 /** Events share the tile's height but stop growing at the board's pitch, so a short list stays at the top. */
 const EVENT_MAX = 57
 
-/** Export rows are 22 tall, rule included (board 1IED-0). */
+/** Inset rows from board 1IED-0, rules included: exports 22, runs by item 24; head 18 + 4 padding + 2 border. */
 const EXPORT_ROW = 22
+const ITEM_ROW = 24
+const INSET_CHROME = 24
+const GAP = 12
 
 const Unit = ({ children }: { children: ReactNode }) => <span className="acc19-unit">{children}</span>
 
@@ -168,33 +171,39 @@ export function StoredTile({
     .filter((i) => i.count > 0)
   const empty = copy.runs.length === 0 && copy.exports.length === 0
 
-  // The exports list takes what the tile has left and shows whole rows only; the rest scrolls.
+  // The insets take what the tile has left and never show a cut row: the exports list shows whole
+  // rows (the rest scrolls), and on short windows an inset that cannot fit one row steps out.
   const bodyRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-  const [fit, setFit] = useState<number | null>(null)
+  const groupRef = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState<{ items: boolean; rows: number } | null>(null)
   const hasBanner = !!banner
   useLayoutEffect(() => {
     const body = bodyRef.current
-    const list = listRef.current
-    if (!body || !list) return
+    const group = groupRef.current
+    if (!body || !group) return
     const measure = () => {
       const pad = parseFloat(getComputedStyle(body).paddingBottom) || 0
-      // under the list: the inset's 4 px padding and 1 px border
-      const avail = body.getBoundingClientRect().bottom - pad - 5 - list.getBoundingClientRect().top
-      setFit(Math.max(1, Math.floor(avail / EXPORT_ROW)))
+      const avail = body.getBoundingClientRect().bottom - pad - group.getBoundingClientRect().bottom
+      const itemsH = INSET_CHROME + items.length * ITEM_ROW
+      const showItems = avail >= GAP + itemsH
+      const left = avail - (showItems ? GAP + itemsH : 0) - GAP - INSET_CHROME
+      const rows = Math.max(0, Math.floor(left / EXPORT_ROW))
+      setFit((f) => (f && f.items === showItems && f.rows === rows ? f : { items: showItems, rows }))
     }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(body)
     return () => ro.disconnect()
-  }, [hasBanner, pending.length, loading, empty, copy.exports.length])
-  const clamp = fit != null && fit < copy.exports.length ? { maxHeight: fit * EXPORT_ROW } : undefined
+  }, [hasBanner, pending.length, loading, empty, items.length])
+  const showItems = fit ? fit.items : true
+  const rows = fit ? fit.rows : copy.exports.length
+  const clamp = rows < copy.exports.length ? { maxHeight: rows * EXPORT_ROW } : undefined
 
   return (
     <AccTile title="Stored in your account" meta={meta} className="acc19-stored">
       <div className="acc19-body acc19-stored-body" ref={bodyRef}>
         {banner}
-        <div className="acc19-group">
+        <div className="acc19-group" ref={groupRef}>
           <div className="acc19-sentence">{ACCOUNT_DATA_MODEL}</div>
           <div className="acc19-row is-ruled">
             <span className="acc19-label is-wide">Runs</span>
@@ -203,7 +212,10 @@ export function StoredTile({
             ) : (
               <span className="acc19-count">
                 <span className="mono">{copy.runs.length}</span>
-                <Unit>{copy.runs.length === 1 ? 'run' : 'runs'}{machineCopy ? " · this machine's copy" : copy.runs.length ? ' · rounds and scorecards' : ''}</Unit>
+                <Unit>
+                  {copy.runs.length === 1 ? 'run' : 'runs'}
+                  {machineCopy ? " · this machine's copy" : copy.runs.length ? <span className="acc19-suffix"> · rounds and scorecards</span> : ''}
+                </Unit>
               </span>
             )}
             {loading ? <Sk w={44} h={12} /> : <Size value={mb(runBytes)} unit="MB" />}
@@ -249,6 +261,7 @@ export function StoredTile({
           </div>
         ) : (
           <>
+            {showItems && (
             <div className="acc19-inset">
               <div className="acc19-inset-head">
                 <span className="acc19-group-label">runs by item</span>
@@ -271,12 +284,14 @@ export function StoredTile({
                     </div>
                   ))}
             </div>
+            )}
+            {rows > 0 && (
             <div className="acc19-inset acc19-exports">
               <div className="acc19-inset-head">
                 <span className="acc19-group-label">exports</span>
                 <span className="acc19-axis">final .qasm · from run · size</span>
               </div>
-              <div className="acc19-exports-list" ref={listRef} style={clamp} tabIndex={clamp ? 0 : undefined} aria-label={clamp ? 'Exports, scrolls' : undefined}>
+              <div className="acc19-exports-list" style={clamp} tabIndex={clamp ? 0 : undefined} aria-label={clamp ? 'Exports, scrolls' : undefined}>
                 {copy.exports.map((e, n) => (
                       <div key={`${e.fromRun}-${n}`} className={`acc19-export-row${n < copy.exports.length - 1 ? ' is-ruled' : ''}`}>
                         <span className="mono acc19-export-file">{e.file}</span>
@@ -289,6 +304,7 @@ export function StoredTile({
                     ))}
               </div>
             </div>
+            )}
           </>
         )}
       </div>
@@ -370,7 +386,6 @@ export function SessionsTile({
 }
 
 function NewTokenRows({ token }: { token: NewToken }) {
-  const copied = useDone()
   return (
     <>
       <div className="acc19-row acc19-gap acc19-flash">
@@ -378,14 +393,9 @@ function NewTokenRows({ token }: { token: NewToken }) {
         <span className="mono">{token.name}</span>
         <span className="mono acc19-secret">{token.secret}</span>
         <span className="acc-grow" />
-        <button type="button" className="btn-editor acc19-copy" onClick={() => void copyText(token.secret).then((ok) => ok && copied.flash())}>
-          <span className={copied.done ? 'is-hidden' : ''} aria-hidden={copied.done}>
-            Copy
-          </span>
-          <span className={copied.done ? '' : 'is-hidden'} aria-hidden={!copied.done}>
-            Copied ✓
-          </span>
-        </button>
+        <EditorButton doneLabel="Copied" onClick={() => copyText(token.secret)}>
+          Copy
+        </EditorButton>
       </div>
       <Banner kind="info">
         Shown once. Store it in your repo secrets as <span className="mono">GATESMITH_TOKEN</span>
@@ -432,11 +442,11 @@ export function ActivityTile({ activity, loading }: { activity: Activity[]; load
                   <div key={`${a.time}-${i}`} className={`acc19-event${di < days.length - 1 || i < d.events.length - 1 ? ' is-ruled' : ''}`}>
                     <span className="mono acc19-event-time">{a.time}</span>
                     <ActivityGlyph icon={a.icon} />
-                    <span className="acc19-event-text">
+                    <span className="acc19-event-text" title={`${a.title} · ${a.detail}`}>
                       <span className={a.icon === 'failed' ? 'acc19-failed' : undefined}>{a.title}</span>
                       <span className="mono acc19-meta">{a.detail}</span>
                     </span>
-                    <span className="mono">{a.value}</span>
+                    <span className="mono acc19-event-value">{a.value}</span>
                   </div>
                 ))}
               </div>

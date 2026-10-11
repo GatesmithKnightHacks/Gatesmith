@@ -6,7 +6,7 @@ import { AccountError, accountActions, DELETE_NOTE, PASSWORD_RULE } from '../../
 import { EditorButton, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Section } from '../../ui/parts'
 import { Sk } from '../../ui/Skeleton'
 import { useAutoFocus, useDone } from './hooks'
-import { Banner, IconCheck, IconWarn, Spinner } from './parts'
+import { Banner, IconCheck, IconWarn, WithCodes } from './parts'
 
 export type SaveLine =
   | { kind: 'clean' }
@@ -18,8 +18,7 @@ export type SaveLine =
 export function AccountInspector({
   line,
   canSave,
-  saving,
-  savedFlash,
+  justSaved,
   onSave,
   handle,
   syncLine,
@@ -32,9 +31,10 @@ export function AccountInspector({
 }: {
   line: SaveLine
   canSave: boolean
-  saving: boolean
-  savedFlash: boolean
-  onSave: () => void
+  /** Saved in the last 1200 ms: the button stays lit while it reads "Saved ✓". */
+  justSaved: boolean
+  /** Returns a promise: the button shows its spinner slot until it settles, then "Saved ✓" for 1200 ms. */
+  onSave: () => Promise<boolean>
   handle: string
   syncLine: ReactNode
   loading: boolean
@@ -49,17 +49,8 @@ export function AccountInspector({
     <>
       <ModeTabs />
       <ModeBlock line={<SaveStatus line={line} />} style={{ paddingTop: 18, paddingBottom: 14 }}>
-        <PrimaryButton onClick={onSave} disabled={!canSave && !saving && !savedFlash} style={saving || savedFlash ? { pointerEvents: 'none' } : undefined}>
-          <span className="acc19-save-label">
-            {savedFlash ? (
-              'Saved ✓'
-            ) : (
-              <>
-                {saving && <Spinner size={20} onAccent />}
-                Save changes
-              </>
-            )}
-          </span>
+        <PrimaryButton onClick={onSave} disabled={!canSave && !justSaved} doneLabel="Saved">
+          Save changes
         </PrimaryButton>
         <PoweredBy />
       </ModeBlock>
@@ -120,7 +111,9 @@ function SaveStatus({ line }: { line: SaveLine }) {
       return (
         <span className="acc19-saved">
           <IconWarn size={12} />
-          <span className="acc19-error-text">{line.text}</span>
+          <span className="acc19-error-text">
+            <WithCodes text={line.text} />
+          </span>
         </span>
       )
   }

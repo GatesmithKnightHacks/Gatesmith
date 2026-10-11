@@ -7,9 +7,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-1);
-  flex-shrink: 0;
-  width: 560px;
+  /* 560 at 1440 (the board); between 1280 and 1440 this column gives way and Recent activity keeps 424 */
+  flex: 0 1 560px;
+  min-width: 0;
   min-height: 0;
+  container: acc19left / inline-size;
 }
 .acc19-tile {
   display: flex;
@@ -27,7 +29,7 @@
 }
 .acc19-activity {
   flex: 1 1 0;
-  min-width: 0;
+  min-width: 424px;
 }
 .acc19-body {
   display: flex;
@@ -265,17 +267,6 @@
   line-height: 14px;
   user-select: all;
 }
-.acc19-copy {
-  display: grid;
-}
-.acc19-copy > span {
-  grid-area: 1 / 1;
-  text-align: center;
-  transition: opacity var(--motion-hover) var(--ease-motion);
-}
-.acc19-copy > .is-hidden {
-  opacity: 0;
-}
 .acc19-flash {
   animation: acc19-flash var(--motion-load) var(--ease-motion) both;
 }
@@ -327,6 +318,14 @@
   gap: 2px;
   flex: 1 1 0;
   min-width: 0;
+}
+/* a safety net for longer live details: the value never moves, the detail ends in an ellipsis */
+.acc19-event-text > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.acc19-event-value {
+  flex-shrink: 0;
 }
 .acc19-failed {
   color: var(--color-signal-bad);
@@ -471,4 +470,15 @@
   color: var(--color-text-tertiary);
   font-size: var(--text-label);
   white-space: nowrap;
+}
+
+/* Narrow windows (1280 to 1440): the left column gives way, its long labels wrap onto two lines. */
+@container acc19left (max-width: 520px) {
+  .acc19-label.is-wide {
+    width: 150px;
+    white-space: normal;
+  }
+  .acc19-suffix {
+    display: none;
+  }
 }

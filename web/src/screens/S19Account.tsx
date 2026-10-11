@@ -24,7 +24,7 @@ import { Content, Shell, TabStrip } from '../ui/Shell'
 import { AccountInspector, type SaveLine } from './account/AccountInspector'
 import { AccountTile, ActivityTile, SessionsTile, StoredTile } from './account/AccountTiles'
 import { useAutoFocus, useDone, useNow, useRetry } from './account/hooks'
-import { AccountStatus, Banner, IconCheck, IconWarn, Spinner } from './account/parts'
+import { AccountStatus, Banner, IconCheck, IconWarn, Spinner, WithCodes } from './account/parts'
 import { SignInForm } from './account/SignInForm'
 import './account/s19.css'
 
@@ -136,7 +136,7 @@ function AccountScreen({ view, acct }: { view: View | null; acct: AccountState }
   const [saved, setSaved] = useState<{ fields: string[]; at: string } | null>(v.saved ?? null)
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
-  const flash = useDone(1200)
+  const justSaved = useDone(1200)
   const changed = [handle.trim() !== profile.handle && 'Handle', email.trim() !== profile.email && 'Email'].filter(Boolean) as string[]
   const dirty = changed.length > 0
   const valid = /^[a-z0-9][a-z0-9-]{1,38}$/.test(handle.trim()) && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())
@@ -155,8 +155,9 @@ function AccountScreen({ view, acct }: { view: View | null; acct: AccountState }
     setRecovered(true)
   })
 
-  const save = async () => {
-    if (!dirty || !valid || saving || !online) return
+  /** Resolves false when nothing was saved, so the button skips its done face. */
+  const save = async (): Promise<boolean> => {
+    if (!dirty || !valid || saving || !online) return false
     setSaving(true)
     setSaveError('')
     try {
@@ -164,12 +165,14 @@ function AccountScreen({ view, acct }: { view: View | null; acct: AccountState }
       // A states-board view keeps its own copy; the saved values carry into it.
       setSavedProfile(next)
       setSaving(false)
-      flash.flash()
+      justSaved.flash()
       setSaved({ fields: changed, at: clock(Date.now()) })
+      return true
     } catch (e) {
       setSaving(false)
       const code = e instanceof AccountError ? e.code : 'Q901'
       setSaveError(code === 'email-in-use' ? 'That email already has an account.' : code === 'offline' ? 'You are offline. The change waits.' : 'Could not reach the database (Q901). The change waits.')
+      return false
     }
   }
 
@@ -240,9 +243,8 @@ function AccountScreen({ view, acct }: { view: View | null; acct: AccountState }
         <AccountInspector
           line={line}
           canSave={dirty && valid && online && !loading}
-          saving={saving}
-          savedFlash={flash.done}
-          onSave={() => void save()}
+          justSaved={justSaved.done}
+          onSave={save}
           handle={profile.handle}
           syncLine={syncLine}
           loading={loading}
@@ -287,7 +289,7 @@ function AccountScreen({ view, acct }: { view: View | null; acct: AccountState }
                 <Banner kind="offline">{banner.message}</Banner>
               ) : (
                 <Banner kind="warning" action="Retry" onAction={() => void retry.run()} busy={retry.busy}>
-                  {banner.message}
+                  <WithCodes text={banner.message} />
                 </Banner>
               ))
             }
