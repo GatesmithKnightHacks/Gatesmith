@@ -19,8 +19,9 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python-version }}
+      # `ui` and `neon` extras: mypy needs fastapi (api/app.py) and psycopg (record/neon.py).
       - name: Install (CPU Aer)
-        run: uv sync --frozen
+        run: uv sync --frozen --extra ui --extra neon
       - name: Lint and format
         run: uv run ruff check . && uv run ruff format --check .
       - name: Types
