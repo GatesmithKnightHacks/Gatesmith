@@ -13,9 +13,12 @@
 
 ## Broken / blocked
 
+- During reconciliation, the new worker logging test initially replaced pytest capture handlers via setup_logging; corrected its fixture to preserve capture. Expanded checks also reproduced the already recorded macOS builder preexec limitation.
+- ChP-0054 reconciliation is ready for publication: current Paper UI/live mapping typechecks, SQLite/API/client fault tests pass, Neon product code removed. Worker execution, Hub result materialization and browser auth remain explicitly blocked pending the deployment owner. See docs/merge-conflict-resolution.md.
+
 - New Linux CI failure, first seen 2026-10-11 03:39 EDT at `7409ccf`: [run 38121956569](https://github.com/GatesmithKnightHacks/Gatesmith/actions/runs/38121956569), Python 3.11, **986 passed / 2 failed**. Python 3.12 was cancelled by the matrix; bot CI passed. Failing assertions: `test_old_flag_has_migration_hint` cannot find the contiguous hint in Rich-formatted output; `test_qasm_file_unchanged` sees a long output path wrapped inside `bell.qasm`. Suspected CLI formatting/terminal-width sensitivity; root cause still to reproduce. Exact CI command in `qscore/`: `uv run --no-sync pytest -m "not gpu and not platform and not hub and not llm and not slow" -W error::DeprecationWarning:qiskit -n auto`. Fix output determinism and rerun without deleting assertions or skipping tests.
 - Baseline full macOS CPU quick suite: 833 passed, 50 failed, ten deselected; predominantly builder `RLIMIT_AS`/`preexec_fn` restrictions. Reproduce inside `qscore/`: `uv run --offline --no-sync pytest -m "not gpu and not platform and not hub and not llm and not slow" -q`. Full Linux gates remain required; sandbox limits/assertions are unchanged. Real Linux scoring passed on six workflow attempts.
-- Public HTTPS hosting remains with friend; App webhook inactive. Docker is absent locally, so container build is untested. No continuous deployment claim.
+- Permanent HTTPS hosting remains with friend. Development App webhook now uses an active signed Smee relay to the Mac; fresh demo PR3 received automatic comparison and Gemini review without manual ingestion. Both local server and relay must remain running. Docker is absent locally, so container build is untested. No continuous deployment claim.
 - Friend-owned verifier/loop and approved improvement handoff are absent. HF candidates are unverified and unaccepted; leaderboard intentionally has no ranked results. Platform imports/dashboard history and full-file review remain outstanding.
 - New engine fixes are reviewed/tested locally. Released demo Action still pins engine `6b42f722730f19a5c3d9b72e1a19cf8d54a0fedd`; unpublished fixes have not run in released CI. Source publication and a coordinated reviewed pin update remain follow-ups.
 
@@ -29,6 +32,11 @@
 - Early Gemini prose mixed metric and numbered-qubit claims; strict filters rejected those comments visibly. Prompt v3 (`8031724`) guides qualitative finding/action comments; the live line comment passed. Literal/actual newline variants remain rejected without rewriting. `5858df2` labels cached drafts with their persisted prompt version.
 - Verbose Hub HTTP logging could expose signed URLs; `52f866c` preserves warnings/errors and safe attempt counts while suppressing transport INFO/DEBUG. Space deployed with the fix.
 - Unsuffixed `uv run` removed extras; `5a6992c` preserves frozen HF/UI extras. `9ce59ab` adds full standalone Linux bot CI with real sibling engine types, without ignores/skips.
+
+## Completed reconciliation delegations
+
+- T28 SQLite platform preparation: agent/T28-sqlite-api in `/Users/ralph/.codex/worktrees/sqlite-platform/knight hacks`, started 2026-10-11. Owns platform SQLite store, API, HTTP jobs client and their tests only. Coordinator owns settings, errors, dependency declarations, worker and deployment. Offline; no credentials or cloud access.
+- T28 live UI reconciliation: agent/T28-live-ui in `/Users/ralph/.codex/worktrees/sqlite-ui/knight hacks`, started 2026-10-11. Owns web/data live mapping, S04 and LiveStatus and tests only. Offline; no credentials or cloud access.
 
 ## Active work
 
@@ -56,3 +64,8 @@
 - Root HF/Space/models CLI: 96 tests passed. Real engine → HF lab uses validation → `score_item_compiled` → `build_requests`; D03#1 has a seven-qubit logical region and original gate indices 0–5. Qwen consumed this exact request through the adapter.
 - Root final full bot: **144 tests passed**, including prompt v3 and executable reproduction isolation regressions. Ruff/format checked 25 files; mypy 13 source files passed. Two dependency deprecation warnings remain visible.
 - Contract/request tests: 102 passed, two deselected. Slow-builder suite: 103 passed, one existing macOS failure. Golden values, thresholds and security controls untouched. All integrated streams independently reviewed.
+
+## PR4 conflict-fix publication
+
+- Detailed decisions: docs/merge-conflict-resolution.md and the reconciliation commit body. Preserve Vultr CI/deploy and current Paper UI; replace Neon with SQLite. No production operations performed.
+- Focused integrated checks:66 passed; platform authorization follow-up:61 passed. Types/imports/format and web build passed. Independent review corrected empty-token authorization and timestamp representation. Full Linux CI remains pending after push.

@@ -59,7 +59,9 @@ def _complete_not(ctx: typer.Context, incomplete: str) -> list[str]:
 
 def _legacy_input(value: bool) -> bool:
     if value:
-        raise typer.BadParameter("--no-input was removed; use --not input")
+        # Keep this copyable hint intact under Typer's coloured error formatting.
+        typer.echo("--no-input was removed; use --not input", err=True)
+        raise typer.Exit(2)
     return value
 
 
@@ -226,11 +228,14 @@ def _finish_run(
         live = [f for f in card.findings if f.suppressed is None]
         err.print(
             f"{card.item.id}: {card.status} · {len(live)} finding(s) "
-            f"({', '.join(f'{f.rule}:{f.severity}' for f in live) or 'none'}) → {p}"
+            f"({', '.join(f'{f.rule}:{f.severity}' for f in live) or 'none'}) → {p}",
+            markup=False,
+            highlight=False,
+            soft_wrap=True,
         )
     for compiled in result.compiled_paths:
-        err.print(f"compiled → {compiled}")
-    err.print(f"report → {result.report_path}")
+        err.print(f"compiled → {compiled}", markup=False, highlight=False, soft_wrap=True)
+    err.print(f"report → {result.report_path}", markup=False, highlight=False, soft_wrap=True)
     if pasted and not as_json:
         sys.stdout.write(result.report_path.read_text(encoding="utf-8"))
     if any(c.status == "partial" for c in result.scorecards) and not allow_partial:
