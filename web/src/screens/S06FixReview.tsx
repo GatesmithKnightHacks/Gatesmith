@@ -258,8 +258,14 @@ function Inspector({ view, step, accepted }: { view: View; step: number; accepte
     decision = (
       <>
         <StatusLine kind="accepted" text="Engine accepted · not applied until you accept" />
-        <PrimaryButton name="primary-action" onClick={accepted ? undefined : () => actions.accept()} style={focus ? FOCUS_RING : undefined}>
-          {accepted ? 'Accepted ✓' : 'Accept'}
+        <PrimaryButton
+          name="primary-action"
+          onClick={accepted ? undefined : () => actions.accept()}
+          done={accepted}
+          doneLabel="Accepted"
+          style={focus ? FOCUS_RING : undefined}
+        >
+          Accept
         </PrimaryButton>
         <ActionRow button="Keep current" onClick={keepCurrent} caption={focus ? 'Enter accepts · Tab moves to Keep current' : 'Accept makes the candidate round 3'} />
       </>

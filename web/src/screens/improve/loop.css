@@ -1,345 +1,235 @@
-/* S-07 · Loop view and stop */
+/* S-07 · Loop view and stop, measured from board 1KMK-0 and its states 1Q14-0. Also the Rounds lanes. */
 
-.lp-rounds {
+/* ── Top row: Circuit | Scorecard, 262 tall ──────────────────────────── */
+.lp-top {
+  display: flex;
+  flex: 0 0 262px;
+  min-height: 0;
+  gap: var(--spacing-1);
+}
+.lp-circuit {
+  flex: 1 1 0;
+}
+.lp-circuit-body {
+  display: flex;
+  flex-direction: row;
+  padding: var(--spacing-3);
+}
+.lp-canvas {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: clip;
+  background: var(--color-surface-canvas);
+}
+.lp-canvas > svg {
+  display: block;
   flex-shrink: 0;
 }
-.lp-header-meta {
+
+/* Scorecard */
+.lp-score {
+  flex: 0 0 350px;
+}
+.lp-score-body {
+  padding: var(--spacing-3);
+}
+.lp-score-inset {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0 8px;
+  overflow: clip;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+}
+.lp-score-inset.is-loading {
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+}
+.lp-score-row,
+.lp-finding-row {
   display: flex;
   align-items: center;
-  height: 28px;
-  padding-inline: 10px;
+  flex-shrink: 0;
+  height: 20px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.lp-score-row.is-last,
+.lp-finding-row.is-last {
+  border-bottom: 0;
+}
+.lp-score-name {
+  width: 144px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.lp-score-name.is-primary {
+  font-weight: var(--font-weight-medium);
+}
+.lp-score-bars {
+  display: flex;
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 84px;
+  gap: var(--spacing-1);
+}
+.lp-score-track {
+  position: relative;
+  width: 44px;
+  flex-shrink: 0;
+}
+.lp-score-bg,
+.lp-score-base,
+.lp-score-now,
+.lp-score-tick {
+  position: absolute;
+  left: 0;
+}
+.lp-score-bg {
+  top: 4px;
+  width: 44px;
+  height: 12px;
+  background: color-mix(in srgb, var(--color-white) 8%, transparent);
+}
+.lp-score-base {
+  top: 4px;
+  height: 5px;
+  background: var(--color-surface-selected);
+}
+.lp-score-now {
+  top: 11px;
+  height: 5px;
+  background: var(--color-text-secondary);
+}
+.lp-score-now.is-high {
+  background: var(--color-signal-bad);
+}
+.lp-score-tick {
+  top: 4px;
+  width: 1px;
+  height: 12px;
+  background: var(--color-text-primary);
+}
+.lp-score-delta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 36px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-axis);
+  line-height: var(--leading-ui);
+}
+.lp-score-value {
+  display: flex;
+  justify-content: flex-end;
+  width: 40px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.lp-score-value.is-primary {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-base);
+}
+.lp-score-unit {
+  padding-left: var(--spacing-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-axis);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.lp-finding-row {
+  gap: var(--spacing-2);
+}
+.lp-finding-rule {
+  width: 28px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+}
+.lp-finding-title {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.lp-finding-row.is-done .lp-finding-rule,
+.lp-finding-row.is-done .lp-finding-title {
+  color: var(--color-text-secondary);
+}
+.lp-finding-status {
+  display: flex;
+  width: 84px;
+  flex-shrink: 0;
+}
+.lp-score-stage {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 18px;
+  gap: var(--spacing-2);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.lp-score-eta {
   color: var(--color-text-tertiary);
   font-size: var(--text-label);
   line-height: 14px;
-  white-space: nowrap;
-  animation: im-fade var(--motion-base) var(--ease-enter) both;
 }
-.lp-controls {
+.lp-score-sk {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding-right: 10px;
-}
-.lp-transport {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.lp-tbtn {
-  display: flex;
-  transition: opacity var(--motion-instant) var(--ease-standard);
-}
-.lp-tbtn:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-.lp-divider {
-  width: 1px;
-  height: 14px;
-  background: var(--color-border-subtle);
-}
-.lp-zoom {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.lp-zoom-track {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 56px;
-  height: 12px;
-}
-.lp-zoom-line {
-  flex: 1 1 0;
-  height: 2px;
-  background: #ffffff4d;
-}
-.lp-zoom-knob {
-  position: absolute;
-  left: 22px;
-  top: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--color-text-primary);
-}
-.lp-timeline {
-  display: flex;
-  padding: var(--spacing-3);
-}
-
-/* ── Timeline motion ─────────────────────────────────────────────────── */
-.tl-block {
-  outline: none;
-  cursor: pointer;
-}
-.tl-block:focus-visible .tl-curve {
-  stroke: var(--color-action-primary);
-}
-.tl-curve {
-  transform-box: view-box;
-  animation: tl-grow var(--motion-base) var(--ease-enter) both;
-  transition:
-    fill var(--motion-base) var(--ease-standard),
-    stroke var(--motion-base) var(--ease-standard);
-}
-@keyframes tl-grow {
-  from {
-    transform: scaleY(0);
-  }
-}
-.tl-label,
-.tl-fade,
-.tl-value {
-  animation: im-fade var(--motion-base) var(--ease-enter) both;
-}
-/* The lane chip settles in from 96% scale: the one overshoot (accept only). */
-.tl-chip {
-  transform-box: view-box;
-  animation: tl-settle var(--motion-base) var(--ease-settle) both;
-  animation-delay: var(--motion-fast);
-}
-@keyframes tl-settle {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-}
-.tl-playhead {
-  transition: transform var(--motion-slow) var(--ease-standard);
-}
-@media (prefers-reduced-motion: reduce) {
-  .tl-curve {
-    animation-name: im-fade;
-  }
-}
-
-/* ── Scorecard ───────────────────────────────────────────────────────── */
-.lp-scorecard {
-  flex: 1 1 0;
-}
-.lp-sc-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-  padding: 0 12px 12px;
-}
-.lp-sc-head {
-  display: flex;
-  align-items: center;
-  height: 28px;
-  color: var(--color-text-tertiary);
-  font-size: var(--text-label);
-}
-.lp-sc-head + .im-row {
-  border-top: 1px solid var(--color-surface-app);
-}
-.lp-resolved,
-.lp-resolved .mono {
-  color: var(--color-text-disabled);
-}
-.lp-seeds {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--color-surface-app);
-}
-.lp-seed {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 28px;
-  border-bottom: 1px solid var(--color-surface-app);
-}
-.lp-seed-n {
-  flex: 1 1 0;
-  text-align: right;
-  padding-right: 8px;
-}
-
-/* ── Regression banner: in the screen, never a modal ─────────────────── */
-.lp-regression {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-3);
   flex-shrink: 0;
-  padding: var(--spacing-4);
-  border-left: 2px solid var(--color-signal-bad);
-  background: color-mix(in srgb, var(--color-signal-bad) 10%, var(--color-surface-panel));
-  animation: im-drop var(--motion-base) var(--ease-enter) both;
-}
-.lp-regression-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1 1 0;
-}
-.lp-regression-title {
-  color: var(--color-text-primary);
-  font-size: var(--text-base);
-  font-weight: var(--font-weight-medium);
-  line-height: 18px;
-}
-.lp-regression-body {
-  max-width: 720px;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  line-height: 18px;
-}
-.lp-regression-actions {
-  display: flex;
+  height: 12px;
   gap: var(--spacing-2);
+}
+.lp-score-sk.is-gap {
+  height: 18px;
+  padding-top: 6px;
 }
 
 /* ── Inspector ───────────────────────────────────────────────────────── */
-.lp-stop-slot {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition:
-    grid-template-rows var(--motion-base) var(--ease-enter),
-    margin-top var(--motion-base) var(--ease-enter);
+.insp-section-body.lp-budget-body {
+  gap: 0;
+  padding: 0 16px 12px;
 }
-.lp-stop-slot[data-open='false'] {
-  grid-template-rows: 0fr;
-  margin-top: -12px;
-}
-.lp-stop-inner {
-  min-height: 0;
-  overflow: hidden;
-}
-.lp-stop-card {
-  gap: var(--spacing-2);
-  transition:
-    opacity var(--motion-base) var(--ease-enter),
-    transform var(--motion-base) var(--ease-enter);
-}
-.lp-stop-slot[data-open='false'] .lp-stop-card {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-.lp-stop-head {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-}
-.lp-stop-title {
-  flex: 1 1 0;
-  color: var(--color-text-primary);
-  font-size: var(--text-base);
-  font-weight: var(--font-weight-medium);
-  line-height: 18px;
-}
-.lp-stop-meta {
-  font-size: var(--text-label);
-}
-.lp-stop-text {
-  color: var(--color-text-primary);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.lp-state-card {
-  gap: var(--spacing-3);
-}
-.lp-state-head {
+.lp-budget-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-2);
-}
-.lp-state-title {
-  margin-top: -4px;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: var(--font-weight-medium);
-  line-height: 16px;
-}
-.lp-card-detail {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  flex-wrap: wrap;
-}
-.lp-arc {
-  transform-origin: 5px 5px;
-  animation: fr-spin 1.2s linear infinite;
-}
-.lp-mini {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.lp-mini-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   height: 24px;
-  border-bottom: 1px solid var(--color-surface-app);
-}
-.lp-mini-k {
-  flex-shrink: 0;
-  width: 36px;
-}
-.lp-mini-text {
-  flex: 1 1 0;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  border-top: 1px solid var(--color-surface-app);
+  color: var(--color-text-secondary);
   white-space: nowrap;
 }
-.lp-offline {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--color-text-secondary);
+.lp-budget-row .mono {
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
 }
-.lp-offline-dot {
-  flex-shrink: 0;
-  width: 6px;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--color-text-disabled);
-}
-.lp-insp-body {
+.lp-findings {
   display: flex;
   flex-direction: column;
-}
-.lp-auto {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-top: var(--spacing-3);
-}
-
-/* In the scorecard's slot: fills it and carries the attempt's facts. */
-.lp-regression.is-slot {
   flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
 }
-.lp-regression-facts {
+.lp-findings .insp-section {
+  border-bottom: 0;
+}
+.insp-section-body.lp-findings-body {
+  gap: var(--spacing-2);
+  padding: 0 16px 16px;
+}
+.lp-findings-loading {
   display: flex;
   flex-direction: column;
-  margin-top: var(--spacing-3);
-  max-width: 720px;
-}
-.lp-regression-fact {
-  display: flex;
-  align-items: center;
-  height: 28px;
-  border-top: 1px solid color-mix(in srgb, var(--color-signal-bad) 22%, transparent);
-}
-.lp-regression-k {
-  width: 140px;
-  flex-shrink: 0;
-  color: var(--color-text-secondary);
-}
-.lp-regression-v {
-  flex: 1 1 0;
-  color: var(--color-text-primary);
-}
-.lp-regression-verdict {
-  color: var(--color-signal-bad);
-}
-.lp-regression-verdict.is-good {
-  color: var(--color-signal-good);
+  gap: var(--spacing-2);
 }

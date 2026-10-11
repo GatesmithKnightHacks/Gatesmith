@@ -35,7 +35,8 @@ export type LaneData = {
   tail?: { left: number; text: string }
 }
 
-export type Step = { x: number; y: number; label: string }
+/** A step on the primary lane; `labelX` moves its label clear of the needle. */
+export type Step = { x: number; y: number; label: string; labelX?: number }
 
 export type PrimaryData = {
   /** right of the header: "270 now ·" and the bold delta */
@@ -394,7 +395,7 @@ function PrimaryLane({ data }: { data: PrimaryData }) {
             ))}
             <g className="cv-text is-11">
               {data.steps.map((s, i) => (
-                <text key={s.label} x={i === 0 ? 6 : s.x + 7} y={i === 0 ? s.y - 6 : s.y - 6} className="cv-text-white">
+                <text key={s.label} x={i === 0 ? 6 : (s.labelX ?? s.x + 7)} y={s.y - 6} className="cv-text-white">
                   {s.label}
                 </text>
               ))}
