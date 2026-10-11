@@ -7,12 +7,14 @@
  * States (?state=…), the DS-06 state frames: never-run, loading, scoring, partial, gpu-off, focus.
  * (Older names still open: empty → never-run, seeds → the Seeds tab.)
  */
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
 import { ATTEMPTS, findingById, FINDINGS, GPU_OFF_MESSAGE, metric, RUN, type CanonicalFinding, type FindingId } from '../data/demo'
+import { LIVE, LIVE_SUBMISSION_UNAVAILABLE } from '../data/api'
+import { LiveStatus } from './workspace/LiveStatus'
 import { actions, SCORE_STAGES, useRun, type RunState } from '../data/run'
 import { SectionIcons } from '../ui/icons'
-import { EditorButton, Field, FieldRow, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Section } from '../ui/parts'
+import { EditorButton, FindingCard, Field, FieldRow, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Section } from '../ui/parts'
 import { Content, GpuStatus, Shell, TabStrip } from '../ui/Shell'
 import { Sk } from '../ui/Skeleton'
 import { Spinner, SpinnerRing } from '../ui/Spinner'
@@ -43,7 +45,8 @@ const SCORING_FRAME = { progress: 0.62, stage: 'measure' as const }
 
 export function S04Workspace() {
   const run = useRun()
-  const state = readState(useHashParams().get('state'))
+  const params = useHashParams()
+  const state = readState(params.get('state'))
 
   const [mode, setMode] = useState<'laptop' | 'platform'>('laptop')
   const [circuitTab, setCircuitTab] = useState<'circuit' | 'diff'>('circuit')
@@ -54,6 +57,8 @@ export function S04Workspace() {
   const [findingsOpen, setFindingsOpen] = useState(true)
   const [highlight, setHighlight] = useState<number | null>(null)
   const [auto, setAuto] = useState<boolean>(RUN.autoMode)
+
+  if (LIVE || run.real) return <LiveWorkspace run={run} job={params.get('job')} />
 
   /* ── Which frame are we in ─────────────────────────────────────────── */
   const neverRun = state === 'never-run'
@@ -444,6 +449,110 @@ export function S04Workspace() {
       </Content>
     </Shell>
   )
+}
+
+/** The live workspace shares the Paper shell without presenting its fixtures as engine output. */
+function LiveWorkspace({ run, job }: { run: RunState; job: string | null }) {
+  const [jobId, setJobId] = useState(job ?? '')
+  const [findingsOpen, setFindingsOpen] = useState(true)
+  const [targetOpen, setTargetOpen] = useState(false)
+  const real = run.real
+  const card = real?.cards[real.selectedCard]
+  const waiting = real && !real.error && !['done', 'failed', 'cancelled', 'unavailable'].includes(real.step)
+  useEffect(() => {
+    if (job) void actions.watchJob(job)
+  }, [job])
+
+  const inspector = (
+    <>
+      <ModeBlock line="Platform queue">
+        <PrimaryButton name="primary-action" disabled>
+          {waiting ? real.step : card ? `Scorecard · ${card.status}` : 'Run submission unavailable'}
+        </PrimaryButton>
+        <p role="status">{LIVE_SUBMISSION_UNAVAILABLE}</p>
+        <form onSubmit={(e) => { e.preventDefault(); void actions.watchJob(jobId) }}>
+          <label>
+            Existing job ID
+            <input className="field mono" value={jobId} onChange={(e) => setJobId(e.target.value)}
+              required pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+              placeholder="Job UUID" aria-label="Existing job ID" />
+          </label>
+          <button className="editor-btn" type="submit" disabled={!jobId.trim()}>Open job</button>
+        </form>
+      </ModeBlock>
+      {real?.error && <div className="ws-tile-pad" role="alert">{real.error}</div>}
+      {card && (
+        <Section icon={<TargetIcon />} title="Target" meta={card.target?.name ?? 'not recorded'} open={targetOpen} onToggle={() => setTargetOpen((v) => !v)}>
+          <FieldRow label="Backend"><Field value={card.target?.name ?? 'not recorded'} disabled /></FieldRow>
+          {card.target && <FieldRow label="Basis"><Field value={card.target.basis.join(' ')} disabled /></FieldRow>}
+          <FieldRow label="Score version"><Field value={card.item.score_version} disabled /></FieldRow>
+          {card.compile && <FieldRow label="Seeds"><Field value={card.compile.seeds.join(', ')} disabled /></FieldRow>}
+        </Section>
+      )}
+      <section className="insp-section ws-findings">
+        <button className="insp-section-header" aria-expanded={findingsOpen} onClick={() => setFindingsOpen((v) => !v)}>
+          {SectionIcons.list}<span className="insp-section-title">Findings</span>
+          <span className="ws-findings-meta">{card ? `${real!.findings.length} open · ${real!.suppressed} suppressed` : 'not scored'}</span>
+          <Chevron open={findingsOpen} />
+        </button>
+        {findingsOpen && (
+          <div className="ws-cards">
+            {real?.findings.map((f) => (
+              <FindingCard key={f.id} finding={f} selected={run.selectedFinding === f.id} actionLabel={null}
+                bottom={<span className="mono" style={{ overflowWrap: 'anywhere' }}>{f.evidence}</span>}>
+                <button className="editor-btn" onClick={() => actions.selectFinding(f.id)}>Inspect {f.id}</button>
+              </FindingCard>
+            ))}
+            <p>{card ? real!.findings.length ? 'Improvement requests are not connected to this workspace yet.' : 'No unsuppressed findings in this scorecard.' : 'Findings appear when a recorded scorecard is available.'}</p>
+          </div>
+        )}
+      </section>
+    </>
+  )
+
+  return (
+    <Shell rail="runs" railBadges={waiting ? { runs: 1 } : undefined} inspector={inspector}
+      status={<>
+        {real?.gpuOnline == null ? <span className="gpu-status">GPU status unknown</span> : <GpuStatus online={real.gpuOnline} />}
+        <span className="mono topbar-job">{real?.jobId ? `job ${real.jobId.slice(0, 8)}` : 'no job loaded'}</span>
+      </>}
+      tabs={<TabStrip tabs={real?.cards.length ? real.cards.map((c, i) => ({ id: c.item.item_sha256, label: c.item.id,
+        active: i === real.selectedCard, onClick: () => actions.selectScorecard(i) })) : [{ id: 'job', label: real?.example ?? 'Platform', active: true }]} />}
+    >
+      <Content>
+        <div className="ws-top">
+          <section className="tile ws-circuit-tile" aria-label="Circuit">
+            <div className="tile-header"><TileTab label="Circuit" active /><span className="ws-tile-meta">unavailable</span></div>
+            <LiveEmpty title="Circuit drawing unavailable" detail="The job API does not provide a circuit drawing yet." />
+          </section>
+          <section className="tile ws-score-tile" aria-label="Scorecard">
+            <div className="tile-header"><TileTab label="Scorecard" active />
+              <span className="ws-tile-meta">{card?.status ?? real?.step ?? 'no job loaded'}</span>
+            </div>
+            {card && real ? <>
+              {card.error && <p role="alert">{card.error.type}: {card.error.message}</p>}
+              {card.fallbacks_used.length > 0 && <p role="status">Recorded fallbacks: {JSON.stringify(card.fallbacks_used)}</p>}
+              <div style={{ overflow: 'auto' }}><ScorecardRows rows={real.rows} /></div>
+              <a className="editor-btn" href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(card, null, 2))}`}
+                download={`${card.item.id}.scorecard.json`}>Download recorded scorecard</a>
+            </> : real ? <LiveStatus real={real} /> : <LiveEmpty title="No job loaded" detail="Open an existing job to read its recorded events and scorecards." />}
+          </section>
+          <section className="tile ws-qasm-tile" aria-label="QASM">
+            <div className="tile-header"><TileTab label="QASM" active /><span className="ws-tile-meta">unavailable</span></div>
+            <LiveEmpty title="QASM unavailable" detail="Circuit artifacts are not exposed by the job API yet." />
+          </section>
+        </div>
+        <section className="tile ws-rounds" aria-label="Improvement rounds">
+          <div className="tile-header"><span>Improvement rounds</span><span className="ws-tile-meta">not connected</span></div>
+          <LiveEmpty title="No improvement run requested" detail="This workspace reads scoring jobs. Verified improvement attempts will appear after the loop is connected." />
+        </section>
+      </Content>
+    </Shell>
+  )
+}
+
+function LiveEmpty({ title, detail }: { title: string; detail: string }) {
+  return <div className="ws-diff-note"><span className="ws-diff-title">{title}</span><span className="ws-diff-sub">{detail}</span></div>
 }
 
 /* ── Local parts ─────────────────────────────────────────────────────── */

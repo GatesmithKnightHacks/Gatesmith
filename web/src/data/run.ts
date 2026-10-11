@@ -7,10 +7,9 @@ import { useSyncExternalStore } from 'react'
 import { navigate, ROUTES, type RoutePath } from '../app/router'
 import { accountActions, getAccount } from './account'
 import type { ScoreRow } from '../screens/workspace/data'
-import type { Finding } from '../ui/parts'
-import { api, ApiError, LIVE, type Job } from './api'
+import { api, ApiError, LIVE, LIVE_SUBMISSION_UNAVAILABLE, type JobEvent, type JobState, type ScorecardDoc } from './api'
 import { ATTEMPTS, RUN, TWO_QUBIT, progressOf, type AttemptStatus } from './demo'
-import { findingsFrom, rowsFrom, suppressedCount } from './live'
+import { findingsFrom, rowsFrom, suppressedCount, jobMessage, type LiveFinding } from './live'
 
 export type Phase =
   | 'intake' // S-01
@@ -29,10 +28,13 @@ export type Phase =
 export type RealRun = {
   example: string
   jobId: string | null
-  step: 'submitting' | 'queued' | 'claimed' | 'running' | 'diagnose' | 'done'
+  step: 'submitting' | 'unavailable' | JobState
+  events: JobEvent[]
+  cards: ScorecardDoc[]
+  selectedCard: number
   message: string
   gpuOnline: boolean | null
-  findings: Finding[]
+  findings: LiveFinding[]
   rows: ScoreRow[]
   suppressed: number
   scorecardStatus: string | null
@@ -190,144 +192,109 @@ const MAX_POLL_FAILURES = 3
 /** Bumped by every new live run and by reset, so answers for an abandoned run are ignored. */
 let generation = 0
 
-const LIVE_PROGRESS: Record<RealRun['step'], number> = {
-  submitting: 0.03,
-  queued: 0.08,
-  claimed: 0.2,
-  running: 0.45,
-  diagnose: 0.9,
-  done: 1,
-}
-const LIVE_STAGE: Record<RealRun['step'], ScoreStage> = {
-  submitting: 'validate',
-  queued: 'validate',
-  claimed: 'validate',
-  running: 'measure',
-  diagnose: 'diagnose',
-  done: 'done',
-}
-
 function setReal(gen: number, patch: Partial<RealRun>, extra: Partial<RunState> = {}) {
   if (gen !== generation || !state.real) return
   const real = { ...state.real, ...patch }
-  set({ ...extra, real, ...(patch.step ? { scoreProgress: LIVE_PROGRESS[real.step], scoreStage: LIVE_STAGE[real.step] } : {}) })
+  set({ ...extra, real })
 }
 
 function failLive(gen: number, message: string) {
   setReal(gen, { error: message }, { phase: 'scored' })
 }
 
-function stepFor(job: Job, events: { kind: string; data: { item_id?: string } }[], current: RealRun): Partial<RealRun> {
-  if (events.some((e) => e.kind === 'run_finished') || (current.step === 'diagnose' && job.state === 'running'))
-    return { step: 'diagnose', message: 'Writing the scorecard' }
-  if (job.state === 'running') {
-    const item = [...events].reverse().find((e) => e.kind === 'item_started')
-    if (item) return { step: 'running', message: `Scoring ${item.data.item_id ?? 'the circuit'} on the worker` }
-    return { step: 'running', message: current.step === 'running' ? current.message : 'Scoring on the worker' }
-  }
-  if (job.state === 'claimed') return { step: 'claimed', message: 'A worker claimed the job' }
-  return {
-    step: 'queued',
-    message:
-      job.attempts > 0
-        ? `A worker stopped; waiting for another (attempt ${job.attempts + 1} of ${job.max_attempts})`
-        : 'Waiting for a worker to claim the job',
-  }
+function cardFields(card: ScorecardDoc): Partial<RealRun> {
+  return { findings: findingsFrom(card), rows: rowsFrom(card), suppressed: suppressedCount(card), scorecardStatus: card.status }
 }
 
 async function finishLive(gen: number, jobId: string) {
   const rows = await api.scorecards(jobId)
   if (gen !== generation) return
   if (!rows.length) return failLive(gen, 'The job finished without a scorecard.')
-  const card = rows[0].scorecard
-  const findings = findingsFrom(card)
-  setReal(
-    gen,
-    {
-      step: 'done',
-      message: `Scored ${card.item.id}`,
-      findings,
-      rows: rowsFrom(card),
-      suppressed: suppressedCount(card),
-      scorecardStatus: card.status,
-    },
-    { phase: 'findings', findingsShown: 0 },
-  )
-  // M2, as in the scripted flow: the cards land 40 ms apart, then the run rests on the scorecard.
-  for (let i = 1; i <= findings.length; i++) after(80 + (i - 1) * 40, () => gen === generation && set({ findingsShown: i }))
-  after(80 + findings.length * 40 + 200, () => gen === generation && set({ phase: 'scored' }))
+  const cards = rows.map((r) => r.scorecard)
+  setReal(gen, { step: 'done', cards, selectedCard: 0, ...cardFields(cards[0]), message: 'The worker finished the job' },
+    { phase: 'scored', findingsShown: cards[0].findings.length })
+}
+
+async function readLive(gen: number, jobId: string, lastSeq: number): Promise<number | null> {
+  const [job, events, health] = await Promise.all([api.job(jobId), api.events(jobId, lastSeq), api.health()])
+  if (gen !== generation || !state.real) return null
+  if (job.id !== jobId) throw new ApiError(502, 'The platform returned a different job identity.')
+  const known = new Map(state.real.events.map((e) => [e.seq, e]))
+  for (const event of events) {
+    const previous = known.get(event.seq)
+    if (previous && JSON.stringify(previous) !== JSON.stringify(event)) throw new ApiError(502, `Conflicting event replay at sequence ${event.seq}.`)
+    known.set(event.seq, event)
+  }
+  setReal(gen, { example: job.example ?? job.kind, step: job.state, gpuOnline: health.gpu_online,
+    events: [...known.values()].sort((a, b) => a.seq - b.seq), message: jobMessage(job, events) })
+  if (job.state === 'done') { await finishLive(gen, jobId); return null }
+  if (job.state === 'failed' || job.state === 'cancelled') {
+    failLive(gen, jobMessage(job, events)); return null
+  }
+  return Math.max(lastSeq, ...events.map((e) => e.seq))
 }
 
 function pollLive(gen: number, jobId: string, lastSeq: number, failures: number) {
   after(POLL_MS, async () => {
     if (gen !== generation) return
     try {
-      const [job, events] = await Promise.all([api.job(jobId), api.events(jobId, lastSeq)])
-      if (gen !== generation || !state.real) return
-      if (job.state === 'done') return await finishLive(gen, jobId)
-      if (job.state === 'failed') return failLive(gen, `The job failed: ${job.error?.message ?? 'no details were recorded'}`)
-      if (job.state === 'cancelled') return failLive(gen, 'The job was cancelled.')
-      setReal(gen, stepFor(job, events, state.real))
-      pollLive(gen, jobId, events.length ? events[events.length - 1].seq : lastSeq, 0)
+      const seq = await readLive(gen, jobId, lastSeq)
+      if (seq !== null) pollLive(gen, jobId, seq, 0)
     } catch (e) {
       if (gen !== generation) return
-      const message = e instanceof ApiError ? e.message : String(e)
-      if (failures + 1 >= MAX_POLL_FAILURES) return failLive(gen, `Lost contact with the platform: ${message}`)
-      pollLive(gen, jobId, lastSeq, failures + 1)
+      const message = e instanceof Error ? e.message : String(e)
+      const transient = e instanceof ApiError && (e.status === 0 || e.status === 429 || e.status >= 500)
+      if (!transient || failures + 1 >= MAX_POLL_FAILURES) return failLive(gen, `Lost contact with the platform: ${message}`)
+      console.warn(`Platform poll attempt ${failures + 1} failed: ${message}`)
+      after(POLL_MS * 2 ** failures, () => pollLive(gen, jobId, lastSeq, failures + 1))
     }
   })
 }
 
-/** S-03 Confirm and score in the live build: submit a real job and follow it until it is scored. */
-async function runLive() {
+function startReal(example: string, step: RealRun['step'], message: string, jobId: string | null = null) {
   const gen = ++generation
   clearTimers()
-  const example = state.selectedExample
-  set({
-    live: true,
-    phase: 'scoring',
-    findingsShown: 0,
-    selectedFinding: null,
-    round: 1,
-    loopProgress: 0,
-    attempts: allAttempts(() => 'hidden'),
-    accepted: false,
-    stopCard: false,
-    real: {
-      example,
-      jobId: null,
-      step: 'submitting',
-      message: 'Submitting the job',
-      gpuOnline: null,
-      findings: [],
-      rows: [],
-      suppressed: 0,
-      scorecardStatus: null,
-      error: null,
-    },
-  })
-  setReal(gen, { step: 'submitting' })
+  set({ ...notStarted, live: true, phase: 'scoring', findingsShown: 0, selectedFinding: null,
+    accepted: false, stopCard: false, scoreProgress: 0,
+    real: { example, jobId, step, message, gpuOnline: null, events: [], cards: [], selectedCard: 0,
+      findings: [], rows: [], suppressed: 0, scorecardStatus: null, error: null } })
+  return gen
+}
+
+/** A server-owned authenticated submission route must be installed before enabling browser writes. */
+function runLive() {
+  const gen = startReal(state.selectedExample, 'unavailable', LIVE_SUBMISSION_UNAVAILABLE)
+  failLive(gen, LIVE_SUBMISSION_UNAVAILABLE)
   navigate(ROUTES.workspace, { transition: 'confirm' })
+}
+
+async function watchLive(jobId: string) {
+  const gen = startReal('Existing job', 'submitting', 'Loading the recorded job', jobId)
   try {
-    const health = await api.health()
-    setReal(gen, { gpuOnline: health.gpu_online })
-    if (!health.examples.includes(example))
-      return failLive(gen, `${example} is a design example only. The platform runs ${health.examples.join(' and ')}.`)
-    const { id } = await api.submitJob(example)
-    setReal(gen, { jobId: id, step: 'queued', message: 'Waiting for a worker to claim the job' })
-    pollLive(gen, id, 0, 0)
+    const seq = await readLive(gen, jobId, 0)
+    if (seq !== null) pollLive(gen, jobId, seq, 0)
   } catch (e) {
-    failLive(gen, e instanceof ApiError ? e.message : String(e))
+    failLive(gen, e instanceof Error ? e.message : String(e))
   }
 }
 
 export const actions = {
+  watchJob(jobId: string) {
+    return watchLive(jobId.trim())
+  },
+
+  selectScorecard(index: number) {
+    const card = state.real?.cards[index]
+    if (!card) return
+    setReal(generation, { selectedCard: index, ...cardFields(card) }, { selectedFinding: null, findingsShown: card.findings.length })
+  },
   selectExample(id: RunState['selectedExample']) {
     set({ selectedExample: id })
   },
 
   /** S-01 Continue → S-03. Validation checks land top to bottom, 40 ms apart. */
   continueToPreflight() {
+    if (LIVE || state.real) return runLive()
     clearTimers()
     // Keep the picked example: the live build submits it (the snapshot would reset it to sidechain_qaoa).
     set({ ...workspaceSnapshot, ...SNAPSHOTS[ROUTES.preflight], selectedExample: state.selectedExample, live: true, preflightChecks: 0 })
@@ -337,7 +304,7 @@ export const actions = {
 
   /** S-03 Confirm and score → S-04 (M1). The scan runs exactly as long as the engine. */
   confirmAndScore() {
-    if (LIVE) return void runLive() // live build: a real job instead of the scripted scan
+    if (LIVE || state.real) return runLive() // authenticated server submission is explicitly pending
     clearTimers()
     set({
       ...notStarted,
@@ -372,6 +339,7 @@ export const actions = {
    * waits on the local proposal for D03 block 2 at 400 of 900 s.
    */
   runRounds() {
+    if (LIVE || state.real) return
     set({ phase: 'looping', round: 1, elapsed: 4 })
     const step = 1200 // M6: Play steps one round per 1.2 s
     const reveal = (n: number, s: AttemptStatus) => set((st) => ({ attempts: { ...st.attempts, [n]: s } }))
@@ -387,11 +355,12 @@ export const actions = {
   },
 
   selectFinding(id: string) {
-    set({ selectedFinding: normalizeFinding(id) })
+    set({ selectedFinding: state.real ? id : normalizeFinding(id) })
   },
 
   /** M3: the finding card grows into the fix review. The candidate fills once the engine verified it. */
   requestFix(id = 'D03-2') {
+    if (LIVE || state.real) return
     set({ selectedFinding: normalizeFinding(id), phase: 'review', candidate: 'writing', ladderStep: 0 })
     navigate(ROUTES.fixReview, { transition: 'request-fix' })
     if (!state.live) {
@@ -404,6 +373,7 @@ export const actions = {
 
   /** M4: the accept moment, then the loop view (S-07) finishes round 4 and stops (M5). */
   accept() {
+    if (LIVE || state.real) return
     // From a deep-linked snapshot too: the accept moment starts the live flow from here.
     set({ phase: 'accepting', accepted: true, live: true, elapsed: 405 })
     // The count swaps at 0 ms (281 → 270); the delta fades in beside it. No digit ticking.
@@ -420,16 +390,19 @@ export const actions = {
 
   /** Keep current: the next finding (D04) goes to the models. */
   keepCurrent() {
+    if (LIVE || state.real) return
     set({ phase: 'looping' })
     navigate(ROUTES.workspace, { transition: 'back' })
   },
 
   continueAnyway() {
+    if (LIVE || state.real) return
     set({ stopCard: false })
   },
 
   /** M5: Export final carries the circuit into the report, and the finished run is saved to the account when one is signed in. */
   exportFinal() {
+    if (LIVE || state.real) return
     set({ phase: 'report' })
     if (getAccount().session) {
       void accountActions.saveRun({
@@ -448,6 +421,7 @@ export const actions = {
   },
 
   openExport() {
+    if (LIVE || state.real) return
     set({ phase: 'export' })
     navigate(ROUTES.export, { transition: 'forward' })
   },
