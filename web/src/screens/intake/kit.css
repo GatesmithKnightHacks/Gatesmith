@@ -1,58 +1,5 @@
 /* Intake kit · shared by S-01, S-02, S-03. Values measured on the Paper boards and DS-08. */
 
-/* ── Spinner: 1000 ms linear per turn; reduced motion = static ring ── */
-.ink-spinner {
-  flex-shrink: 0;
-  color: var(--color-text-secondary);
-  animation: ink-spin var(--motion-spin, 1000ms) linear infinite;
-}
-.ink-spinner-track {
-  stroke: var(--color-surface-selected);
-}
-.ink-spinner-arc {
-  stroke: currentColor;
-}
-.ink-spinner.is-on-accent {
-  color: var(--color-text-on-accent);
-}
-.ink-spinner.is-on-accent .ink-spinner-track {
-  stroke: color-mix(in srgb, var(--color-text-on-accent) 25%, transparent);
-}
-@keyframes ink-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* ── Shimmer: #0F1F23 block, #243237 band at 24% width, 1200 ms linear loop ── */
-.ink-shim {
-  display: inline-block;
-  flex-shrink: 0;
-  border-radius: var(--radius-xs);
-  background-color: var(--color-surface-inset);
-  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-panel) 50%, transparent 100%);
-  background-size: 24% 100%;
-  background-repeat: no-repeat;
-  animation: ink-sweep var(--motion-shimmer, 1200ms) linear infinite;
-}
-/* on a panel-colored header strip the block is #243237 and the band #2A383D */
-.ink-shim.is-strip {
-  background-color: var(--color-surface-panel);
-  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-raised) 50%, transparent 100%);
-}
-@keyframes ink-sweep {
-  from {
-    background-position: -32% 0;
-  }
-  to {
-    background-position: 132% 0;
-  }
-}
-@keyframes ink-pulse {
-  50% {
-    opacity: 0.6;
-  }
-}
 /* content arriving where the blocks were: 400 ms crossfade */
 .ink-arrive {
   animation: ink-fade var(--motion-load, 400ms) ease both;
@@ -65,23 +12,6 @@
   from {
     opacity: 0;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ink-spinner {
-    animation: none;
-  }
-  .ink-shim {
-    background-image: none;
-    animation: ink-pulse 1.2s ease infinite;
-  }
-}
-:root[data-reduce-motion] .ink-spinner {
-  animation: none;
-}
-:root[data-reduce-motion] .ink-shim {
-  background-image: none;
-  animation: ink-pulse 1.2s ease infinite;
 }
 
 /* ── Keyboard focus: 2 px yellow outline, 2 px offset, at 0 ms ── */

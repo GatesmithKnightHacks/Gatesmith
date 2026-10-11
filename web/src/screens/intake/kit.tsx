@@ -6,32 +6,17 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { redo, undo, useHistoryPosition } from '../../app/router'
 import { IconRedo, IconUndo } from '../../ui/icons'
+import { Sk } from '../../ui/Skeleton'
+import { SpinnerRing } from '../../ui/Spinner'
 import './kit.css'
 
-/* ── Spinner: ring, 2 px stroke, 270° arc, 1000 ms per turn, always beside a stage word ── */
+/* ── Spinner and shimmer: the shared DS-08 parts (ring beside a stage word; blocks in phase) ── */
 export function Spinner({ size = 14, onAccent }: { size?: 14 | 20 | 28; onAccent?: boolean }) {
-  const r = (size - 2) / 2
-  const c = 2 * Math.PI * r
-  return (
-    <svg className={`ink-spinner${onAccent ? ' is-on-accent' : ''}`} width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
-      <circle className="ink-spinner-track" cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth="2" />
-      <circle
-        className="ink-spinner-arc"
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeDasharray={`${(c * 0.75).toFixed(2)} ${c.toFixed(2)}`}
-      />
-    </svg>
-  )
+  return <SpinnerRing size={size} tone={onAccent ? 'accent' : 'panel'} />
 }
 
-/* ── Shimmer block: #0F1F23 r2 sized to the content, a #243237 band at 24% sweeps over it ── */
 export function Shim({ w, h = 12, onPanelStrip, style }: { w: number | string; h?: number; onPanelStrip?: boolean; style?: CSSProperties }) {
-  return <span aria-hidden className={`ink-shim${onPanelStrip ? ' is-strip' : ''}`} style={{ width: w, height: h, ...style }} />
+  return <Sk w={w} h={h} strip={onPanelStrip} style={style} />
 }
 
 /* ── Status glyphs at 10 px, colored by their word ───────────────────── */
