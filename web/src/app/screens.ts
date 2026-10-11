@@ -20,6 +20,10 @@ const LOADERS: Record<RoutePath, Loader> = {
   [ROUTES.leaderboard]: () => import('../screens/S14Leaderboard').then((m) => ({ default: m.S14Leaderboard })),
   [ROUTES.screening]: () => import('../screens/S15Screening').then((m) => ({ default: m.S15Screening })),
   [ROUTES.bench]: () => import('../screens/S16Bench').then((m) => ({ default: m.S16Bench })),
+  [ROUTES.signIn]: () => import('../screens/S17SignIn').then((m) => ({ default: m.S17SignIn })),
+  [ROUTES.signUp]: () => import('../screens/S18CreateAccount').then((m) => ({ default: m.S18CreateAccount })),
+  [ROUTES.account]: () => import('../screens/S19Account').then((m) => ({ default: m.S19Account })),
+  [ROUTES.gate]: () => import('../screens/S20Gate').then((m) => ({ default: m.S20Gate })),
 }
 
 const loaded = new Map<RoutePath, Promise<unknown>>()
