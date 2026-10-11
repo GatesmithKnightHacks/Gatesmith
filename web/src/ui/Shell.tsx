@@ -12,6 +12,7 @@
  */
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { navigate, redo, ROUTES, undo, useHistoryPosition, type RoutePath } from '../app/router'
+import { useAccount } from '../data/account'
 import { actions } from '../data/run'
 import { useReducedMotion, setReducedMotion } from './motionPreference'
 import { usePresence } from './presence'
@@ -80,6 +81,7 @@ export function Shell({ context = 'Workbench', rail, railBadges, tabs, inspector
 }
 
 export function TopBar({ context, status }: { context: string; status?: ReactNode }) {
+  const { session } = useAccount()
   return (
     <header className="topbar">
       <button className="topbar-brand" onClick={() => navigate(ROUTES.newRun)} aria-label="Gatesmith home">
@@ -92,6 +94,11 @@ export function TopBar({ context, status }: { context: string; status?: ReactNod
           <>
             <GpuStatus online />
             <span className="mono topbar-job">job 7f3a·0412</span>
+            {session && (
+              <span className="mono topbar-job" title="Signed in">
+                {session.handle}
+              </span>
+            )}
           </>
         )}
       </div>

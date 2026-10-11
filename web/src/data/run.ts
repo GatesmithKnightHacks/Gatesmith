@@ -5,6 +5,7 @@
  */
 import { useSyncExternalStore } from 'react'
 import { navigate, ROUTES, type RoutePath } from '../app/router'
+import { accountActions, getAccount } from './account'
 import { ATTEMPTS, RUN, TWO_QUBIT, progressOf, type AttemptStatus } from './demo'
 
 export type Phase =
@@ -265,9 +266,22 @@ export const actions = {
     set({ stopCard: false })
   },
 
-  /** M5: Export final carries the circuit into the report. */
+  /** M5: Export final carries the circuit into the report, and the finished run is saved to the account when one is signed in. */
   exportFinal() {
     set({ phase: 'report' })
+    if (getAccount().session) {
+      void accountActions.saveRun({
+        id: RUN.job,
+        item: RUN.item,
+        qubits: RUN.qubits,
+        state: 'done',
+        startedAt: '2026-10-10 11:34',
+        durationS: 490,
+        twoQubitCount: 270,
+        summary: 'two_qubit_count 321 → 270 · 4 rounds · stopped by the engine',
+        bytes: 42_700,
+      })
+    }
     navigate(ROUTES.report, { transition: 'export-final' })
   },
 
