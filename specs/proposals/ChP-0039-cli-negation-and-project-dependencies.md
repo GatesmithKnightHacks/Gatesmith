@@ -159,4 +159,4 @@ command/negation syntax and retaining `engine` mode; do not delete users' projec
 ## 7. Decision
 
 - Decided by: user · Date: 2026-10-11 · Outcome: approved ("Yes I approve", referring to ChP-0039 and ChP-0045).
-- Applied to specs: no. CHANGELOG: no. Implementation: CLI, preparation, sandbox selection and provenance implemented; synthetic offline integration passed (lab/20261011-deps-isolation). Full checks/review pending.
+- Applied to specs: yes, 2026-10-11 (03, 05 §§1–2/4/4.5/11, 15; §4.3 of the text placed as 05 §4.5 because §4.3 exists; `bench --not fusion` of ChP-0046 named as the one extra negatable). CHANGELOG: yes. Implementation: CLI, preparation, sandbox selection and provenance implemented; synthetic offline integration passed (lab/20261011-deps-isolation). Full checks/review pending.

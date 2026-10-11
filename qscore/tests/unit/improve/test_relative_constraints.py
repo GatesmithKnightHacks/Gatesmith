@@ -74,3 +74,21 @@ def test_metric_mismatch_and_overflow():
         check_relative_constraint(other, metric(0), 1, "min_vs_baseline")
     with pytest.raises(VerificationError, match="bound is not finite"):
         check_relative_constraint(metric(1e308), metric(0), 1e308, "max_vs_baseline")
+
+
+def test_statistical_metrics_need_the_interval_rule():
+    stat = MetricResult(
+        id="reliability_heuristic",
+        group="hardware",
+        status="computed",
+        value=0.5,
+        kind="statistical",
+        uncertainty={"ci95": [0.4, 0.6], "trials": 5},
+    )
+    with pytest.raises(VerificationError, match="statistical"):
+        check_relative_constraint(stat, metric(0.5), 1.0, "min_vs_baseline")
+
+
+def test_non_numeric_factor_fails_typed():
+    with pytest.raises(VerificationError, match="factor"):
+        check_relative_constraint(metric(0.5), metric(0.5), "1", "min_vs_baseline")  # type: ignore[arg-type]

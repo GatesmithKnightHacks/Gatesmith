@@ -30,7 +30,12 @@ class ConfigError(QscoreError):
 
 
 SandboxKind = Literal[
-    "timeout", "import_error", "user_exception", "not_a_circuit", "args_for_circuit"
+    "timeout",
+    "import_error",
+    "user_exception",
+    "not_a_circuit",
+    "args_for_circuit",
+    "qpy_incompatible",
 ]
 
 

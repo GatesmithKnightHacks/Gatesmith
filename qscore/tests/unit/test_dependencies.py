@@ -45,7 +45,7 @@ def test_refusal_does_not_install_or_edit(project, monkeypatch):
 def test_success_updates_only_env_with_comments(project, monkeypatch):
     root, manifest = project
     seen = []
-    monkeypatch.setattr(deps, "prepare", lambda plan: plan.environment)
+    monkeypatch.setattr(deps, "prepare", lambda plan: deps.Prepared(plan.environment, None))
     result = services.prepare_dependencies(manifest, seen.append, confirm="yes")
     assert result.installed and result.environment == root / ".qscore/venv"
     text = manifest.read_text()
@@ -55,12 +55,43 @@ def test_success_updates_only_env_with_comments(project, monkeypatch):
     assert "build hooks" in seen[0].message
 
 
+def test_manifest_diff_is_exactly_the_env_line(project, monkeypatch):
+    _, manifest = project
+    before = manifest.read_text().splitlines()
+    seen = []
+    monkeypatch.setattr(deps, "prepare", lambda plan: deps.Prepared(plan.environment, None))
+
+    def confirm(summary):
+        seen.append(summary)
+        return True
+
+    services.prepare_dependencies(manifest, confirm=confirm)
+    changed = [
+        line
+        for line in seen[0].splitlines()
+        if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))
+    ]
+    assert changed == ["+    env: uv"]
+    after = manifest.read_text().splitlines()
+    assert [line for line in after if line not in before] == ["    env: uv"]
+    assert [line for line in before if line not in after] == []
+
+
+def test_kept_previous_environment_is_announced(project, monkeypatch):
+    root, manifest = project
+    kept = root / ".qscore/venv-preparing-x/previous-venv"
+    monkeypatch.setattr(deps, "prepare", lambda plan: deps.Prepared(plan.environment, kept))
+    seen = []
+    services.prepare_dependencies(manifest, seen.append, confirm="yes")
+    assert any(e.kind == "warning" and str(kept) in e.message for e in seen)
+
+
 def test_changed_manifest_not_overwritten(project, monkeypatch):
     _, manifest = project
 
     def prepare(plan):
         manifest.write_text("researcher edit\n")
-        return plan.environment
+        return deps.Prepared(plan.environment, None)
 
     monkeypatch.setattr(deps, "prepare", prepare)
     with pytest.raises(RecordError, match="changed"):

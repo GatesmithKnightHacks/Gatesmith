@@ -10,7 +10,7 @@ import math
 from typing import Literal
 
 from qscore.errors import VerificationError
-from qscore.schemas.common import Status
+from qscore.schemas.common import MetricKind, Status
 from qscore.schemas.records import ConstraintCheck
 from qscore.schemas.scorecard import MetricResult
 
@@ -28,6 +28,9 @@ def check_relative_constraint(
         raise VerificationError(f"unsupported relative constraint {direction!r}")
     values = []
     for name, metric in (("baseline", baseline), ("candidate", candidate)):
+        if metric.kind is MetricKind.STATISTICAL:
+            # 08 §4: statistical metrics compare by intervals, not point values.
+            raise VerificationError(f"{name} metric {metric.id} is statistical (interval rule)")
         if metric.status != Status.COMPUTED:
             raise VerificationError(f"{name} metric {metric.id} is {metric.status}, not computed")
         value = metric.value
@@ -36,7 +39,12 @@ def check_relative_constraint(
         if not math.isfinite(value) or value < 0:
             raise VerificationError(f"{name} metric {metric.id} must be finite and nonnegative")
         values.append(float(value))
-    if isinstance(factor, bool) or not math.isfinite(factor) or factor < 0:
+    if (
+        isinstance(factor, bool)
+        or not isinstance(factor, (int, float))
+        or not math.isfinite(factor)
+        or factor < 0
+    ):
         raise VerificationError("relative constraint factor must be finite and nonnegative")
     before, after = values
     bound = factor * before

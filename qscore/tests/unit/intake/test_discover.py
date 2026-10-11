@@ -216,6 +216,7 @@ def test_decoys_yield_exactly_the_real_candidates(tmp_path: Path) -> None:
     builder += "    return QuantumCircuit(n)\n"
     for skipped in (
         ".venv/lib",
+        ".qscore/venv/lib",
         ".git/hooks",
         "build",
         "dist",

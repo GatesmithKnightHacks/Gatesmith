@@ -33,7 +33,9 @@ from qscore.schemas.run import IssueModel, IssueReportModel
 SourceKind = Literal["qasm", "python", "notebook"]
 Signal = Literal["annotation", "returns_circuit", "library_builder", "module_variable"]
 
-SKIP_DIRS = frozenset({".venv", ".git", "build", "dist", "node_modules", ".ipynb_checkpoints"})
+SKIP_DIRS = frozenset(
+    {".venv", ".qscore", ".git", "build", "dist", "node_modules", ".ipynb_checkpoints"}
+)
 SIZE_LIKE = frozenset({"n", "num_qubits", "n_qubits", "size", "n_residues", "depth", "p", "reps"})
 CIRCUIT_CLASS = "QuantumCircuit"
 # QuantumCircuit methods that return a new circuit (Qiskit 1.x/2.x API).

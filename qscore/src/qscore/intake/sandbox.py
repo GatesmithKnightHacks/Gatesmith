@@ -24,6 +24,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from qiskit import QuantumCircuit, qpy
+from qiskit.qpy.exceptions import QpyError
 
 from qscore.config import get_settings
 from qscore.errors import ConfigError, SandboxError
@@ -191,5 +192,13 @@ def run_builder(
         if not status["ok"]:
             raise SandboxError(f"{where}: {status['traceback'].rstrip()}", status["kind"])
         data = qpy_path.read_bytes()
-    (circuit,) = qpy.load(io.BytesIO(data))
+    try:
+        (circuit,) = qpy.load(io.BytesIO(data))
+    except (QpyError, TypeError) as exc:
+        # Qiskit cannot rebuild some library gates from QPY (e.g. FullAdderGate): Q306.
+        raise SandboxError(
+            f"{where}: the engine cannot reload the builder's QPY "
+            f"({type(exc).__name__}: {exc}); decompose library gates before returning",
+            "qpy_incompatible",
+        ) from exc
     return SandboxResult(circuit, data)

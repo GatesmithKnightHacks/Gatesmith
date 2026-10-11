@@ -1,6 +1,7 @@
 """Approved ChP-0039: dependency plans, isolated preparation and preserved failures."""
 
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -110,18 +111,21 @@ def test_verified_promotion_and_version_failure(tmp_path, monkeypatch, bad_versi
 
     monkeypatch.setattr(deps, "_run", run)
     if bad_versions:
-        with pytest.raises(RecordError, match="incompatible"):
+        with pytest.raises(ConfigError, match="the engine needs Python"):
             deps.prepare(inspected)
         assert marker.exists()
         assert not (inspected.environment.parent / "deps.json").exists()
     else:
-        assert deps.prepare(inspected) == inspected.environment
+        prepared = deps.prepare(inspected)
+        assert prepared.environment == inspected.environment
         assert (inspected.environment / "new").exists()
         record = json.loads((inspected.environment.parent / "deps.json").read_text())
         assert record["inputs"] == inspected.hashes
         assert record["packages"] == [{"name": "qiskit", "version": inspected.qiskit_version}]
         assert any(c[1:3] == ["pip", "check"] for c in calls)
-        assert list(inspected.environment.parent.glob("venv-preparing-*/previous-venv/original"))
+        kept = list(inspected.environment.parent.glob("venv-preparing-*/previous-venv"))
+        assert kept and (kept[0] / "original").exists()
+        assert prepared.previous == kept[0]
 
 
 def test_install_logs_strip_credentials_and_secrets(tmp_path, monkeypatch):
@@ -173,3 +177,42 @@ def test_manifest_record_failure_rolls_back_promotion(tmp_path, monkeypatch):
         deps.prepare(inspected)
     assert (inspected.environment / "original").exists()
     assert record.read_text() == "old metadata"
+
+
+def test_plan_shows_the_exact_install_command(tmp_path, monkeypatch):
+    inspected = plan(tmp_path, monkeypatch)
+    staged = inspected.environment.parent / "venv-preparing-*"
+    exact = deps.install_args(
+        inspected,
+        str(deps.environment_python(staged / "venv")),
+        f"{staged}/qscore-constraints.txt (qiskit=={inspected.qiskit_version})",
+    )
+    shown = deps.render_plan(inspected).splitlines()
+    assert f"Install: {shlex.join(exact)}" in shown
+    assert exact[1:5] == ["pip", "install", "--no-config", "--no-python-downloads"]
+    assert exact[-2:] == ["--requirement", str(tmp_path / "requirements.txt")]
+
+
+def test_build_environment_keeps_proxies_but_not_secrets(monkeypatch):
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy:3128")
+    monkeypatch.setenv("no_proxy", "localhost")
+    monkeypatch.setenv("HF_TOKEN", "hf_secret")
+    env = deps._env()
+    assert env["HTTPS_PROXY"] == "http://proxy:3128" and env["no_proxy"] == "localhost"
+    assert "HF_TOKEN" not in env
+
+
+@pytest.mark.parametrize(
+    ("files", "expected"),
+    [
+        ({"pyproject.toml": "[tool.ruff]\nline-length = 99\n"}, False),
+        ({"pyproject.toml": "[project]\nname = 'x'\n"}, True),
+        ({"pyproject.toml": "not toml ["}, True),
+        ({"requirements.txt": "networkx\n"}, True),
+        ({}, False),
+    ],
+)
+def test_discovery_hint_matches_what_deps_installs(tmp_path, files, expected):
+    for name, body in files.items():
+        (tmp_path / name).write_text(body)
+    assert deps.declares_dependencies(tmp_path) is expected

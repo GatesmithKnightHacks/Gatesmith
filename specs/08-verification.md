@@ -33,7 +33,7 @@ Order of checks:
 
 **Measurements:** final measurements are removed for unitary checks and the measurement maps compared separately (step 1). Mid-circuit measurement under `exact_unitary` → `unsupported`.
 
-**Global phase:** ignored when `global_phase: ignore` (default); otherwise use `Operator.equal` (exact including phase).
+**Global phase:** ignored when `global_phase: ignore` (default); otherwise use `Operator.__eq__` (`==`; exact including phase — Qiskit has no `Operator.equal`, ChP-0049).
 
 ## 3. Methods (`verify/equivalence.py`)
 
@@ -59,6 +59,7 @@ A candidate is **accepted** only if all hold:
 2. Verification `passed` — or, when `evidence.verification: probabilistic_ok`, probabilistic evidence passed and the attempt and scorecard are labelled `probabilistic`.
 3. The primary metric is **strictly better** than the current best under the same target, seeds and settings (the candidate is re-scored with the same compile seeds).
 4. Every constraint holds (`max_vs_baseline`, `min_vs_baseline`, `max`, `min`), including the `reliability` invariant (the fidelity floor): not below the baseline's reliability heuristic, nor below its simulated task score when one exists.
+   For finite nonnegative baseline B, candidate C and relative factor f, evaluate `max_vs_baseline: f` as `C <= f*B`, and `min_vs_baseline: f` as `C >= f*B`. At B=0, the upper constraint requires C<=0; the lower constraint requires C>=0. Report B, C, f and the resulting bound as evidence. Do not compute C/B, insert an epsilon, or infer a passed comparison from an unavailable/failed metric: a constraint metric that is not `computed`, not scalar, or `statistical` (interval rule) raises `VerificationError` and the candidate is not accepted. The reliability invariant uses the same lower-bound rule. All other acceptance requirements, including exact verification and strict primary improvement, remain mandatory. Ratios for negative baselines are unsupported pending a metric-specific rule; do not reverse an inequality implicitly. (ChP-0045)
 
 Comparisons:
 - Deterministic metrics compare exactly; **a tie keeps the current circuit**.

@@ -470,3 +470,42 @@ def bench(
         err.print(str(exc), markup=False)
         raise typer.Exit(3) from exc
     typer.echo(f"report: {result.report_path}")
+
+
+@app.command()
+def improve(
+    manifest: Annotated[Path, typer.Argument(help="qscore.yaml of the project.")],
+    item: Annotated[str, typer.Option("--item", help="Item id to improve.")],
+    layers: Annotated[
+        str, typer.Option(help="One layer: hf or reference-qiskit (this build).")
+    ] = "hf",
+    out: Annotated[Path, typer.Option(help="Output directory.")] = Path("qscore-out/improve"),
+    model: Annotated[
+        str | None, typer.Option(help="hf layer: a model id pinned in improve/models.yaml.")
+    ] = None,
+) -> None:
+    """EXPERIMENTAL (ChP-0049): one verified improvement round; writes the improved circuit."""
+    if layers not in ("hf", "reference-qiskit"):
+        err.print("this build runs one layer: hf or reference-qiskit (ChP-0049; full loop T24)")
+        raise typer.Exit(4)
+    try:
+        result = services.improve_once(
+            manifest,
+            item,
+            out,
+            layers,  # type: ignore[arg-type]
+            on_event=lambda e: typer.echo(e.message),
+            model=model,
+        )
+    except ConfigError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(4) from exc
+    except InvalidInput as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(2) from exc
+    except QscoreError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(3) from exc
+    typer.echo(f"{result.summary['outcome']}\nrecord: {result.path}")
+    if result.improved is not None:
+        typer.echo(f"improved circuit: {result.improved}")

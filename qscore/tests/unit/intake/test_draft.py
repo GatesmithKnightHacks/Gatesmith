@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import shutil
 from pathlib import Path
 
@@ -672,3 +673,18 @@ def test_exclusion_cannot_leave_empty_selection(candidates: list[Candidate]) -> 
         pick_candidates(candidates, "not:" + ",".join(str(c.index) for c in candidates), None)
     assert exc.value.code == "Q103"
     assert "no draftable" in exc.value.report.issues[0].message
+
+
+def test_ambiguous_exclusion_is_refused(candidates: list[Candidate]) -> None:
+    twin = dataclasses.replace(candidates[1], name=candidates[0].name)
+    with pytest.raises(InvalidInput) as exc:
+        pick_candidates([candidates[0], twin], f"not:{candidates[0].name}", None)
+    [issue] = exc.value.report.issues
+    assert issue.code == "Q103" and "matches several" in issue.message
+
+
+@pytest.mark.parametrize("pick", ["1,,2", ",1", "1,"])
+def test_positive_pick_rejects_empty_selectors(candidates: list[Candidate], pick: str) -> None:
+    with pytest.raises(InvalidInput) as exc:
+        pick_candidates(candidates, pick, None)
+    assert exc.value.code == "Q103"

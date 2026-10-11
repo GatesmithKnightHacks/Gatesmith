@@ -52,7 +52,7 @@ Wraps existing Qiskit passes; same input → same output. Handlers:
 | `noise_aware_layout` | Same as above, scoring layouts by `reliability_heuristic` (mapomatic-style) | Whole (compiled) |
 | `routing_search` | Re-route with `routing_method` ∈ {`sabre` (more trials), `lookahead`} on the representative layout | Whole (compiled) |
 | `commutation_aware_routing` | For a D03 run: build a `SwapStrategy` for the coupling map (`SwapStrategy.from_line` on a line embedded in the device, or the device's own strategy) and route the commuting block with `Commuting2qGateRouter`; then compile the rest normally | Region (logical) → whole compiled |
-| `block_resynthesis` | Clifford blocks: `synth_clifford_full` / greedy synthesis; linear blocks: `synth_cnot_count_full_pmh`; optionally IBM's AI synthesis passes (`qiskit-ibm-transpiler`, local mode) when installed (extra `[ai]`, later) | Region |
+| `block_resynthesis` | Clifford blocks: `synth_clifford_full` / greedy synthesis; linear blocks: `synth_cnot_count_full_pmh`; optionally IBM's AI synthesis passes (`qiskit-ibm-transpiler`, local mode) when installed (extra `[ai]`, later). Level-3 resynthesis of the region (fixed seed) is also proposed; an output whose permutation level 3 elided into `layout.final_layout` is not a candidate (ChP-0050) | Region |
 | `reversible_rewrite` | `InverseCancellation([XGate(), CXGate(), CCXGate(), SwapGate()])` + `CommutativeCancellation` restricted so output stays in `x/cx/ccx/swap` | Region or whole (logical) |
 
 Every handler states its exact pass configuration in the proposal's `rationale` and `layer.version`.
@@ -63,7 +63,7 @@ Every handler states its exact pass configuration in the proposal's `rationale` 
 
 **Transport.** The `openai` Python SDK (extra `[hf]`) with `base_url = https://router.huggingface.co/v1` (setting `hf_router_base_url`) and `api_key = HF_TOKEN` (fine-grained token with "Make calls to Inference Providers"). The model string is always `"<org>/<model>:<provider>"`: the provider is **pinned**, never `:fastest`/`:cheapest`/auto, so structured-output behaviour and cost are stable and recorded.
 
-**Pinned models (`improve/models.yaml`).** Entry fields: `id`, `provider`, `license` (from the model card; open weights only), `strategies`, `pricing_usd_per_mtok: {input, output}` (snapshot for estimates), `checked_at`. Panel checked 2026-10-11 (`GET /v1/models`: live, `supports_structured_output: true`; licenses from the model cards):
+**Pinned models (`improve/models.yaml`).** Entry fields: `id`, `provider`, `license` (from the model card; open weights only), `strategies`, `pricing_usd_per_mtok: {input, output}` (snapshot for estimates), `checked_at`, and `default: true` on exactly the ★ entry (ChP-0049). Panel checked 2026-10-11 (`GET /v1/models`: live, `supports_structured_output: true`; licenses from the model cards):
 
 | ★ | Model : provider | License | Why |
 |---|---|---|---|
@@ -79,17 +79,17 @@ The demo uses the ★ model; leaderboard runs use the whole panel. Qiskit's own 
 **One call per request.**
 - Messages from `prompts.render(request)` (§6). `response_format = {"type": "json_schema", "json_schema": {"name": "qscore_candidates", "schema": <CandidateSet>, "strict": true}}`.
 - `CandidateSet` = `{"candidates": [{"format": "openqasm3"|"openqasm2", "qasm": str, "rationale": str (≤ 600 chars), "estimate": number, "equivalent": bool}]}` with at most `max_proposals` items. The engine wraps each candidate into `qscore.proposal/v0.2`: `layer` (name, version, model, provider, prompt version), `candidate.scope = region`, `claims = {metric: objective.primary, direction from objective, estimate, equivalent}`. The model never writes ids, hashes or scope.
-- `temperature = 0`, `max_tokens = 2048`, client timeout `layer_timeout_s` (default 60 s), SDK retries off (the layer owns retries).
+- `temperature = 0`, `max_tokens = 8192` (ChP-0051: reasoning models spend 4–6k tokens before the JSON; the call record keeps `finish_reason`, `length` = truncated), client timeout `layer_timeout_s` (default 60 s), SDK retries off (the layer owns retries).
 
 **Parsing (no repair, R3).** The reply must be JSON valid against `CandidateSet`; each `qasm` must load with the OpenQASM 2/3 parsers used for uploads and have exactly the region's qubit count. A reply that fails → no proposals and one recorded failure; a candidate that fails is dropped and recorded; extra candidates beyond `max_proposals` are cut and recorded. No regex fixing, no re-asking, no second model.
 
-**Verification and acceptance.** Unchanged: splice → verify (08) → re-score with the same seeds → decide (08 §4). Claims are shown, never trusted.
+**Verification and acceptance.** Unchanged: splice → verify (08) → re-score with the same seeds → decide (08 §4; relative constraints are multiplicative and defined at a zero baseline, ChP-0045). Claims are shown, never trusted.
 
 **Privacy guard.** The layer refuses unless `privacy.external_inference: true` for the item and the request scope is `region` → `LayerError("external inference disabled …")`. QASM comments are stripped from the region (§6).
 
 **Budgets and cost.** Per job: `hf_max_calls` (default 30) and `hf_max_cost_usd` (default 1.00). Cost per call = response `usage` × the entry's pinned pricing, recorded as an **estimate** (provider billing is authoritative). Reaching a limit raises `HfBudgetExhausted` (a `LayerError`); the loop stops with `stop_reason: budget: hf calls|cost`.
 
-**Errors.** 429/5xx/connection/timeout → up to 3 attempts with exponential backoff (R3.5), then `LayerError`; the loop records it and continues with other layers. Other HTTP errors (401/403/400) → `LayerError` at once. Anything unrecognised propagates. Never switch model or provider automatically.
+**Errors.** 429/5xx/connection/timeout → up to 3 attempts with exponential backoff (R3.5), then `LayerError`; the loop records it and continues with other layers. Other HTTP errors (401/403/400) → `LayerError` at once, naming the provider's short error `code` when the body has one (e.g. `HTTP 400 (json_validate_failed)`; never the body) (ChP-0051). Anything unrecognised propagates. Never switch model or provider automatically.
 
 **Logged per call** (`CallRecord`, copied into the attempt record): model, provider, prompt version, latency ms, prompt/completion tokens, cost estimate, retries, reply parsed, proposals, invalid candidates with reasons. Never the token.
 
@@ -97,8 +97,8 @@ The demo uses the ★ model; leaderboard runs use the whole panel. Qiskit's own 
 
 ## 6. Prompts (`improve/prompts.py`) `[T1]`
 
-- `PROMPT_VERSION = "p-2026.1"`; any change bumps it (class B; recorded on every attempt).
-- `render(request) -> list[messages]`: system message (role, rules: output only JSON matching the schema, keep the gate set, never change measurements, region-only), user message with: the finding (rule, evidence), the region's OpenQASM 3, the qubit map, the target basis and coupling restricted to the region, the objective, permitted changes, invariants, and the proposal JSON Schema. Two short verified example rewrites (few-shot) from `reference-qiskit` outputs on fixtures.
+- `PROMPT_VERSION` (current value in `prompts.py`; each bump gets a CHANGELOG line, ChP-0052); any change bumps it (class B; recorded on every attempt).
+- `render(request) -> list[messages]`: system message (role, rules: output only JSON matching the schema, keep the gate set, never change measurements, region-only), user message with: the finding (rule, evidence), the region's OpenQASM 3, the qubit map, the target basis and coupling restricted to the region, the objective, permitted changes, invariants, and the proposal JSON Schema. Two short verified example rewrites (few-shot): minimal synthetic blocks whose rewrite the `reference-qiskit` layer reproduces (`synth_cnot_count_full_pmh` for linear blocks; fixed-seed level 3 for commutation cancellation); a test checks Operator equality, a strictly lower 2q count and reproduction by the reference method. The few-shot user payload is abbreviated (region, counts, objective, `max_candidates`) (ChP-0052).
 - Prompts are data in code (no prompt text in the UI or DB except the version id).
 - Prompt injection: request content comes from circuits (QASM comments could contain text). Strip QASM comments from region payloads before rendering.
 

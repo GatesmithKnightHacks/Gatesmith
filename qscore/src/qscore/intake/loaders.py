@@ -177,6 +177,7 @@ def load_builder(
             "user_exception": "Q302",
             "not_a_circuit": "Q303",
             "args_for_circuit": "Q103",
+            "qpy_incompatible": "Q306",
         }
         code = codes[exc.kind]
         message = str(exc)

@@ -1,6 +1,6 @@
 # ChP-0045: Define relative constraints at a zero baseline
 
-- **Status:** approved
+- **Status:** approved, applied 2026-10-11 (04, 08 §4, 10 §5; unavailable/failed/statistical constraint metric → `VerificationError`, candidate not accepted)
 - **Class:** A (verification acceptance rule)
 - **Author:** Codex · **Date:** 2026-10-11
 - **Related tasks:** T23 · **Blocks:** zero-baseline acceptance only
