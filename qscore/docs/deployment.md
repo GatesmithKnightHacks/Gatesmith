@@ -254,8 +254,9 @@ The SQL follows approved proposals that `schemas/` does not implement yet:
   prefix removed**: the browser calls `/api/jobs`, the platform receives `/jobs` (the paths of 12 §2).
 - **Deviation (lead: record a class B proposal against D-024 / 12 §1):** the UI is a static React app on
   the `design` branch, not Gradio inside the platform process; the platform is API only.
-- Live: `https://149.28.122.224.sslip.io` (server `gatesmith-platform`, Atlanta, 1 vCPU / 2 GB). It tracks
-  branch `vepaul-deployment`; deploys are manual (`deploy.sh`).
+- Live: `https://gatesmith.work` (also `www.` and `https://149.28.122.224.sslip.io`; server
+  `gatesmith-platform`, Atlanta, 1 vCPU / 2 GB). Deploys run from CI on the branch named by the repo
+  variable `DEPLOY_BRANCH` (§7.4); `deploy.sh` still works by hand.
 - Secrets in `/opt/qscore/.env` (`chmod 600`), never in the image: `QSCORE_NEON_DSN` (platform role),
   `QSCORE_PLATFORM_TOKEN`, `HF_TOKEN` (write to `qscore-runs`, CP-0006), `GEMINI_API_KEY` (Tier 2 only).
   Template: `qscore/docker/env.example` (named without a leading dot because `.gitignore` ignores `.env.*`).
@@ -271,7 +272,7 @@ The SQL follows approved proposals that `schemas/` does not implement yet:
 | `compose.yaml` | Services `caddy` (built from `Containerfile.web`; ports 80/443; cert volume) and `platform` (port 8080, internal only, `env_file` = `/opt/qscore/.env`) |
 | `Caddyfile` | HTTPS for `{$SITE_ADDRESS}`; `/api/*` → `platform:8080` (prefix stripped); everything else → the web app (`try_files … /index.html`); API calls get a plain 503 message while the platform is down |
 | `bootstrap_vultr.sh` | One time, as root: clone to `/opt/qscore/repo`, create the env file with `SITE_ADDRESS=<ip>.sslip.io`, add 2 GiB swap, run `deploy.sh`. Never overwrites existing files |
-| `deploy.sh` | `git pull --ff-only`; fails if the branch has no `web/package.json` or `design/tokens.css`; then `docker compose up -d --build` (rebuilds the web app every deploy); starts **Caddy only** while `src/qscore/api/app.py` does not exist |
+| `deploy.sh` | No arguments: `git pull --ff-only`. With `<branch> <commit>` (what CI sends): fetch, check the commit is on `origin/<branch>`, refuse if tracked files are modified, check it out. Then: fails if the branch has no `web/package.json` or `design/tokens.css`; then `docker compose up -d --build` (rebuilds the web app every deploy); starts **Caddy only** while `src/qscore/api/app.py` does not exist |
 | `.gitattributes` | Keeps `*.sh` LF so they run on Linux when committed from Windows |
 
 Run the scripts with `bash <script>` (the executable bit is not preserved from Windows).
@@ -298,6 +299,31 @@ Run the scripts with `bash <script>` (the executable bit is not preserved from W
 - **Empty env values are not "unset":** `QSCORE_NEON_DSN=` yields `SecretStr('')`, not `None`. Treat an empty
   DSN or token as missing and fail loudly (`ConfigError`), or a blank `.env` line looks configured.
 - Extra `QSCORE_*` variables that are not `Settings` fields (e.g. `QSCORE_PLATFORM_TOKEN`) are accepted, not rejected.
+
+### 7.4 CI/CD (job `deploy` in `.github/workflows/ci.yml`)
+
+- **When:** after the `engine` job passes, on a push or a manual run (**Actions → ci → Run workflow**) of the
+  branch named by the repo variable `DEPLOY_BRANCH`. Variable unset = no deploys. Moving deploys to `main`
+  later = change the variable to `main`; nothing else. Pull requests never deploy.
+- **What:** SSH to the server and run `deploy.sh <branch> <commit>`, the exact commit CI tested; then poll
+  `https://gatesmith.work/api/health` (override with variable `DEPLOY_HEALTH_URL`) for `"ok":true`, up to 150 s.
+  Deploys never overlap (concurrency group `deploy-vultr`). **Rollback:** re-run an older green run of the branch.
+- **Key:** a dedicated ed25519 key that can run only `deploy.sh`: its line in `/root/.ssh/authorized_keys` is
+  `command="set -f; exec bash /opt/qscore/repo/qscore/docker/deploy.sh $SSH_ORIGINAL_COMMAND",restrict <public key>`
+  (`restrict` = no shell, PTY or forwarding; `deploy.sh` accepts only a plain branch name and a full commit id).
+- **GitHub settings** (Settings → Secrets and variables → Actions):
+
+  | Name | Kind | Value |
+  |---|---|---|
+  | `VULTR_SSH_KEY` | secret | the deploy key's private key |
+  | `VULTR_KNOWN_HOSTS` | secret | `149.28.122.224 ssh-ed25519 AAAA…` (the server's host key; pins it) |
+  | `VULTR_HOST` | variable | `149.28.122.224` |
+  | `DEPLOY_BRANCH` | variable | `platform-integration` (until the project moves to `main`) |
+
+- If an image build fails, the old containers keep running (`compose up --build` builds before replacing).
+  A modified tracked file on the server stops the deploy (by design).
+- The **Run workflow** button appears only once `ci.yml` with `workflow_dispatch` is on the default branch
+  (`main`); until then use `gh workflow run ci --ref <branch>` or re-run the branch's latest run.
 
 ## 8. Rules for agents
 

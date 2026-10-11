@@ -4,6 +4,7 @@ name: ci
 on:
   push:
   pull_request:
+  workflow_dispatch:   # manual run: tests, then (on the deploy branch) a redeploy
 
 jobs:
   engine:
@@ -32,3 +33,51 @@ jobs:
         run: >
           uv run pytest -m "not gpu and not neon and not hub and not llm and not slow"
           -W error::DeprecationWarning:qiskit -n auto
+
+  # Deploy to the Vultr server (docs/deployment.md §7.4) after the tests pass. Runs only for pushes and
+  # manual runs on the branch named by the repository variable DEPLOY_BRANCH; unset = never deploys.
+  # Moving deploys to another branch (e.g. main) = changing that variable, no code change.
+  deploy:
+    needs: engine
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && vars.DEPLOY_BRANCH != '' && github.ref_name == vars.DEPLOY_BRANCH
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://gatesmith.work
+    concurrency:
+      group: deploy-vultr
+      cancel-in-progress: false
+    env:
+      HEALTH_URL: ${{ vars.DEPLOY_HEALTH_URL || 'https://gatesmith.work/api/health' }}
+    steps:
+      # The key may run only deploy.sh (forced command on the server), which receives "<branch> <commit>".
+      - name: Deploy this commit over SSH
+        env:
+          SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VULTR_KNOWN_HOSTS }}
+          HOST: ${{ vars.VULTR_HOST }}
+        run: |
+          if [ -z "$SSH_KEY" ] || [ -z "$KNOWN_HOSTS" ] || [ -z "$HOST" ]; then
+            echo "::error::set secrets VULTR_SSH_KEY, VULTR_KNOWN_HOSTS and variable VULTR_HOST (deployment.md §7.4)"
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=10 \
+            "root@$HOST" "$GITHUB_REF_NAME $GITHUB_SHA"
+      - name: Health check
+        run: |
+          for _ in $(seq 1 30); do
+            if body="$(curl -fsS --max-time 10 "$HEALTH_URL")" && grep -q '"ok":true' <<<"$body"; then
+              echo "$body"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::$HEALTH_URL did not report ok within 150 s"
+          exit 1
