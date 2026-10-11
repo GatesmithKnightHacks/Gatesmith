@@ -41,3 +41,5 @@
 - Caps: HF $15 / Gemini $25 development; no credit use yet.
 - Improvement command explicitly unavailable pending friend-owned verifier/loop/platform handoff.
 - Dependency preparation initially found missing CPython3.12 NumPy wheel offline; parent downloaded required wheel and prepared both review environments. No runtimefallback.
+
+- Pending ChP-0050: free static HF Space versus Gradio requiring existing paid plan; no paid hosting selected. HF dataset GridGxly/qscore-runs created private; inference token tested identity only (no inference spend). GitHubApp gatesmith-review installed only on demo repo; webhookinactive awaitinghosting.
