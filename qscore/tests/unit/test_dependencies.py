@@ -116,8 +116,11 @@ def test_invalid_negation_is_exit_two(args):
     assert "valid names" in result.output
 
 
-def test_old_flag_has_migration_hint():
-    result = CliRunner().invoke(app, ["discover", "--no-input"])
+@pytest.mark.parametrize("color", [False, True])
+def test_old_flag_has_migration_hint(color):
+    result = CliRunner().invoke(
+        app, ["discover", "--no-input"], color=color, env={"COLUMNS": "28", "FORCE_COLOR": "1"}
+    )
     assert result.exit_code == 2
     assert "use --not input" in result.output
 

@@ -1,0 +1,81 @@
+/*
+ * Motion system (DS-07 tokens card, DS-08 · Feedback and loading, fix round 3 R1 to R6).
+ * Proposed tokens, not yet in design/tokens.css. Names are final, so they can move there unchanged.
+ *
+ * Three durations, one curve and two loops:
+ *   hover 150   color, outline and opacity on hover and press; every exit
+ *   tile  200   tiles, cards, banners, menus, tooltips in; chevron turn; tab content; rail expand
+ *   load  400   main content on a screen change; skeleton to content crossfade; row flash
+ *   spin  1000  one spinner turn (linear, loops)
+ *   shimmer 1200  one skeleton band sweep (linear, loops)
+ * Easing is `ease` on every transition; only the two loops run linear. No springs, slides, bounces,
+ * staggers, overshoot or digit ticking.
+ */
+:root {
+  --motion-hover: 150ms;
+  --motion-tile: 200ms;
+  --motion-load: 400ms;
+  --motion-spin: 1000ms;
+  --motion-shimmer: 1200ms;
+
+  --ease-motion: ease; /* 0.25, 0.1, 0.25, 1: the one curve */
+  --pulse: 1200ms; /* reduced-motion skeleton: opacity 1, 0.6, 1, ease */
+
+  /* Feedback colors (DS-08 tokens card): aliases of existing values, proposed. */
+  --color-skeleton-block: var(--color-teal-900); /* #0F1F23, radius 2, the content's real shape */
+  --color-skeleton-band: var(--color-teal-800); /* #243237, 24% of the block, never above #2A383D */
+  --color-skeleton-strip-block: var(--color-teal-800); /* on a panel-colored header strip */
+  --color-skeleton-strip-band: var(--color-teal-750); /* #2A383D, the brightest a band gets */
+  --color-spinner-arc: var(--color-teal-200); /* #C2DADF */
+  --color-spinner-track: var(--color-teal-700); /* #354348 */
+  --color-spinner-arc-on-accent: var(--color-onyx); /* #141414 on the mint button */
+  --color-spinner-track-on-accent: color-mix(in srgb, var(--color-onyx) 25%, transparent);
+  --color-row-flash: var(--color-teal-700); /* #354348, fades back to the panel */
+  --color-drag-over-border: var(--color-teal-200); /* #C2DADF */
+  --color-drag-over-fill: var(--color-teal-750); /* #2A383D (R5) */
+  --color-editor-hover: var(--color-teal-750); /* editor button #243237 → #2A383D */
+  --color-editor-pressed: var(--color-teal-700); /* #354348 */
+
+  /*
+   * Retired names (80/140/220/360/600 and the custom curves) now resolve to the new system, so CSS
+   * that still names them already moves by the new rules. New code uses the names above.
+   */
+  --motion-instant: var(--motion-hover);
+  --motion-fast: var(--motion-hover);
+  --motion-base: var(--motion-tile);
+  --motion-slow: var(--motion-load);
+  --motion-count: 0ms;
+  --ease-standard: var(--ease-motion);
+  --ease-enter: var(--ease-motion);
+  --ease-exit: var(--ease-motion);
+  --ease-settle: var(--ease-motion);
+  --stagger: 0ms;
+}
+
+/*
+ * Reduced motion (system setting, or forced on in Settings; motionPreference.ts mirrors both onto
+ * :root[data-reduce-motion]). Every fade stays at its duration. Every transform, width change and
+ * sweep stops: the spinner becomes a whole static ring, the shimmer becomes the opacity pulse, the
+ * chevron and the rail width snap. Components read the attribute for their own reduced form.
+ */
+
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes motion-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes motion-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes motion-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}

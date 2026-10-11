@@ -1,0 +1,235 @@
+/* S-07 · Loop view and stop, measured from board 1KMK-0 and its states 1Q14-0. Also the Rounds lanes. */
+
+/* ── Top row: Circuit | Scorecard, 262 tall ──────────────────────────── */
+.lp-top {
+  display: flex;
+  flex: 0 0 262px;
+  min-height: 0;
+  gap: var(--spacing-1);
+}
+.lp-circuit {
+  flex: 1 1 0;
+}
+.lp-circuit-body {
+  display: flex;
+  flex-direction: row;
+  padding: var(--spacing-3);
+}
+.lp-canvas {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: clip;
+  background: var(--color-surface-canvas);
+}
+.lp-canvas > svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Scorecard */
+.lp-score {
+  flex: 0 0 350px;
+}
+.lp-score-body {
+  padding: var(--spacing-3);
+}
+.lp-score-inset {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0 8px;
+  overflow: clip;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+}
+.lp-score-inset.is-loading {
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+}
+.lp-score-row,
+.lp-finding-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 20px;
+  border-bottom: 1px solid var(--color-surface-app);
+}
+.lp-score-row.is-last,
+.lp-finding-row.is-last {
+  border-bottom: 0;
+}
+.lp-score-name {
+  width: 144px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.lp-score-name.is-primary {
+  font-weight: var(--font-weight-medium);
+}
+.lp-score-bars {
+  display: flex;
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 84px;
+  gap: var(--spacing-1);
+}
+.lp-score-track {
+  position: relative;
+  width: 44px;
+  flex-shrink: 0;
+}
+.lp-score-bg,
+.lp-score-base,
+.lp-score-now,
+.lp-score-tick {
+  position: absolute;
+  left: 0;
+}
+.lp-score-bg {
+  top: 4px;
+  width: 44px;
+  height: 12px;
+  background: color-mix(in srgb, var(--color-white) 8%, transparent);
+}
+.lp-score-base {
+  top: 4px;
+  height: 5px;
+  background: var(--color-surface-selected);
+}
+.lp-score-now {
+  top: 11px;
+  height: 5px;
+  background: var(--color-text-secondary);
+}
+.lp-score-now.is-high {
+  background: var(--color-signal-bad);
+}
+.lp-score-tick {
+  top: 4px;
+  width: 1px;
+  height: 12px;
+  background: var(--color-text-primary);
+}
+.lp-score-delta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 36px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-axis);
+  line-height: var(--leading-ui);
+}
+.lp-score-value {
+  display: flex;
+  justify-content: flex-end;
+  width: 40px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.lp-score-value.is-primary {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-base);
+}
+.lp-score-unit {
+  padding-left: var(--spacing-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-axis);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.lp-finding-row {
+  gap: var(--spacing-2);
+}
+.lp-finding-rule {
+  width: 28px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+}
+.lp-finding-title {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.lp-finding-row.is-done .lp-finding-rule,
+.lp-finding-row.is-done .lp-finding-title {
+  color: var(--color-text-secondary);
+}
+.lp-finding-status {
+  display: flex;
+  width: 84px;
+  flex-shrink: 0;
+}
+.lp-score-stage {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 18px;
+  gap: var(--spacing-2);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.lp-score-eta {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.lp-score-sk {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 12px;
+  gap: var(--spacing-2);
+}
+.lp-score-sk.is-gap {
+  height: 18px;
+  padding-top: 6px;
+}
+
+/* ── Inspector ───────────────────────────────────────────────────────── */
+.insp-section-body.lp-budget-body {
+  gap: 0;
+  padding: 0 16px 12px;
+}
+.lp-budget-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  border-top: 1px solid var(--color-surface-app);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.lp-budget-row .mono {
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.lp-findings {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.lp-findings .insp-section {
+  border-bottom: 0;
+}
+.insp-section-body.lp-findings-body {
+  gap: var(--spacing-2);
+  padding: 0 16px 16px;
+}
+.lp-findings-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}

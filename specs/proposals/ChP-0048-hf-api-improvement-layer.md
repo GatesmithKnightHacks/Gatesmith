@@ -110,3 +110,5 @@ This is the mainstream pattern: an OpenAI-compatible client against a hosted ope
 
 - Decided by: user · 2026-10-11 · Outcome: **approved**.
 - Applied to specs (02, 01, 03, 04, 05 §11 `qscore models check`, 09 §2, 10 §5 rewritten, 11, 13, 15 T25, 17 FB-02 retired, 18, README). **Not implemented**: the user asked (2026-10-11 ~01:25 EDT) not to implement the improvement layer now; a first implementation was removed again before any commit. T25 remains open. Licenses verified from model cards 2026-10-11.
+
+- 2026-10-11 integration pass: user explicitly authorizes HF implementation now; earlier deferral lifted.

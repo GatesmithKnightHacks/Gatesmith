@@ -80,6 +80,10 @@ class PlatformError(RecordError):
     """The platform job API was unreachable or rejected a call after bounded retries (11 §3)."""
 
 
+class ClaimLost(PlatformError):
+    """The worker no longer owns a job; stop computation and discard unwritten results."""
+
+
 class HubError(RecordError):
     """A Hugging Face Hub operation failed after bounded retries."""
 
@@ -90,6 +94,10 @@ class FetchError(QscoreError):
 
 class LayerError(QscoreError):
     """An improvement layer had an infrastructure failure (not "no idea", which returns [])."""
+
+
+class HfBudgetExhausted(LayerError):
+    """The explicit Hugging Face call or estimated-cost budget was exhausted."""
 
 
 class FallbackRefused(QscoreError):

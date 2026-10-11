@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from qscore.cli import app
@@ -65,10 +66,14 @@ def test_target_with_manifest_path_exit_2(tmp_path: Path) -> None:
     assert _run(str(root), "--target", "line-5", "--yes")[0] == 2
 
 
-def test_qasm_file_unchanged(tmp_path: Path) -> None:
+@pytest.mark.parametrize("columns", ["28", "80"])
+def test_qasm_file_unchanged(tmp_path: Path, monkeypatch, columns: str) -> None:
+    monkeypatch.setenv("COLUMNS", columns)
+    monkeypatch.setenv("FORCE_COLOR", "1")
     root = _project(tmp_path)
     code, out = _run(
         str(root / "bell.qasm"), "--target", "line-5", "--yes", "--out", str(tmp_path / "o")
     )
     assert code == 0, out
     assert "compiled → " in out and "bell.qasm" in out.split("compiled → ")[1]
+    assert str(tmp_path / "o" / "compiled") in out

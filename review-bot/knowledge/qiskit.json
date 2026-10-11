@@ -1,0 +1,24 @@
+{
+  "version": "qiskit-knowledge/v1",
+  "verified": "Installed Qiskit 2.5 source inspected offline on 2026-10-11; compat findings arrive in engine discovery payloads, never imported by the bot.",
+  "entries": [
+    {
+      "id": "qiskit-assign-parameters", "package": "qiskit", "versions": ">=2.5,<3",
+      "keywords": ["bind_parameters", "assign_parameters", "Parameter"],
+      "fact": "QuantumCircuit.assign_parameters accepts a mapping or an ordered iterable and supports inplace assignment. Suggestions must preserve the declared parameter ordering.",
+      "source": "https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.QuantumCircuit#assign_parameters"
+    },
+    {
+      "id": "qiskit-qasm2-dumps", "package": "qiskit", "versions": ">=2.5,<3",
+      "keywords": [".qasm(", "qasm2", "OPENQASM"],
+      "fact": "qiskit.qasm2.dumps exports a supported QuantumCircuit as OpenQASM 2 text. Export can fail for unsupported operations; do not assume every circuit is serializable.",
+      "source": "https://docs.quantum.ibm.com/api/qiskit/qasm2"
+    },
+    {
+      "id": "qiskit-preset-pass-manager", "package": "qiskit", "versions": ">=2.5,<3",
+      "keywords": ["transpile", "PassManager", "generate_preset_pass_manager"],
+      "fact": "generate_preset_pass_manager accepts optimization_level, target and seed_transpiler. Preserve explicit target and seed settings when proposing API changes.",
+      "source": "https://docs.quantum.ibm.com/api/qiskit/transpiler_preset#generate_preset_pass_manager"
+    }
+  ]
+}

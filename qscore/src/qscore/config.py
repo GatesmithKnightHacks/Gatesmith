@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     fetch_timeout_s: float = Field(default=300, gt=0)  # `git clone` of a repository link (ChP-0035)
     platform_url: str | None = None  # platform job API base URL (specs/11 §3, ChP-0047)
     worker_token: SecretStr | None = None  # per-worker bearer token issued by the platform
+    platform_db_path: Path = Path(".qscore/platform.sqlite3")  # platform-only persistent store
+    platform_token: SecretStr | None = None  # server-side authorization for platform writes
+    platform_worker_tokens: dict[str, SecretStr] = Field(default_factory=dict, repr=False)
     hub_dataset_repo: str | None = None
     hub_wheels_repo: str | None = None
     hf_router_base_url: str = "https://router.huggingface.co/v1"

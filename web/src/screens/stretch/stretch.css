@@ -1,0 +1,297 @@
+/*
+ * Shared by S-15 and S-16. Colors are tokens.css variables; motion uses the motion tokens
+ * (styles/motion.css) with their values as fallbacks.
+ */
+
+/* ── Top bar status ──────────────────────────────────────────────────── */
+.st-topbar-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+.st-gpu {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.st-gpu-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: var(--radius-base);
+  background: var(--color-text-primary);
+}
+.st-gpu-dot.is-off {
+  background: var(--color-text-disabled);
+}
+.st-account {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.st-account-disc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
+}
+
+/* ── Status words ────────────────────────────────────────────────────── */
+.st-word {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.st-word.is-secondary {
+  color: var(--color-text-secondary);
+}
+.st-word.is-tertiary {
+  color: var(--color-text-tertiary);
+}
+.st-word.is-info {
+  color: var(--color-signal-info);
+}
+.st-word.is-bad {
+  color: var(--color-signal-bad);
+}
+.st-word.is-good {
+  color: var(--color-signal-good);
+}
+.st-word.is-warn {
+  color: var(--color-signal-warn);
+}
+.st-word.is-ai {
+  color: var(--color-violet-400);
+}
+.st-glyph {
+  flex-shrink: 0;
+  display: block;
+}
+.st-dot6 {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── Spinner and stage word ──────────────────────────────────────────── */
+.st-spinner {
+  flex-shrink: 0;
+  display: block;
+}
+.st-spinner-arc {
+  transform-origin: 50% 50%;
+  animation: st-spin var(--motion-spin, 1000ms) linear infinite;
+}
+@keyframes st-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.st-stage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+}
+.st-stage-word {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.st-stage-meta {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+}
+
+/* ── Skeleton block (shimmer, then crossfade to content) ─────────────── */
+.st-block {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface-panel);
+  background-image: linear-gradient(90deg, transparent 0, var(--color-surface-raised) 50%, transparent 100%);
+  background-size: 24% 100%;
+  background-repeat: no-repeat;
+  animation: st-shimmer var(--motion-shimmer, 1200ms) linear infinite;
+}
+@keyframes st-shimmer {
+  from {
+    background-position: -30% 0;
+  }
+  to {
+    background-position: 130% 0;
+  }
+}
+.st-arrive {
+  animation: st-arrive var(--motion-load, 400ms) ease both;
+}
+@keyframes st-arrive {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ── Banner ──────────────────────────────────────────────────────────── */
+.st-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  height: 28px;
+  flex-shrink: 0;
+  padding: 0 8px 0 10px;
+  border-left: 2px solid currentColor;
+  background: var(--color-surface-inset);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  animation: st-arrive var(--motion-tile, 200ms) ease both;
+}
+.st-banner.is-warning,
+.st-banner.is-unavailable {
+  color: var(--color-signal-warn);
+}
+.st-banner.is-failed {
+  color: var(--color-signal-bad);
+}
+.st-banner.is-offline {
+  color: var(--color-text-primary);
+}
+.st-banner-word {
+  flex-shrink: 0;
+}
+.st-banner.is-offline .st-banner-word {
+  color: var(--color-text-primary);
+}
+.st-banner-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+.st-banner .btn-editor {
+  padding-block: 2px;
+}
+
+/* ── Fact rows ───────────────────────────────────────────────────────── */
+.st-fact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-surface-app);
+  white-space: nowrap;
+}
+.st-fact.is-last {
+  border-bottom-color: transparent;
+}
+.st-fact-label {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.st-fact-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.st-fact-value .is-small {
+  font-size: var(--text-label);
+  line-height: 14px;
+}
+.st-unit {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-axis);
+  line-height: 14px;
+}
+
+/* ── Layer dot, probability bar ──────────────────────────────────────── */
+.st-layer-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.st-layer-dot.is-engine {
+  background: var(--color-signal-info);
+}
+.st-layer-dot.is-model {
+  background: var(--color-violet-400);
+}
+.st-layer-dot.is-white {
+  background: var(--color-text-primary);
+}
+.st-prob {
+  position: relative;
+  display: block;
+  height: 6px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--color-white) 8%, transparent);
+}
+.st-prob > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-violet-400);
+}
+
+/* ── Keyboard focus: 2 px yellow outline; rows draw it inside their own box ── */
+.st-focusable:focus-visible,
+.st-focusable.is-focus {
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: -2px;
+}
+
+/* ── Reduced motion: static ring, opacity pulse ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .st-spinner-arc {
+    animation: none;
+    stroke-dasharray: none;
+  }
+  .st-block {
+    background-image: none;
+    animation: st-pulse var(--motion-shimmer, 1200ms) ease infinite;
+  }
+}
+:root[data-reduce-motion] .st-spinner-arc {
+  animation: none;
+  stroke-dasharray: none;
+}
+:root[data-reduce-motion] .st-block {
+  background-image: none;
+  animation: st-pulse var(--motion-shimmer, 1200ms) ease infinite;
+}
+@keyframes st-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
