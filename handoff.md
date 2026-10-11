@@ -59,6 +59,7 @@ This scoped integration pass did not recompute overall MVP/product percentages o
 
 ## 7. Validation and blockers
 
+- Update after publication: GitHub Linux run `38121956569` at `7409ccf` finished with 986 passes and two CLI-output assertion failures on Python 3.11; Python 3.12 cancelled, bot job passed. See the top of `progress.md` for exact reproduction and failure details. User now requests preserving Vultr CI/deployment while removing Neon and discussing UI/backend reconciliation. No merge resolution or backend migration has been applied.
 - Root updated engine: **209 focused tests passed**, four slow deselected; goldens, metrics, diagnostics, score, semantic validation, path/determinism/export covered. Delegate real S-box QASM scoring passed; approved logical Toffoli count 100. Ruff checked 209 files, mypy 100 source files, import layers passed.
 - Root final bot: **144 tests passed**; Ruff/format checked 25 files, mypy 13 source files passed. Two dependency deprecation warnings remain. Every integrated product stream and reproduction follow-up was independently reviewed.
 - HF/Space/models CLI: 96 tests passed. Parent reran the real engine → HF offline boundary smoke. Contract/request tests: 102 passed, two deselected. Slow-builder suite: 103 passed, one existing macOS failure.
