@@ -91,38 +91,108 @@
   flex-shrink: 0;
   width: 52px;
   border-right: 2px solid var(--color-surface-app);
-  /* above the work area, so the settings and account popovers are not covered */
+  /* above the work area, so the label chips and menus are not covered */
   position: relative;
   z-index: 5;
   background: var(--color-surface-panel);
+  transition: width var(--motion-tile) var(--ease-motion);
 }
-.rail-nav {
+/* Expand: 52 → 200 in 200 ease; the main column shrinks, the inspector keeps 380. */
+.rail.is-expanded {
+  width: 200px;
+}
+:root[data-reduce-motion] .rail {
+  transition: none;
+}
+.rail-nav,
+.rail-bottom {
   display: flex;
   flex-direction: column;
   gap: 22px;
 }
 .rail-bottom {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
   border-top: 1px solid var(--color-surface-app);
 }
+.rail-slot {
+  position: relative;
+  flex-shrink: 0;
+}
+/* Expanded: a rule separates New run · Runs · Repo from Leaderboard · Help. */
+.rail-slot.has-rule::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: -11px;
+  height: 1px;
+  background: var(--color-surface-app);
+  opacity: 0;
+  transition: opacity var(--motion-hover) var(--ease-motion);
+}
+.rail.is-expanded .rail-slot.has-rule::before {
+  opacity: 1;
+  transition: opacity var(--motion-tile) var(--ease-motion) var(--motion-tile);
+}
+
 .rail-item {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 50px;
+  gap: 13px;
+  width: 100%;
   height: 48px;
-  flex-shrink: 0;
+  padding-left: 13px;
+  /* labels clip to the rail while it grows; the hit area still reaches into the gaps */
+  overflow-x: clip;
+  color: var(--color-text-tertiary);
+  transition: color var(--motion-hover) var(--ease-motion);
+}
+/* The whole 52 × 70 row is the hit area, never just the icon. */
+.rail-item::before {
+  content: '';
+  position: absolute;
+  inset: -11px 0;
+}
+.rail-item:hover {
+  color: var(--color-text-primary);
+}
+.rail-item.is-current {
+  color: var(--color-signal-select);
 }
 .rail-disc {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 24px;
   height: 24px;
 }
+.rail-label {
+  flex-shrink: 0;
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--motion-hover) var(--ease-motion),
+    visibility 0s linear var(--motion-hover);
+}
+/* labels fade in 200 once the width has arrived */
+.rail.is-expanded .rail-label {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--motion-tile) var(--ease-motion) var(--motion-tile),
+    visibility 0s linear var(--motion-tile);
+}
+:root[data-reduce-motion] .rail.is-expanded .rail-label,
+:root[data-reduce-motion] .rail.is-expanded .rail-slot.has-rule::before {
+  transition-delay: 0s;
+}
+
+/* Current: a 2px yellow bar at the left edge spanning the 24px box; snaps, no tween. */
 .rail-marker {
   position: absolute;
   left: 0;
@@ -131,12 +201,92 @@
   height: 24px;
   background: var(--color-signal-select);
 }
-.rail-avatar {
+/* Keyboard: the 2px yellow outline, offset 2, radius 4, around a 36px box; moves at 0 ms. */
+.rail-item:focus-visible {
+  outline: none;
+}
+.rail-item:focus-visible::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-base);
+  outline: 2px solid var(--color-signal-select);
+  outline-offset: 2px;
+}
+
+/* Badges, one per item at most. Runs: a 16px count chip 2px outside the box's top right. */
+.rail-count {
+  position: absolute;
+  left: 23px;
+  top: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  min-width: 16px;
+  height: 16px;
+  padding-inline: 4px;
+  border-radius: var(--radius-base);
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+  font-size: var(--text-axis);
+  line-height: 12px;
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+/* Repo: a 6px pink dot after a CI regression. */
+.rail-dot {
+  position: absolute;
+  left: 35px;
+  top: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-signal-bad);
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+
+/* Hover label: shows at once (0 ms delay, 150 ms fade), right of the rail, never on the hit area. */
+.rail-tip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  translate: 0 -50%;
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--spacing-2);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--motion-hover) var(--ease-motion),
+    visibility 0s linear var(--motion-hover);
+}
+.rail-item:hover + .rail-tip,
+.rail-item:focus-visible + .rail-tip {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--motion-hover) var(--ease-motion);
+}
+.rail-tip-key {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+}
+
+/* The main column takes focus back on Esc; it shows no ring of its own. */
+.shell-main:focus {
+  outline: none;
 }
 
 /* ── Tab band: 42 tall, 31-tall tiles r4, the active one panel with a 3px mint underline ── */
@@ -212,13 +362,10 @@
   cursor: default;
 }
 
-/* ── Rail popovers ───────────────────────────────────────────────────── */
-.rail-popover-anchor {
-  position: relative;
-}
+/* ── Rail menus: fade in 200 in place, out 150 ────────────────────────── */
 .rail-popover {
   position: absolute;
-  left: calc(100% + 8px);
+  left: calc(100% + 10px);
   bottom: 4px;
   z-index: 20;
   display: flex;
@@ -230,6 +377,13 @@
   border: 1px solid var(--color-border-subtle);
   background: var(--color-surface-popover);
   animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.rail-popover.is-leaving {
+  animation: motion-fade-out var(--motion-hover) var(--ease-motion) both;
+}
+.rail-nav .rail-popover {
+  bottom: auto;
+  top: 0;
 }
 .popover-title {
   color: var(--color-text-primary);
