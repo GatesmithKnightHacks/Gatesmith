@@ -55,9 +55,11 @@ type ShellProps = {
   children: ReactNode
   /** Right side of the top bar. Defaults to GPU online + job id. */
   status?: ReactNode
+  /** A Toast, floated at the main column's foot. */
+  toast?: ReactNode
 }
 
-export function Shell({ context = 'Workbench', rail, railBadges, tabs, inspector, children, status }: ShellProps) {
+export function Shell({ context = 'Workbench', rail, railBadges, tabs, inspector, children, status, toast }: ShellProps) {
   const main = useRef<HTMLElement>(null)
   return (
     <div className="shell">
@@ -67,6 +69,7 @@ export function Shell({ context = 'Workbench', rail, railBadges, tabs, inspector
         <main className="shell-main" ref={main} tabIndex={-1}>
           {tabs}
           {children}
+          {toast != null && <div className="shell-toast">{toast}</div>}
         </main>
         <aside className="shell-inspector" aria-label="Inspector">
           {inspector}

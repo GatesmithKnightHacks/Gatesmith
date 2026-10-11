@@ -1,0 +1,207 @@
+/*
+ * Feedback (DS-08 · Feedback and loading): spinner, banner, toast, tooltip, row and card feedback,
+ * drag-over, count deltas. Fades only, in place: in 200, out 150. Nothing slides.
+ */
+
+/* ── Spinner ─────────────────────────────────────────────────────────── */
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.spinner.is-center {
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+.spinner-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.spinner-stage {
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+}
+.spinner-estimate {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-label);
+  line-height: var(--leading-ui);
+}
+.spinner.is-center .spinner-estimate {
+  line-height: 14px;
+}
+.spinner-ring {
+  flex-shrink: 0;
+  animation: motion-spin var(--motion-spin) linear infinite;
+}
+.spinner-ring .spinner-track {
+  stroke: var(--color-spinner-track);
+}
+.spinner-ring .spinner-arc {
+  stroke: var(--color-spinner-arc);
+}
+.spinner-ring.is-accent .spinner-track {
+  stroke: var(--color-spinner-track-on-accent);
+}
+.spinner-ring.is-accent .spinner-arc {
+  stroke: var(--color-spinner-arc-on-accent);
+}
+/* Reduced motion: the ring stops whole; the word carries the wait. */
+:root[data-reduce-motion] .spinner-ring {
+  animation: none;
+}
+:root[data-reduce-motion] .spinner-ring .spinner-arc {
+  display: none;
+}
+:root[data-reduce-motion] .spinner-ring .spinner-track {
+  stroke: var(--color-spinner-arc);
+}
+:root[data-reduce-motion] .spinner-ring.is-accent .spinner-track {
+  stroke: var(--color-spinner-arc-on-accent);
+}
+
+/* ── Enter and exit, in place ────────────────────────────────────────── */
+.fade-in {
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.fade-in-load {
+  animation: motion-fade-in var(--motion-load) var(--ease-motion) both;
+}
+.fade-out,
+.is-leaving {
+  animation: motion-fade-out var(--motion-hover) var(--ease-motion) both;
+}
+
+/* ── Banner: 28 tall, 2px signal edge, word + icon + message + one action ── */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 0 var(--spacing-2) 0 10px;
+  border-left: 2px solid var(--banner-color);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.banner.is-leaving {
+  animation: motion-fade-out var(--motion-hover) var(--ease-motion) both;
+}
+.banner.is-warning,
+.banner.is-offline {
+  --banner-color: var(--color-signal-warn);
+}
+.banner.is-error {
+  --banner-color: var(--color-signal-bad);
+}
+.banner.is-done {
+  --banner-color: var(--color-text-secondary);
+}
+.banner-word {
+  flex-shrink: 0;
+  color: var(--banner-color);
+  white-space: nowrap;
+}
+.banner-message {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-block: 6px;
+}
+.banner-action {
+  flex-shrink: 0;
+}
+.error-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+}
+
+/* ── Toast: the banner row, floated at the main column's foot ─────────── */
+.toast {
+  display: inline-flex;
+  max-width: 640px;
+  pointer-events: auto;
+}
+.toast .banner-message {
+  flex: 0 1 auto;
+}
+
+/* ── Tooltip: waits 400, fades in 200, out 150 ───────────────────────── */
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.tooltip {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  top: calc(100% + 6px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+  max-width: 280px;
+  padding: var(--spacing-2) 10px;
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-surface-app);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  white-space: normal;
+  pointer-events: none;
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.tooltip.is-leaving {
+  animation: motion-fade-out var(--motion-hover) var(--ease-motion) both;
+}
+
+/* ── Rows and cards ──────────────────────────────────────────────────── */
+/* A row that just changed fills #354348 and fades back to its own color over 400 ms. */
+.row-flash {
+  animation: row-flash var(--motion-load) var(--ease-motion);
+}
+@keyframes row-flash {
+  from {
+    background-color: var(--color-row-flash);
+  }
+}
+/* A removed row fades out 200; the list then drops it and the gap snaps (no slide). */
+.row-removing {
+  animation: motion-fade-out var(--motion-tile) var(--ease-motion) both;
+  pointer-events: none;
+}
+
+/* ── Drag and drop ───────────────────────────────────────────────────── */
+.drop-zone {
+  transition:
+    border-color var(--motion-hover) var(--ease-motion),
+    background-color var(--motion-hover) var(--ease-motion);
+}
+.drop-zone.is-drag-over,
+.is-drag-over {
+  border-color: var(--color-drag-over-border);
+  background-color: var(--color-drag-over-fill);
+}
+
+/* ── Count change: the number swaps at 0 ms, the delta fades in beside it ── */
+.count-delta {
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+
+/* ── Saved line: fades in once the server confirms ───────────────────── */
+.saved-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  color: var(--color-text-secondary);
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}

@@ -59,11 +59,20 @@
   min-height: 0;
 }
 .shell-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
+}
+/* Toasts float at the main column's foot, 12px in from the right and the bottom. */
+.shell-toast {
+  position: absolute;
+  right: 12px;
+  bottom: 16px;
+  z-index: 4;
+  pointer-events: none;
 }
 .shell-content {
   display: flex;

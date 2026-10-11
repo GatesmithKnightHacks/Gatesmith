@@ -37,7 +37,12 @@
   font-weight: var(--font-weight-medium);
   line-height: var(--leading-ui);
   white-space: nowrap;
-  transition: color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard);
+  transition:
+    color var(--motion-hover) var(--ease-motion),
+    background-color var(--motion-hover) var(--ease-motion);
+}
+.tile-tab:hover {
+  color: var(--color-text-primary);
 }
 .tile-tab.is-active {
   background: var(--color-surface-panel);
@@ -113,6 +118,7 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* ── Buttons (DS-08): hover one step in 150, press another at 0 ms, focus 2px yellow, disabled .3 ── */
 .btn-primary {
   position: relative;
   display: flex;
@@ -128,25 +134,73 @@
   font-weight: var(--font-weight-medium);
   line-height: 18px;
   text-align: center;
-  transition: background-color var(--motion-instant) var(--ease-standard);
+  transition: background-color var(--motion-hover) var(--ease-motion);
 }
 .btn-primary:hover {
   background: var(--color-action-primary-hover);
 }
 .btn-primary:active {
   background: var(--color-action-primary-pressed);
+  transition-duration: 0s;
 }
 .btn-primary:disabled {
   opacity: 0.3;
   cursor: default;
 }
+.btn-primary:disabled:hover {
+  background: var(--color-action-primary);
+}
+.btn-primary.is-loading,
+.btn-editor.is-loading {
+  pointer-events: none;
+  cursor: default;
+}
+.btn-primary.is-loading:hover {
+  background: var(--color-action-primary);
+}
+/* Progress for runs over 10 s: a 2px #141414 line in the bottom edge, width follows in 400 ease. */
 .btn-primary-progress {
   position: absolute;
   left: 0;
   bottom: 0;
-  height: 3px;
-  background: var(--color-action-primary-pressed);
-  transition: width var(--motion-base) var(--ease-standard);
+  height: 2px;
+  background: var(--color-text-on-accent);
+  transition: width var(--motion-load) var(--ease-motion);
+}
+:root[data-reduce-motion] .btn-primary-progress {
+  transition: none;
+}
+
+/* Faces: idle, loading and done share one cell, so the width never changes. */
+.btn-stack {
+  display: inline-grid;
+  max-width: 100%;
+}
+.btn-face {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  min-width: 0;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--motion-hover) var(--ease-motion),
+    visibility 0s linear var(--motion-hover);
+}
+.btn-face.is-shown {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--motion-hover) var(--ease-motion);
+}
+/* loading swaps in and out at 0 ms; only the done label fades */
+.btn-face.is-loading-face {
+  transition: none;
+}
+.btn-editor .btn-face {
+  gap: 6px;
 }
 
 .btn-editor {
@@ -161,17 +215,39 @@
   font-size: var(--text-body);
   line-height: var(--leading-ui);
   white-space: nowrap;
-  transition: background-color var(--motion-instant) var(--ease-standard);
+  transition: background-color var(--motion-hover) var(--ease-motion);
 }
 .btn-editor:hover {
-  background: var(--color-surface-app);
+  background: var(--color-editor-hover);
+}
+/* on a raised card (#2A383D) the hover step stays visible against the card */
+.finding-card .btn-editor:hover,
+.on-raised .btn-editor:hover {
+  background: var(--color-surface-panel);
+}
+.btn-editor:active {
+  background: var(--color-editor-pressed);
+  transition-duration: 0s;
+}
+/* on an inset strip: #243237 → #2A383D → #354348, exactly as drawn on DS-08 */
+.btn-editor.on-inset {
+  background: var(--color-surface-panel);
+}
+.btn-editor.on-inset:hover {
+  background: var(--color-editor-hover);
+}
+.btn-editor.on-inset:active {
+  background: var(--color-editor-pressed);
 }
 .btn-editor:disabled {
-  color: var(--color-text-disabled);
+  opacity: 0.3;
   cursor: default;
 }
 .btn-editor:disabled:hover {
   background: var(--color-surface-inset);
+}
+.btn-editor.on-inset:disabled:hover {
+  background: var(--color-surface-panel);
 }
 .btn-editor.is-wide {
   flex: 1 1 0;
@@ -195,7 +271,8 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  height: 44px;
+  /* a closed section is 44 including its 1px rule; an open one keeps the 44 row above its body */
+  height: 43px;
   padding-inline: var(--spacing-4);
   width: 100%;
 }
@@ -207,12 +284,16 @@
   line-height: 18px;
   white-space: nowrap;
 }
+.insp-section-header[aria-expanded='true'] {
+  height: 44px;
+}
+/* Right-aligned meta; when the browser's mono runs a hair wider than the board, it gives way into
+   the gap before the title instead of clipping. */
 .insp-section-meta {
+  display: flex;
+  justify-content: flex-end;
   flex: 1 1 0;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: right;
   color: var(--color-text-tertiary);
   font-family: var(--font-mono);
   font-size: var(--text-label);
@@ -246,8 +327,10 @@
 .field-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: var(--spacing-2);
   flex-shrink: 0;
-  height: 26px;
+  min-height: 26px;
 }
 .field-label {
   flex: 1 1 0;
@@ -263,12 +346,16 @@
   border-radius: var(--radius-xs);
   border: 1px solid var(--color-border-control);
   background: var(--color-surface-control);
+  transition: border-color var(--motion-hover) var(--ease-motion);
 }
 .field.is-focus {
-  outline: 2px solid var(--color-action-primary);
+  outline: 2px solid var(--color-signal-select);
   outline-offset: 2px;
 }
-.field.is-error {
+.field.is-warning {
+  border-color: var(--color-signal-warn);
+}
+.field.is-invalid {
   border-color: var(--color-signal-bad);
 }
 .field.is-disabled {
@@ -288,6 +375,45 @@
   font-size: var(--text-label);
   line-height: 14px;
 }
+/* The message line under a field: icon, the word and where on one line, the fix under it. */
+/* In a FieldRow the message takes its own line under the label and the field, full width. */
+.field-wrap {
+  display: contents;
+}
+.field-message {
+  flex-basis: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  animation: motion-fade-in var(--motion-tile) var(--ease-motion) both;
+}
+.field-message.is-leaving {
+  animation: motion-fade-out var(--motion-tile) var(--ease-motion) both;
+}
+.field-message.is-warning {
+  color: var(--color-signal-warn);
+}
+.field-message.is-invalid {
+  color: var(--color-signal-bad);
+}
+.field-message-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.field-message-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.field-message-where {
+  color: var(--color-text-primary);
+  font-size: var(--text-label);
+}
+.field-message-text {
+  color: var(--color-text-secondary);
+}
 
 .switch {
   display: flex;
@@ -298,14 +424,19 @@
   padding: 2px;
   border-radius: 8px;
   background: var(--color-border-control);
-  transition: background-color var(--motion-fast) var(--ease-standard);
+  transition: background-color var(--motion-hover) var(--ease-motion);
 }
 .switch-knob {
   width: 12px;
   height: 12px;
   border-radius: 6px;
   background: var(--color-text-secondary);
-  transition: transform var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard);
+  transition:
+    transform var(--motion-tile) var(--ease-motion),
+    background-color var(--motion-hover) var(--ease-motion);
+}
+:root[data-reduce-motion] .switch-knob {
+  transition: background-color var(--motion-hover) var(--ease-motion);
 }
 /* On is white with a dark knob: mint stays reserved for the one primary action. */
 .switch.is-on {
@@ -341,16 +472,19 @@
 .finding-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: var(--spacing-3);
+  gap: var(--spacing-1);
+  padding: 10px;
   border-radius: var(--radius-base);
   border: 1px solid var(--color-border-subtle);
   background: var(--color-surface-raised);
   cursor: default;
-  transition: border-color var(--motion-fast) var(--ease-standard);
+  transition:
+    border-color var(--motion-hover) var(--ease-motion),
+    background-color var(--motion-hover) var(--ease-motion);
 }
 .finding-card.is-selected {
   border-color: var(--color-signal-select);
+  background: var(--color-surface-selected);
 }
 .finding-top,
 .finding-bottom {
@@ -362,6 +496,7 @@
 .finding-rule {
   font-size: var(--text-label);
   line-height: 14px;
+  white-space: nowrap;
 }
 .finding-rank {
   color: var(--color-text-tertiary);
@@ -383,7 +518,7 @@
   min-width: 0;
   color: var(--color-text-secondary);
   font-size: var(--text-label);
-  line-height: var(--leading-ui);
+  line-height: 14px;
 }
 
 .suppressed-row {

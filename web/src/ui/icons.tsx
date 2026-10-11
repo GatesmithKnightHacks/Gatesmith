@@ -173,6 +173,13 @@ export function IconRedo({ color = '#667E83' }: { color?: string }) {
 const sec = { fill: 'none', stroke: '#FFFFFF', strokeWidth: 1.4 } as const
 
 export const SectionIcons = {
+  /** Target: a chip card with two lines (master MVN-0) */
+  target: (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+      <rect x="2.5" y="4" width="13" height="10" rx="1.5" {...sec} />
+      <path d="M5.5 7.5h3M5.5 10.5h7" {...sec} strokeLinecap="round" />
+    </svg>
+  ),
   clock: (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
       <circle cx="9" cy="9" r="6.5" {...sec} />

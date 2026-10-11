@@ -59,9 +59,9 @@ svg {
   outline: none;
 }
 
-/* Keyboard focus: a 2px mint ring 2px outside the control (DS-04). */
+/* Keyboard focus: a 2px yellow ring 2px outside the control, at 0 ms (DS-08). Yellow marks where you are. */
 :focus-visible {
-  outline: 2px solid var(--color-action-primary);
+  outline: 2px solid var(--color-signal-select);
   outline-offset: 2px;
 }
 

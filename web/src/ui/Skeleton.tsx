@@ -1,29 +1,40 @@
 /*
- * Skeleton (DS-04 · Skeleton): placeholder bars that hold the exact layout of what is coming.
- * Labels, tabs and section titles stay real; only values wait. One shimmer sweeps every block on
- * the screen together, and only while something is loading.
+ * Skeleton (DS-08 · Skeleton shimmer): blocks that hold the exact layout of what is coming. Labels,
+ * tabs and section titles stay real; only values wait. Blocks are sized to the content's real shape
+ * (text line 12, number 16, row 44, a bar its own length). Every block's band runs in phase, so the
+ * sweep reads as one pass over the tile. Content arrives with SkSwap's 400 ms crossfade.
  */
-import type { CSSProperties, ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
+import { MOTION_MS } from './motionPreference'
+import { usePresence } from './presence'
 import './skeleton.css'
+
+/** Negative delay that puts a newly mounted block in phase with every other block on the page. */
+function phase(): string {
+  return `-${Math.round(performance.now() % MOTION_MS.shimmer)}ms`
+}
 
 type SkProps = {
   /** width in px, or any CSS width */
   w: number | string
-  /** 8 for 11–12px text, 10 for 14px titles; taller for buttons and charts */
+  /** 12 for a text line (default), 16 for a number, 44 for a row; a bar takes its own height */
   h?: number
-  /** on a raised card the bar steps up one surface */
+  /** Kept for older screens: blocks are #0F1F23 on every surface now. */
   onRaised?: boolean
+  /** On a panel-colored (#243237) header strip: block #243237, band #2A383D. */
+  strip?: boolean
   radius?: number
   style?: CSSProperties
   className?: string
 }
 
-export function Sk({ w, h = 8, onRaised, radius = 2, style, className = '' }: SkProps) {
+export function Sk({ w, h = 12, strip, radius = 2, style, className = '' }: SkProps) {
+  const [at] = useState(phase)
   return (
     <span
       aria-hidden
-      className={`sk${onRaised ? ' sk-on-raised' : ''} ${className}`}
-      style={{ width: w, height: h, borderRadius: radius, ...style }}
+      className={`sk${strip ? ' sk-strip' : ''} ${className}`}
+      style={{ width: w, height: h, borderRadius: radius, ['--sk-phase' as string]: at, ...style }}
     />
   )
 }
@@ -38,19 +49,48 @@ export function SkRegion({ label, children, style, className = '' }: { label: st
   )
 }
 
+/**
+ * Skeleton → content with the 400 ms crossfade: the blocks fade out while the content fades in, in
+ * the same place, then the blocks are dropped. While `loading`, only the skeleton shows.
+ */
+export function SkSwap({
+  loading,
+  skeleton,
+  children,
+  className = '',
+  style,
+}: {
+  loading: boolean
+  skeleton: ReactNode
+  children: ReactNode
+  className?: string
+  style?: CSSProperties
+}) {
+  const { mounted, leaving } = usePresence(loading, MOTION_MS.load)
+  const [wasLoading, setWasLoading] = useState(loading)
+  if (loading && !wasLoading) setWasLoading(true)
+  const arrived = !loading && wasLoading
+  return (
+    <div className={`sk-swap ${className}`} style={style}>
+      {mounted && <div className={leaving ? 'sk-swap-out' : undefined}>{skeleton}</div>}
+      {!loading && <div className={arrived ? 'sk-swap-in' : undefined}>{children}</div>}
+    </div>
+  )
+}
+
 /** A finding card while scoring: same padding, rows and button slot as FindingCard. */
 export function SkFindingCard({ widths = [112, 236, 148] }: { widths?: [number, number, number] }) {
   return (
     <div className="sk-finding-card" aria-hidden>
       <div className="sk-row">
-        <Sk w={16} onRaised />
-        <Sk w={36} onRaised />
+        <Sk w={16} />
+        <Sk w={36} />
         <span style={{ flex: '1 1 0' }} />
-        <Sk w={widths[0]} onRaised />
+        <Sk w={widths[0]} />
       </div>
-      <Sk w={widths[1]} h={10} onRaised />
+      <Sk w={widths[1]} h={16} />
       <div className="sk-row sk-row-between">
-        <Sk w={widths[2]} onRaised />
+        <Sk w={widths[2]} />
         <span className="sk-button-slot" />
       </div>
     </div>

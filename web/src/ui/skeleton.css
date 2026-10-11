@@ -1,41 +1,64 @@
 /*
- * One shimmer for the whole screen: the highlight is fixed to the viewport, so every block lights
- * in step as the band passes. This is the one gradient in the product, and it only runs while loading.
+ * Skeleton shimmer (DS-08): blocks #0F1F23, radius 2, sized to the content's real shape (text lines
+ * 12, numbers 16, rows 44, bars their own length). A band of #243237, 24% of the block, sweeps left to
+ * right across every block together, 1200 ms linear, looping; the one gradient in the product, never
+ * brighter than #2A383D. On panel-colored (#243237) header strips the block is #243237 and the band
+ * #2A383D. Content replaces it with a 400 ms crossfade. Reduced motion: no sweep, every block pulses
+ * 1 → 0.6 → 1 over 1.2 s, in phase.
  */
 .sk {
-  --sk-base: var(--color-surface-raised);
-  --sk-hi: var(--color-border-subtle);
+  --sk-block: var(--color-skeleton-block);
+  --sk-band: var(--color-skeleton-band);
+  position: relative;
   display: inline-block;
   flex-shrink: 0;
+  overflow: hidden;
   vertical-align: middle;
-  background-color: var(--sk-base);
-  background-image: linear-gradient(90deg, transparent 0, var(--sk-hi) 50%, transparent 100%);
-  background-size: 480px 100%;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  animation: sk-sweep 1.4s linear infinite;
+  background-color: var(--sk-block);
 }
-.sk-on-raised {
-  --sk-base: var(--color-border-subtle);
-  --sk-hi: var(--color-border-control);
+.sk::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 24%;
+  background: linear-gradient(90deg, var(--sk-block), var(--sk-band) 50%, var(--sk-block));
+  transform: translateX(-100%);
+  animation: sk-band var(--motion-shimmer) linear infinite;
+  animation-delay: var(--sk-phase, 0ms);
 }
-@keyframes sk-sweep {
-  from {
-    background-position: -480px 0;
-  }
+/* from just left of the block to just right of it: 100% / 24% = 416.67% of the band */
+@keyframes sk-band {
   to {
-    background-position: calc(100vw + 480px) 0;
+    transform: translateX(416.67%);
   }
+}
+.sk-strip {
+  --sk-block: var(--color-skeleton-strip-block);
+  --sk-band: var(--color-skeleton-strip-band);
+}
+:root[data-reduce-motion] .sk::after {
+  display: none;
+}
+:root[data-reduce-motion] .sk {
+  animation: motion-pulse var(--pulse) var(--ease-motion) infinite;
+  animation-delay: var(--sk-phase, 0ms);
 }
 
-/* data replacing a skeleton fades in where the bars were */
-.sk-arrive {
-  animation: sk-arrive var(--motion-base) var(--ease-enter) both;
+/* Crossfade: blocks out and content in over 400 ms, in the same place. */
+.sk-swap {
+  display: grid;
 }
-@keyframes sk-arrive {
-  from {
-    opacity: 0;
-  }
+.sk-swap > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.sk-swap-out {
+  animation: motion-fade-out var(--motion-load) var(--ease-motion) both;
+  pointer-events: none;
+}
+.sk-swap-in,
+.sk-arrive {
+  animation: motion-fade-in var(--motion-load) var(--ease-motion) both;
 }
 
 .sk-finding-card {
@@ -76,15 +99,4 @@
 .sk-lane.is-first {
   justify-content: flex-start;
   flex: 1 1 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sk {
-    animation: none;
-    background-image: none;
-  }
-}
-:root[data-reduce-motion] .sk {
-  animation: none;
-  background-image: none;
 }
