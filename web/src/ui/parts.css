@@ -58,34 +58,42 @@
 }
 
 /* ── Inspector ───────────────────────────────────────────────────────── */
+/* Mode tabs: two filled 28-tall halves on a 1px ground seam; active is the panel, idle the inset. */
 .mode-tabs {
   display: flex;
   flex-shrink: 0;
-  height: 44px;
-  border-bottom: 1px solid var(--color-surface-app);
+  gap: 1px;
+  height: 28px;
+  background: var(--color-surface-app);
 }
 .mode-tab {
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 1 1 0;
-  border-bottom: 2px solid transparent;
-  color: var(--color-text-tertiary);
-  font-size: var(--text-base);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
   font-weight: var(--font-weight-medium);
-  line-height: var(--leading-base);
-  transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+  line-height: var(--leading-ui);
+  transition:
+    color var(--motion-hover) var(--ease-motion),
+    background-color var(--motion-hover) var(--ease-motion);
+}
+.mode-tab:hover {
+  color: var(--color-text-primary);
 }
 .mode-tab.is-active {
+  background: var(--color-surface-panel);
   color: var(--color-text-primary);
-  border-bottom-color: var(--color-text-primary);
+  cursor: default;
 }
 .mode-block {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-3);
   flex-shrink: 0;
-  padding: 16px 16px 14px;
+  padding: var(--spacing-4);
   border-bottom: 1px solid var(--color-surface-app);
 }
 .mode-line {
@@ -96,8 +104,9 @@
   justify-content: center;
   gap: 3px;
   color: var(--color-text-secondary);
-  font-size: var(--text-label);
+  font-size: var(--text-axis);
   line-height: 14px;
+  white-space: nowrap;
 }
 .powered-by-name {
   color: var(--color-text-primary);
@@ -180,50 +189,51 @@
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-surface-app);
 }
+/* Section row: 44 tall, 18 icon, gap 10, 14/500 title, mono meta right, 14 chevron. */
 .insp-section-header {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  height: 40px;
+  height: 44px;
   padding-inline: var(--spacing-4);
   width: 100%;
 }
 .insp-section-title {
-  flex: 1 1 0;
+  flex-shrink: 0;
   color: var(--color-text-primary);
   font-size: var(--text-base);
   font-weight: var(--font-weight-medium);
   line-height: 18px;
+  white-space: nowrap;
 }
 .insp-section-meta {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
   color: var(--color-text-tertiary);
   font-family: var(--font-mono);
   font-size: var(--text-label);
   line-height: 14px;
   white-space: nowrap;
 }
-.insp-section-collapse {
-  display: grid;
-  grid-template-rows: 1fr;
-  opacity: 1;
-  transition: grid-template-rows var(--motion-base) var(--ease-standard), opacity var(--motion-base) var(--ease-standard);
+.insp-section-spacer {
+  flex: 1 1 0;
 }
+/* Open and close: the height snaps, the body fades in 200 (Section runs it), never a height tween. */
 .insp-section-collapse.is-closed {
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition-duration: var(--motion-fast);
-  transition-timing-function: var(--ease-exit);
-}
-.insp-section-clip {
-  min-height: 0;
-  overflow: hidden;
+  display: none;
 }
 .chevron {
-  transition: transform var(--motion-base) var(--ease-standard);
+  transition: transform var(--motion-tile) var(--ease-motion);
 }
 .chevron.is-closed {
   transform: rotate(180deg);
+}
+:root[data-reduce-motion] .chevron {
+  transition: none;
 }
 .insp-section-body {
   display: flex;

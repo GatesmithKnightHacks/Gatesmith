@@ -1,6 +1,7 @@
 /*
- * The workbench shell (S-00 · Shell template), measured from Paper:
- * top bar 52 (2px ground border) · rail 50 · tab strip 36 with 28-tall tabs · inspector 380 · 4px ground gutters.
+ * The workbench shell, measured from the master MVN-0 (DS-06):
+ * top bar 52 (2px ground border) · rail 52 incl. its 2px ground border · tab band 42 with 31-tall r4
+ * tiles and a 3px mint underline · inspector 380 · 4px ground gutters.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { navigate, redo, ROUTES, undo, useHistoryPosition, type RoutePath } from '../app/router'
@@ -9,7 +10,6 @@ import { useReducedMotion, setReducedMotion } from './motionPreference'
 import { Switch } from './parts'
 import {
   IconAccount,
-  IconDocs,
   IconHelp,
   IconLeaderboard,
   IconNewRun,
@@ -23,7 +23,7 @@ import {
 } from './icons'
 import './shell.css'
 
-export type RailItem = 'new' | 'runs' | 'repo' | 'docs' | 'help' | 'leaderboard'
+export type RailItem = 'new' | 'runs' | 'repo' | 'leaderboard' | 'help' | 'settings' | 'account'
 
 type ShellProps = {
   /** Second word in the top bar: Workbench, Repo, Report… */
@@ -77,7 +77,7 @@ export function TopBar({ context, status }: { context: string; status?: ReactNod
 export function GpuStatus({ online }: { online: boolean }) {
   return (
     <span className="gpu-status">
-      <span className="gpu-dot" style={{ background: online ? 'var(--color-signal-good)' : 'var(--color-text-disabled)' }} />
+      <span className="gpu-dot" style={{ background: online ? 'var(--color-text-primary)' : 'var(--color-text-disabled)' }} />
       {online ? 'GPU online' : 'GPU offline'}
     </span>
   )
@@ -87,9 +87,8 @@ const RAIL: { id: RailItem; label: string; to: RoutePath; icon: (c: string) => R
   { id: 'new', label: 'New run', to: ROUTES.newRun, icon: (c) => <IconNewRun color={c} /> },
   { id: 'runs', label: 'Runs', to: ROUTES.runs, icon: (c) => <IconRuns color={c} /> },
   { id: 'repo', label: 'Repo', to: ROUTES.repo, icon: (c) => <IconRepo color={c} /> },
-  { id: 'docs', label: 'Docs', to: ROUTES.template, icon: (c) => <IconDocs color={c} /> },
-  { id: 'help', label: 'Help', to: ROUTES.template, icon: (c) => <IconHelp color={c} /> },
   { id: 'leaderboard', label: 'Leaderboard', to: ROUTES.leaderboard, icon: (c) => <IconLeaderboard color={c} /> },
+  { id: 'help', label: 'Help', to: ROUTES.template, icon: (c) => <IconHelp color={c} /> },
 ]
 
 export function Rail({ active }: { active: RailItem }) {
@@ -107,17 +106,17 @@ export function Rail({ active }: { active: RailItem }) {
               title={item.label}
               onClick={() => navigate(item.to)}
             >
-              <span className={`rail-disc${on ? ' is-active' : ''}`}>{item.icon(on ? '#FFFFFF' : '#ADC5CA')}</span>
+              <span className="rail-disc">{item.icon(on ? '#F8D441' : '#ADC5CA')}</span>
               {on && <span className="rail-marker" />}
             </button>
           )
         })}
       </div>
       <div className="rail-bottom">
-        <RailPopover label="Settings" trigger={(on) => <span className={`rail-disc${on ? ' is-active' : ''}`}><IconSettings color={on ? '#FFFFFF' : '#ADC5CA'} /></span>}>
+        <RailPopover label="Settings" trigger={(on) => <span className="rail-disc"><IconSettings color={on ? '#FFFFFF' : '#ADC5CA'} /></span>}>
           <SettingsPanel />
         </RailPopover>
-        <RailPopover label="Account" trigger={() => <span className="rail-avatar"><IconAccount /></span>}>
+        <RailPopover label="Account" trigger={() => <span className="rail-avatar"><IconAccount color="#ADC5CA" /></span>}>
           <AccountPanel />
         </RailPopover>
       </div>
