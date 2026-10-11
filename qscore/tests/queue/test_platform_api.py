@@ -260,3 +260,33 @@ def test_reopened_api_reads_persistent_job(api: TestClient) -> None:
     reopened = create_app(state.settings, store=SQLiteStore(state.store.path))
     with TestClient(reopened) as reader:
         assert reader.get(f"/jobs/{job_id}").json()["state"] == "queued"
+
+
+@pytest.mark.parametrize("blank", ["", " ", "\t\n"])
+def test_blank_platform_token_never_authenticates(tmp_path: Path, blank: str) -> None:
+    settings = Settings(platform_db_path=tmp_path / "q.db", platform_token=SecretStr(blank))
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/jobs",
+            json={"example": "sbox_oracle", "confirmed": True},
+            headers={"Authorization": f"Bearer {blank}"},
+        )
+        assert response.status_code == 503
+        assert "not configured" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("blank", ["", " ", "\t\n"])
+def test_blank_worker_token_disables_worker_authentication(tmp_path: Path, blank: str) -> None:
+    settings = Settings(
+        platform_db_path=tmp_path / "q.db",
+        platform_worker_tokens={"cpu": SecretStr(blank), "valid": SecretStr("valid-test-token")},
+    )
+    with TestClient(create_app(settings)) as client:
+        for identity, token in (("cpu", blank), ("valid", "valid-test-token")):
+            response = client.post(
+                "/worker/register",
+                json={"worker_id": identity, "capabilities": CAPS},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert response.status_code == 503
+            assert "nonempty" in response.json()["detail"]

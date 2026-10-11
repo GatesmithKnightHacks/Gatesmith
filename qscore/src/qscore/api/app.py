@@ -108,7 +108,7 @@ def _state(request: Request) -> _State:
 
 def _platform_auth(state: _State, authorization: str | None) -> None:
     token = state.settings.platform_token
-    if token is None:
+    if token is None or not token.get_secret_value().strip():
         raise HTTPException(
             503, "platform writes disabled: QSCORE_PLATFORM_TOKEN is not configured"
         )
@@ -120,8 +120,10 @@ def _platform_auth(state: _State, authorization: str | None) -> None:
 
 def _worker_auth(state: _State, authorization: str | None, worker_id: str | None = None) -> str:
     tokens = state.settings.platform_worker_tokens
-    if not tokens:
-        raise HTTPException(503, "worker access disabled: no per-worker tokens are configured")
+    if not tokens or any(not token.get_secret_value().strip() for token in tokens.values()):
+        raise HTTPException(
+            503, "worker access disabled: per-worker tokens must be configured and nonempty"
+        )
     matched = None
     # Constant-time token comparisons; a valid token never grants another worker's identity.
     for identity, token in tokens.items():
