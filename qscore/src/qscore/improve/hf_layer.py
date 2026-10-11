@@ -434,6 +434,25 @@ class HfLayer:
             cost_usd_estimate=float(cost),
             accounting_known=True,
         )
+
+        def require_timely_result() -> None:
+            now = self._clock()
+            if now >= deadline:
+                record_args["latency_ms"] = (now - attempt_started) * 1000
+                self._record(
+                    CallRecord(
+                        **record_args,
+                        outcome="layer_error",
+                        reply_parsed=False,
+                        n_proposals=0,
+                        error_type="LayerTimeout",
+                    )
+                )
+                raise LayerError("HF response processing exceeded the layer timeout")
+
+        # SDK timeouts bound socket operations rather than total wall time. The
+        # overall layer deadline still applies after a successful HTTP response.
+        require_timely_result()
         if usage.prompt_tokens > prompt_bound or usage.completion_tokens > MAX_OUTPUT_TOKENS:
             self._record(
                 CallRecord(
@@ -454,6 +473,7 @@ class HfLayer:
                 strict=True,
             )
         except (ValueError, ValidationError) as exc:
+            require_timely_result()
             self._record(
                 CallRecord(
                     **record_args,
@@ -467,6 +487,7 @@ class HfLayer:
         invalid: list[str] = []
         proposals: list[Proposal] = []
         for index, candidate in enumerate(parsed.candidates):
+            require_timely_result()
             if index >= request.budget.max_proposals:
                 invalid.append(f"candidate {index}: exceeds max_proposals")
                 continue
@@ -505,6 +526,7 @@ class HfLayer:
                 )
             )
         outcome = "proposals" if proposals else "parse_failure" if invalid else "empty"
+        require_timely_result()
         self._record(
             CallRecord(
                 **record_args,

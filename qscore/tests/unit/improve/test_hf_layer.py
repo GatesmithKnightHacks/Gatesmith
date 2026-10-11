@@ -611,3 +611,32 @@ def test_invalid_region_metadata_or_nonunitary_input_never_leaves_process(
     with pytest.raises(LayerError):
         layer_for(router).propose(improvement_request)
     assert router.gets == 0 and not router.posts
+
+
+def test_late_success_settles_usage_but_never_returns_a_proposal(
+    entry: ModelEntry,
+    improvement_request: ImprovementRequest,
+) -> None:
+    router = Router(entry, [(200, response(json.dumps({"candidates": [candidate()]})))])
+    now = 0.0
+
+    def handle(req: httpx2.Request) -> httpx2.Response:
+        nonlocal now
+        result = router.handle(req)
+        if req.method == "POST":
+            now = 61.0
+        return result
+
+    client = OpenAI(
+        api_key="fixture-not-a-secret",
+        base_url="https://fixture.invalid/v1",
+        http_client=httpx2.Client(transport=httpx2.MockTransport(handle)),
+    )
+    layer = HfLayer(entry, client=client, clock=lambda: now)
+    with pytest.raises(LayerError, match="exceeded the layer timeout"):
+        layer.propose(improvement_request)
+    record = layer.call_records[0]
+    assert record.error_type == "LayerTimeout" and record.n_proposals == 0
+    assert record.accounting_known and record.completion_tokens == 50
+    assert record.latency_ms == 61_000
+    assert layer.job.cost_reserved_usd == pytest.approx(record.cost_usd_estimate)
