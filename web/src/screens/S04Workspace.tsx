@@ -1,336 +1,576 @@
 /*
- * S-04 · Workspace (B1). The hero screen: circuit, scorecard, QASM and the rounds of the improvement
- * loop, with the findings in the inspector. Live, it plays M1 (the scan), M2 (findings land) and the
- * rounds filling in; deep-linked, it is the Paper snapshot (running round 3 of 4, D03 selected).
+ * S-04 · Workspace, rebuilt to the master DS-06 (MVN-0) and the S-04 board 204G-0: circuit, scorecard,
+ * QASM and the rounds of the run, findings in the inspector. Deep-linked it shows the canonical snapshot
+ * (run 7f3a·0412, round 3 of 4 at 400 of 900 s, D03 block 2 proposed by the local model and selected);
+ * live, it plays the first score (M1), the findings landing (M2) and rounds 1 to 3.
  *
- * States (?state=…): empty, scoring, partial, seeds, focus, gpu-off.
+ * States (?state=…), the DS-06 state frames: never-run, loading, scoring, partial, gpu-off, focus.
+ * (Older names still open: empty → never-run, seeds → the Seeds tab.)
  */
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { navigate, ROUTES, useHashParams } from '../app/router'
-import { FINDINGS, RUN, SUPPRESSED } from '../data/demo'
-import { actions, useRun } from '../data/run'
+import { ATTEMPTS, findingById, FINDINGS, GPU_OFF_MESSAGE, metric, RUN, type CanonicalFinding, type FindingId } from '../data/demo'
+import { actions, SCORE_STAGES, useRun, type RunState } from '../data/run'
 import { SectionIcons } from '../ui/icons'
-import {
-  Field,
-  FieldRow,
-  FindingCard,
-  ModeBlock,
-  ModeTabs,
-  PoweredBy,
-  PrimaryButton,
-  Section,
-  SuppressedRow,
-  Switch,
-  TileHeader,
-  EditorButton,
-  type Finding,
-} from '../ui/parts'
+import { EditorButton, Field, FieldRow, ModeBlock, ModeTabs, PoweredBy, PrimaryButton, Section } from '../ui/parts'
 import { Content, GpuStatus, Shell, TabStrip } from '../ui/Shell'
-import { SBOX_QASM, SboxCircuit } from './workspace/SboxCircuit'
+import { Sk } from '../ui/Skeleton'
 import { Chevron } from '../ui/icons'
-import { Circuit, CircuitAxis } from './workspace/Circuit'
+import { Circuit } from './workspace/Circuit'
+import { FindingPlaceholders, FindingSkeletons, NotEvaluatedRow, WsFindingCard, type CardView } from './workspace/Findings'
+import { MarkIcon } from './workspace/icons'
+import { TargetIcon } from './workspace/glyphs'
 import { Qasm } from './workspace/Qasm'
-import { Rounds, Zoom } from './workspace/Rounds'
-import { ScorecardEmpty, ScorecardPartial, ScorecardRows, ScorecardScoring, SeedsChart } from './workspace/Scorecard'
+import { Rounds, Zoom, type RoundsMode, type Shown } from './workspace/Rounds'
+import { ScorecardEmpty, ScorecardLoading, ScorecardRows, ScorecardScoring, SeedsChart } from './workspace/Scorecard'
+import { baselineScoreRows, lineMarks } from './workspace/data'
+import { Spinner } from './workspace/Spinner'
 import './workspace/workspace.css'
 
-type StateParam = 'empty' | 'scoring' | 'partial' | 'seeds' | 'focus' | 'gpu-off' | null
+type StateParam = 'never-run' | 'loading' | 'scoring' | 'partial' | 'gpu-off' | 'focus' | 'seeds'
 
-const CIRCUIT_ZOOMS = [0.8, 0.9, 1, 1.15, 1.3]
+const CIRCUIT_ZOOM = [0.8, 0.9, 1, 1.15, 1.3]
+const CIRCUIT_ZOOM_POS = [0, 16, 32, 52, 72]
 
-/* The partial scorecard belongs to sbox_oracle (run 7f37·a2e4: 118 gates, 4 findings, 2 metrics skipped). */
-/* Restoring the suppressed D08 brings it back as an open finding. */
-const D08: Finding = {
-  rank: 4,
-  severity: 'info',
-  rule: 'D08',
-  ruleName: 'measurement_order',
-  title: 'Measurement order differs from the register',
-  evidence: '12 measures · c[0..11]',
+function readState(raw: string | null): StateParam | null {
+  if (raw === 'empty') return 'never-run'
+  const known: StateParam[] = ['never-run', 'loading', 'scoring', 'partial', 'gpu-off', 'focus', 'seeds']
+  return known.includes(raw as StateParam) ? (raw as StateParam) : null
 }
 
-const SBOX_FINDINGS: Finding[] = [
-  { rank: 1, severity: 'high', rule: 'D01', ruleName: 'routing_overhead', title: 'Routing dominates the transpiled circuit', evidence: '0.52 ratio ≥ 0.30 · 61 swaps' },
-  { rank: 2, severity: 'warning', rule: 'D04', ruleName: 'resynthesis', title: 'Blocks are resynthesizable', evidence: '38 gates removable · 4 S-boxes' },
-  { rank: 3, severity: 'warning', rule: 'D05', ruleName: 'linear_block', title: 'Linear block can be rewritten', evidence: '6 cx · q0–q3' },
-  { rank: 4, severity: 'info', rule: 'D07', ruleName: 'decoherence', title: 'Ancillas idle for long stretches', evidence: 'q16–q19 · 40% idle' },
-]
+/** The frozen scoring frame: measure running at 62%, about 40 s left. */
+const SCORING_FRAME = { progress: 0.62, stage: 'measure' as const }
 
 export function S04Workspace() {
   const run = useRun()
-  const params = useHashParams()
-  const state = (params.get('state') as StateParam) ?? null
+  const state = readState(useHashParams().get('state'))
 
   const [mode, setMode] = useState<'laptop' | 'platform'>('laptop')
   const [circuitTab, setCircuitTab] = useState<'circuit' | 'diff'>('circuit')
   const [scTab, setScTab] = useState<'scorecard' | 'seeds'>(state === 'seeds' ? 'seeds' : 'scorecard')
   const [zoomIdx, setZoomIdx] = useState(2)
-  const [auto, setAuto] = useState(false)
-  const [budgetOpen, setBudgetOpen] = useState(true)
+  const [targetOpen, setTargetOpen] = useState(false)
+  const [budgetOpen, setBudgetOpen] = useState(false)
   const [findingsOpen, setFindingsOpen] = useState(true)
-  const [sboxRequested, setSboxRequested] = useState<string | null>(null)
-  const [restored, setRestored] = useState(false)
+  const [highlight, setHighlight] = useState<number | null>(null)
+  const [retrying, setRetrying] = useState(false)
+  const [auto, setAuto] = useState<boolean>(RUN.autoMode)
 
-  const empty = state === 'empty'
-  const sbox = state === 'partial'
+  /* ── Which frame are we in ─────────────────────────────────────────── */
+  const neverRun = state === 'never-run'
+  const loading = state === 'loading'
   const frozenScoring = state === 'scoring'
-  const scoring = frozenScoring || run.phase === 'scoring'
-  const progress = frozenScoring ? 0.62 : run.scoreProgress
-  const stage = frozenScoring ? 'measure' : run.scoreStage
+  const scoring = frozenScoring || (!state && run.phase === 'scoring')
+  const partial = state === 'partial'
   const gpuOff = state === 'gpu-off'
-  const seedsTab = scTab === 'seeds' || state === 'seeds'
+  const before = neverRun || loading || scoring // nothing scored on screen yet
+  const scoreStage = frozenScoring ? SCORING_FRAME.stage : run.scoreStage
+  const scoreProgress = frozenScoring ? SCORING_FRAME.progress : run.scoreProgress
 
-  const findingsShown = empty || scoring ? 0 : sbox ? 4 : run.phase === 'findings' ? run.findingsShown : 3
-  const landing = run.phase === 'findings'
-  const started = !empty && !scoring && !sbox && run.phase !== 'findings'
-  const attempts = empty || scoring || sbox ? hiddenAll() : run.attempts
-  const selected = sbox ? sboxRequested : findingsShown >= 2 ? run.selectedFinding : null
+  // The frames show the canonical snapshot; without a frame the run store drives the screen.
+  const live = !state || state === 'seeds'
+  const attempts: Record<number, Shown> = before ? hiddenAll() : live ? run.attempts : snapshotAttempts()
+  const findingsShown = before ? 0 : live ? (run.phase === 'findings' ? run.findingsShown : 4) : 4
+  const landing = live && run.phase === 'findings'
+  const elapsed = before ? 0 : live ? run.elapsed : RUN.snapshotAt
+  const round = live ? run.round : 3
+  const twoQubit = live ? run.twoQubit : 281
+  const selected = before ? null : live ? run.selectedFinding : 'D03-2'
+  const roundsStarted = Object.values(attempts).some((s) => s !== 'hidden')
+  const runningLoop = live ? run.phase === 'looping' || run.phase === 'review' : true
+  const stopped = live && (run.phase === 'stopped' || run.phase === 'report' || run.phase === 'export')
 
-  const regions = {
-    accepted: started && attempts[4] === 'accepted',
-    D03: findingsShown >= 2,
-    D04: findingsShown >= 3,
+  const block1 = attempts[4] === 'accepted' ? 'accepted' : 'open'
+  const block2 = attempts[6] === 'accepted' ? 'accepted' : attempts[6] === 'proposed' ? 'proposed' : 'open'
+  const afterR2 = attempts[4] === 'accepted'
+
+  const select = (id: string) => {
+    setHighlight(null)
+    actions.selectFinding(id)
   }
 
-  /* ── Primary action ─────────────────────────────────────────────────── */
-  // While a run is in progress the primary opens the loop view.
-  let primary = {
-    label: `Running round ${run.round} of 4 (${Math.round(run.loopProgress * 100)}%)`,
-    progress: run.loopProgress as number | undefined,
-    onClick: (() => navigate(ROUTES.loop, { transition: 'forward' })) as undefined | (() => void),
+  /* ── The one mint ──────────────────────────────────────────────────── */
+  const pct = Math.round((elapsed / RUN.wallBudget) * 100)
+  let primary: { label: string; progress?: number; onClick?: () => void; disabled?: boolean } = {
+    label: `Run engine (${pct}%)`,
+    progress: elapsed / RUN.wallBudget,
+    onClick: () => navigate(ROUTES.loop, { transition: 'forward' }),
   }
-  if (empty) primary = { label: 'Run engine', progress: undefined, onClick: () => actions.confirmAndScore() }
-  else if (sbox)
-    primary = { label: `Queued · GPU position 1${sboxRequested ? ` · ${sboxRequested} first` : ''}`, progress: undefined, onClick: undefined }
-  else if (scoring) primary = { label: `Scoring (${Math.round(progress * 100)}%)`, progress, onClick: undefined }
-  else if (run.phase === 'findings') primary = { label: 'Scoring (100%)', progress: 1, onClick: undefined }
-  else if (run.phase === 'stopped' || run.phase === 'report' || run.phase === 'export')
-    primary = { label: 'Export final', progress: undefined, onClick: () => actions.exportFinal() }
+  if (neverRun) primary = { label: 'Run engine', onClick: () => actions.confirmAndScore() }
+  else if (loading) primary = { label: 'Open run', disabled: true }
+  else if (scoring) primary = { label: `Scoring (${Math.round(scoreProgress * 100)}%)`, progress: scoreProgress }
+  else if (landing) primary = { label: 'Scoring (100%)', progress: 1 }
+  else if (stopped) primary = { label: 'Export final', onClick: () => actions.exportFinal() }
 
-  const scan = scoring
-    ? frozenScoring
-      ? { stage: 'measure', mode: 'pass' as const, frozenAt: 0.6 }
-      : stage === 'done'
-        ? null
-        : { stage, mode: stage === 'compile' ? ('first' as const) : ('pass' as const) }
-    : null
+  const modeLine =
+    mode === 'platform'
+      ? 'Runs on the platform queue · GPU worker online'
+      : neverRun || loading
+        ? 'Runs on this machine · CPU'
+        : scoring || landing
+          ? 'Runs on this machine · CPU · first score'
+          : `Runs on this machine · CPU · round ${round} of ${RUN.maxRounds} · ${Math.round(elapsed)} of ${RUN.wallBudget} s`
 
+  /* ── Findings: what each card says at this point of the run ────────── */
+  const cardView = (f: CanonicalFinding): CardView => {
+    const baseline = !roundsStarted
+    const inRound4 = (n: number) => attempts[n] === 'queued' || attempts[n] === 'verifying'
+    switch (f.id) {
+      case 'D01':
+        return {
+          kind: 'open',
+          evidence: afterR2 ? f.evidenceAt400 : f.evidence,
+          action: !baseline && inRound4(7) ? 'View in round 4' : 'Request fix',
+          onAction: () => (inRound4(7) ? (select('D01'), setHighlight(7)) : actions.requestFix('D01')),
+        }
+      case 'D03-1':
+        return block1 === 'accepted'
+          ? { kind: 'accepted', round: 2, delta: f.delta ?? -17, onAction: () => (select('D03-1'), setCircuitTab('diff')) }
+          : { kind: 'open', evidence: shortEvidence(f), action: 'Request fix', onAction: () => actions.requestFix('D03-1') }
+      case 'D03-2':
+        if (block2 === 'accepted') return { kind: 'accepted', round: 3, delta: f.delta ?? -11, onAction: () => (select('D03-2'), setCircuitTab('diff')) }
+        if (block2 === 'proposed' && selected === 'D03-2')
+          return {
+            kind: 'proposal',
+            evidence: f.evidenceAt400,
+            attempt: 6,
+            round: 3,
+            layer: 'local',
+            decision: 'proposed',
+            step: 2,
+            ladder: [
+              { label: 'allowed', state: 'passed' },
+              { label: 'equivalent', state: 'running' },
+              { label: 're-scored', state: 'queued' },
+              { label: 'decided', state: 'queued' },
+            ],
+            onAction: () => actions.requestFix('D03-2'),
+          }
+        return {
+          kind: 'open',
+          evidence: shortEvidence(f),
+          action: block2 === 'proposed' ? 'Review proposal' : 'Request fix',
+          onAction: () => actions.requestFix('D03-2'),
+        }
+      case 'D04':
+      default:
+        return {
+          kind: 'open',
+          evidence: f.evidenceAt400,
+          action: !baseline && inRound4(8) ? 'View in round 4' : 'Request fix',
+          onAction: () => (inRound4(8) ? (select('D04'), setHighlight(8)) : actions.requestFix('D04')),
+        }
+    }
+  }
+  const open = FINDINGS.filter((f) => !(f.id === 'D03-1' && block1 === 'accepted') && !(f.id === 'D03-2' && block2 === 'accepted')).length
+  const accepted = 4 - open
+  const findingsMeta = neverRun
+    ? 'Findings appear after the first score'
+    : scoring
+      ? 'Findings appear after diagnose'
+      : `${open} open${accepted ? ` · ${accepted} accepted` : ''} · by severity`
+
+  /* ── Inspector ─────────────────────────────────────────────────────── */
   const inspector = (
     <>
       <ModeTabs active={mode} onChange={setMode} />
-      <ModeBlock
-        line={
-          mode === 'platform'
-            ? 'Runs on the platform queue · GPU worker online'
-            : sbox
-              ? 'Runs on this machine · CPU, 20 q fits · improve waits for the GPU'
-              : 'Runs on this machine · CPU, 12 q fits'
-        }
-      >
-        <PrimaryButton name="primary-action" progress={primary.progress} onClick={primary.onClick}>
+      <ModeBlock line={modeLine}>
+        <PrimaryButton name="primary-action" progress={primary.progress} onClick={primary.onClick} disabled={primary.disabled}>
           {primary.label}
         </PrimaryButton>
-        {empty ? <div className="ws-empty-hint">Findings appear here, ranked</div> : <PoweredBy />}
+        {loading && (
+          <div className="ws-stage-line" role="status">
+            <Spinner />
+            <span>Loading run</span>
+            <span className="mono ws-stage-id">{RUN.job}</span>
+            <span>from your account ·</span>
+            <span className="mono ws-stage-est">about 2 s</span>
+          </div>
+        )}
+        <PoweredBy />
+        {scoring && <StageList stage={scoreStage} />}
       </ModeBlock>
-      {gpuOff && (
-        <div className="ws-notice">
-          <div className="ws-notice-row">
-            <span className="ws-notice-dot" style={{ background: '#667E83' }} />
-            <span>GPU machine is off, GPU jobs will wait</span>
-          </div>
-          <div className="ws-notice-body">
-            reference-qiskit still proposes fixes. The local lane shows "waiting for GPU" and resumes on its own.
-          </div>
-          <div className="ws-notice-row is-strong">
-            <span className="ws-notice-dot" style={{ background: '#FF986E' }} />
-            <span>Platform offline · results are kept on this machine and sync later</span>
-          </div>
-        </div>
-      )}
-      <Section icon={SectionIcons.clock} title="Budget" open={budgetOpen} onToggle={() => setBudgetOpen((o) => !o)}>
-        <FieldRow label="Target">
+      <Section icon={<TargetIcon />} title="Target" meta={`${RUN.target} · ${RUN.targetQubits} q · ${RUN.basis}`} open={targetOpen} onToggle={() => setTargetOpen((o) => !o)}>
+        <FieldRow label="Backend">
           <Field value={RUN.target} select />
         </FieldRow>
+        <FieldRow label="Qubits">
+          <Field value={String(RUN.targetQubits)} unit="q" />
+        </FieldRow>
+        <FieldRow label="Basis">
+          <Field value={RUN.basis} />
+        </FieldRow>
+        <FieldRow label="Optimization level">
+          <Field value={String(RUN.optimizationLevel)} />
+        </FieldRow>
+      </Section>
+      <Section icon={SectionIcons.clock} title="Budget" meta={`${RUN.seeds.length} seeds · ${RUN.maxRounds} rounds · ${RUN.wallBudget} s`} open={budgetOpen} onToggle={() => setBudgetOpen((o) => !o)}>
         <FieldRow label="Seeds">
-          <Field value="8" unit="seeds" />
+          <Field value={String(RUN.seeds.length)} unit="seeds" />
         </FieldRow>
         <FieldRow label="Max rounds">
-          <Field value="4" unit="rounds" />
+          <Field value={String(RUN.maxRounds)} unit="rounds" />
         </FieldRow>
         <FieldRow label="Wall time">
-          <Field value="900" unit="s" />
+          <Field value={String(RUN.wallBudget)} unit="s" />
         </FieldRow>
         <FieldRow label="Layers">
-          <Field value="reference · local" select />
+          <Field value="reference-qiskit · local" select />
         </FieldRow>
-        <div className="ws-auto">
-          <Switch on={auto} onChange={setAuto} label="Auto mode" />
-          <span className="ws-auto-label">Auto mode</span>
-          <span className="ws-auto-note">{auto ? 'on' : 'off'} · never keeps a worse circuit</span>
-        </div>
+        <label className="ws-check">
+          <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
+          <span className="ws-check-box" aria-hidden>
+            {auto && (
+              <svg width="10" height="10" viewBox="0 0 12 12">
+                <path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="#FFFFFF" strokeWidth="1.68" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
+          <span>Auto mode · never keeps a worse circuit</span>
+        </label>
       </Section>
       <section className="insp-section ws-findings">
         <button className="insp-section-header" aria-expanded={findingsOpen} onClick={() => setFindingsOpen((o) => !o)}>
           {SectionIcons.list}
           <span className="insp-section-title">Findings</span>
-          <span className="insp-section-meta">
-            {scoring || empty ? (empty ? 'not scored' : 'scoring') : sbox ? '4 open' : restored ? '4 open' : '3 open · 1 suppressed'}
-          </span>
+          {loading ? (
+            <span className="ws-findings-meta">
+              <Sk w={124} h={12} />
+            </span>
+          ) : (
+            <span className={`ws-findings-meta${before ? ' is-words' : ''}`}>{findingsMeta}</span>
+          )}
           <Chevron open={findingsOpen} />
         </button>
-        <div className={`insp-section-collapse${findingsOpen ? '' : ' is-closed'}`} aria-hidden={!findingsOpen}>
-          <div className="insp-section-clip">
-          <div className="ws-cards">
-            {findingsShown === 0 && <div className="ws-cards-empty">Findings appear here, ranked</div>}
-            {(sbox ? SBOX_FINDINGS : restored && findingsShown >= 3 ? [...FINDINGS, D08] : (FINDINGS as Finding[])).slice(0, findingsShown + (restored ? 1 : 0)).map((f) => {
-              const isSel = selected === f.rule
-              return (
-                <FindingCard
-                  key={f.rule}
-                  finding={f}
-                  selected={isSel}
-                  name={isSel ? 'finding-card' : undefined}
-                  style={{
-                    ...(landing || f.rule === 'D08' ? { animation: 'ws-land var(--motion-base) var(--ease-enter) both' } : {}),
-                    ...(state === 'focus' && f.rule === 'D01'
-                      ? { outline: '2px solid var(--color-action-primary)', outlineOffset: 2 }
-                      : {}),
-                  }}
-                  onSelect={() => (sbox ? setSboxRequested(f.rule) : actions.selectFinding(f.rule))}
-                  onRequest={() => (sbox ? setSboxRequested(f.rule) : actions.requestFix(f.rule))}
-                />
-              )
-            })}
-            {findingsShown >= 3 && !sbox && !restored && (
-              <div style={landing ? { animation: 'ws-land var(--motion-base) var(--ease-enter) both' } : undefined}>
-                <SuppressedRow rule={SUPPRESSED.rule} label={SUPPRESSED.label} onRestore={() => setRestored(true)} />
-              </div>
-            )}
-          </div>
-          </div>
-        </div>
+        {findingsOpen &&
+          (loading ? (
+            <FindingSkeletons />
+          ) : scoring ? (
+            <FindingPlaceholders />
+          ) : neverRun ? null : (
+            <div className="ws-cards">
+              {FINDINGS.slice(0, findingsShown).map((f) => {
+                const isSel = selected === f.id
+                return (
+                  <WsFindingCard
+                    key={f.id}
+                    f={f}
+                    view={cardView(f)}
+                    selected={isSel}
+                    focus={state === 'focus' && f.id === 'D01'}
+                    name={isSel ? 'finding-card' : undefined}
+                    style={landing ? { animation: 'motion-fade-in var(--motion-tile) var(--ease-motion) both' } : undefined}
+                    onSelect={() => select(f.id)}
+                  />
+                )
+              })}
+              {findingsShown >= 4 && <NotEvaluatedRow />}
+            </div>
+          ))}
       </section>
     </>
+  )
+
+  /* ── Main column ───────────────────────────────────────────────────── */
+  const roundsMode: RoundsMode = neverRun ? 'empty' : loading ? 'loading' : scoring || landing ? 'scoring' : 'live'
+  const seedsTab = scTab === 'seeds'
+  const scoreMeta = neverRun ? (
+    'not scored yet'
+  ) : loading ? (
+    <Sk w={150} h={12} className="ws-sk-strip" />
+  ) : scoring ? (
+    <span className="ws-wait" style={{ width: 150, height: 12 }} />
+  ) : partial ? (
+    // D16 says "best of 3 · spread pending"; at mono 11 that runs 6 px past the 350 px tile, and the
+    // banner and the seed_spread row already say spread pending.
+    'best of 3 · pending'
+  ) : afterR2 ? (
+    `best of 8 · spread ${metric('seed_spread').afterR2!.toFixed(3)}`
+  ) : (
+    `best of 8 · spread ${metric('seed_spread').baseline!.toFixed(3)}`
   )
 
   return (
     <Shell
       rail="runs"
       status={
-        gpuOff ? (
+        neverRun ? (
+          <GpuStatus online />
+        ) : gpuOff ? (
           <>
-            <GpuStatus online={false} />
+            <span className="gpu-status">
+              <span className="gpu-dot" style={{ background: 'var(--color-text-disabled)' }} />
+              {GPU_OFF_MESSAGE}
+            </span>
+            <button
+              className={`btn-editor ws-retry${retrying ? ' is-busy' : ''}`}
+              onClick={() => {
+                setRetrying(true)
+                window.setTimeout(() => setRetrying(false), 1200)
+              }}
+              aria-busy={retrying}
+            >
+              <span className="ws-retry-slot">{retrying && <Spinner />}</span>
+              {retrying ? 'Retrying' : 'Retry'}
+            </button>
             <span className="mono topbar-job">job {RUN.job}</span>
           </>
         ) : undefined
       }
       tabs={
-        <TabStrip
-          tabs={[
-            { id: 'a', label: RUN.file, active: !sbox },
-            { id: 'b', label: RUN.other, active: sbox },
-          ]}
-        />
+        <TabsWithBanner
+          banner={
+            partial ? (
+              <div className="ws-banner" role="status">
+                <MarkIcon kind="warning" />
+                <span className="ws-banner-word">Partial score</span>
+                <span className="ws-banner-text">· round 3 re-score · 3 of 8 seeds done · seed_spread pending · about 40 s</span>
+              </div>
+            ) : null
+          }
+        >
+          <TabStrip
+            tabs={[
+              { id: 'a', label: RUN.file, active: true },
+              { id: 'b', label: RUN.other },
+            ]}
+          />
+        </TabsWithBanner>
       }
       inspector={inspector}
     >
       <Content>
         <div className="ws-top">
           {/* Circuit */}
-          <section className="tile ws-circuit-tile">
-            <TileHeader
-              tabs={[
-                { id: 'circuit', label: 'Circuit', active: circuitTab === 'circuit', onClick: () => setCircuitTab('circuit') },
-                { id: 'diff', label: 'Diff', active: circuitTab === 'diff', onClick: () => setCircuitTab('diff') },
-              ]}
-              meta={<Zoom idx={zoomIdx} count={CIRCUIT_ZOOMS.length} width={44} step={7} onChange={setZoomIdx} />}
-            />
-            <div className="ws-circuit-body">
-              {sbox ? (
-                <SboxCircuit />
-              ) : circuitTab === 'circuit' ? (
-                <>
+          <section className="tile ws-circuit-tile" aria-label="Circuit">
+            <div className="tile-header">
+              <div className="tile-tabs" role="tablist">
+                <TileTab label="Circuit" active={circuitTab === 'circuit'} onClick={() => setCircuitTab('circuit')} />
+                <TileTab label="Diff" active={circuitTab === 'diff'} onClick={() => setCircuitTab('diff')} />
+              </div>
+              <div className="ws-tile-meta ws-circuit-meta">
+                <Zoom idx={zoomIdx} positions={CIRCUIT_ZOOM_POS} onChange={setZoomIdx} label="Circuit zoom" />
+                <span className="ws-circuit-dims">{loading ? <Sk w={104} h={12} className="ws-sk-strip" /> : `${RUN.qubits} q · ${RUN.layers} layers`}</span>
+              </div>
+            </div>
+            <div className="ws-tile-pad">
+              <div className="ws-canvas">
+                {loading ? (
+                  <div className="ws-canvas-loading" role="status">
+                    <Spinner size={28} />
+                    <span className="ws-canvas-loading-words">
+                      <span>Drawing the circuit</span>
+                      <span className="mono ws-canvas-loading-est">about 2 s</span>
+                    </span>
+                  </div>
+                ) : circuitTab === 'diff' ? (
+                  <DiffNote selected={selected} block2={block2} onOpen={() => actions.requestFix('D03-2')} onBack={() => setCircuitTab('circuit')} />
+                ) : (
                   <Circuit
-                    regions={empty ? { accepted: false, D03: false, D04: false } : regions}
+                    layout={before || landing || !roundsStarted ? 'plain' : 'regions'}
+                    block1={block1}
+                    block2={block2}
                     selected={selected}
-                    onSelect={(r) => actions.selectFinding(r)}
-                    scan={scan}
-                    zoom={CIRCUIT_ZOOMS[zoomIdx]}
+                    onSelect={(id: FindingId) => select(id)}
+                    zoom={CIRCUIT_ZOOM[zoomIdx]}
                   />
-                  <CircuitAxis />
-                </>
-              ) : (
-                <div className="ws-diff-empty">
-                  <div>Proposal #6 for D03 is waiting in round 3.</div>
-                  <div className="mono ws-diff-sub">commuting_reorder · local · granite-8b</div>
-                  <EditorButton onClick={() => actions.requestFix('D03')}>Open fix review</EditorButton>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </section>
 
           {/* Scorecard */}
-          <section className="tile ws-score-tile">
-            <TileHeader
-              tabs={[
-                { id: 'scorecard', label: 'Scorecard', active: !seedsTab, onClick: () => setScTab('scorecard') },
-                { id: 'seeds', label: 'Seeds', active: seedsTab, onClick: () => setScTab('seeds') },
-                { id: 'hardware', label: 'Hardware', onClick: () => navigate(ROUTES.estimate, { transition: 'forward' }) },
-              ]}
-              meta={seedsTab ? <span className="mono">spread 0.18</span> : 'baseline · best of 8'}
-            />
-            {empty ? (
+          <section className="tile ws-score-tile" aria-label="Scorecard">
+            <div className="tile-header">
+              <div className="tile-tabs" role="tablist">
+                <TileTab label="Scorecard" pad={6} active={!seedsTab} onClick={() => setScTab('scorecard')} />
+                <TileTab label="Seeds" pad={6} active={seedsTab} onClick={() => !before && setScTab('seeds')} />
+                <TileTab label="Hardware" pad={4} onClick={() => navigate(ROUTES.estimate, { transition: 'forward' })} />
+              </div>
+              <div className="ws-tile-meta">{scoreMeta}</div>
+            </div>
+            {neverRun ? (
               <ScorecardEmpty />
-            ) : scoring ? (
-              <ScorecardScoring progress={progress} stage={stage} />
-            ) : state === 'partial' ? (
-              <ScorecardPartial />
+            ) : loading ? (
+              <ScorecardLoading />
+            ) : scoring || landing ? (
+              <ScorecardScoring />
             ) : seedsTab ? (
               <SeedsChart />
+            ) : afterR2 ? (
+              <ScorecardRows partial={partial} />
             ) : (
-              <ScorecardRows />
+              <ScorecardRows rows={baselineScoreRows(twoQubit)} />
             )}
           </section>
 
           {/* QASM */}
-          <section className="tile ws-qasm-tile">
-            <TileHeader tabs={[{ id: 'qasm', label: 'QASM', active: true }]} meta={sbox ? 'OpenQASM 2.0 · 20 q' : 'OpenQASM 2.0 · 12 q'} />
-            {sbox ? (
-              <div className="qasm">
-                {SBOX_QASM.map((text, i) => (
-                  <div key={i} className="qasm-line">
-                    <span className="qasm-num">{i + 1}</span>
-                    <span className={`qasm-code${text.startsWith('//') ? ' is-comment' : ''}`}>{text}</span>
-                  </div>
-                ))}
+          <section className="tile ws-qasm-tile" aria-label="QASM">
+            <div className="tile-header">
+              <div className="tile-tabs" role="tablist">
+                <TileTab label="QASM" active />
               </div>
+              <div className="ws-tile-meta">{loading ? <Sk w={150} h={12} className="ws-sk-strip" /> : `OpenQASM 2.0 · ${RUN.qasmLines} lines`}</div>
+            </div>
+            {loading ? (
+              <QasmLoading />
             ) : (
-              <Qasm regions={regions.D03 ? ['D03'] : []} selected={selected} />
+              <Qasm
+                marks={
+                  before || !roundsStarted
+                    ? {}
+                    : lineMarks({
+                        block1: block1 === 'accepted' ? 'accepted' : 'open',
+                        block2: block2 === 'accepted' ? 'accepted' : 'open',
+                        selectedLine: selected === 'D03-2' ? 48 : selected === 'D03-1' ? 6 : undefined,
+                      })
+                }
+              />
             )}
           </section>
         </div>
 
         <Rounds
+          key={state ?? 'live'}
+          mode={roundsMode}
           attempts={attempts}
-          liveRound={run.round}
-          started={started}
-          selected={selected}
+          elapsed={elapsed}
+          round={round}
+          twoQubit={twoQubit}
+          running={runningLoop && !stopped}
           gpuOff={gpuOff}
-          emptyNote={
-            sbox
-              ? 'Not improved yet · round 1 starts when the GPU frees up'
-              : empty
-                ? 'Rounds appear here once the engine has scored the circuit'
-                : scoring
-                  ? 'Round 1 starts when scoring finishes'
-                  : undefined
-          }
+          highlight={highlight}
+          onOpenAttempt={(n) => {
+            setHighlight(n)
+            const a = ATTEMPTS.find((x) => x.n === n)
+            if (a?.finding && findingById(a.finding)) actions.selectFinding(a.finding)
+          }}
         />
       </Content>
     </Shell>
   )
 }
 
-function hiddenAll() {
-  return Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map((n) => [n, 'hidden'])) as ReturnType<typeof useRun>['attempts']
+/* ── Local parts ─────────────────────────────────────────────────────── */
+
+/** Beside a button the D03 evidence drops the line range (it is on the QASM rail and the canvas). */
+function shortEvidence(f: CanonicalFinding) {
+  return f.layers ? `39 2q ops · q0–q11 · layers ${f.layers[0]}–${f.layers[1]}` : f.evidence
+}
+
+function TileTab({ label, active, onClick, pad = 10 }: { label: string; active?: boolean; onClick?: () => void; pad?: number }) {
+  return (
+    <button role="tab" aria-selected={!!active} className={`tile-tab${active ? ' is-active' : ''}`} style={{ paddingInline: pad }} onClick={onClick}>
+      {label}
+    </button>
+  )
+}
+
+/** The scoring stages under the mint (DS-06 scoring frame): done · running with the spinner · queued. */
+function StageList({ stage }: { stage: RunState['scoreStage'] }) {
+  const at = stage === 'done' ? SCORE_STAGES.length : SCORE_STAGES.indexOf(stage)
+  return (
+    <div className="ws-stages" role="status" aria-label={`Scoring · ${stage}`}>
+      {SCORE_STAGES.map((s, i) => {
+        const state = i < at ? 'done' : i === at ? 'running' : 'queued'
+        return (
+          <div key={s} className={`ws-stage is-${state}`}>
+            <span className="ws-stage-icon">
+              {state === 'done' ? (
+                <MarkIcon kind="passed" size={12} tone="var(--color-text-secondary)" />
+              ) : state === 'running' ? (
+                <MarkIcon kind="running" />
+              ) : (
+                <MarkIcon kind="queued" />
+              )}
+            </span>
+            <span className="ws-stage-name">{s}</span>
+            {state === 'running' ? (
+              <>
+                <span className="ws-stage-word is-running">
+                  <Spinner size={14} />
+                  running
+                </span>
+                <span className="ws-grow" />
+                <span className="ws-stage-est">{s === 'measure' ? 'about 40 s left' : s === 'diagnose' ? 'about 10 s left' : 'about 20 s left'}</span>
+              </>
+            ) : (
+              <span className="ws-stage-word">{state}</span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** The tab band with an optional banner between the tabs and undo / redo (DS-06 partial frame). */
+function TabsWithBanner({ children, banner }: { children: ReactNode; banner: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [left, setLeft] = useState(0)
+  useLayoutEffect(() => {
+    if (!banner || !ref.current) return
+    const tabs = ref.current.querySelector('.tabstrip-tabs, [role="tablist"]') as HTMLElement | null
+    const measure = () => setLeft(tabs ? tabs.offsetLeft + tabs.offsetWidth : 320)
+    measure()
+    const ro = new ResizeObserver(measure)
+    if (tabs) ro.observe(tabs)
+    return () => ro.disconnect()
+  }, [banner])
+  return (
+    <div className="ws-tabband" ref={ref}>
+      {children}
+      {banner && (
+        <div className="ws-banner-slot" style={{ left }}>
+          {banner}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DiffNote({ selected, block2, onOpen, onBack }: { selected: string | null; block2: string; onOpen: () => void; onBack: () => void }) {
+  const block1 = selected === 'D03-1'
+  return (
+    <div className="ws-diff-note">
+      <span className="ws-diff-title">{block1 ? 'D03 block 1 · accepted in round 2' : block2 === 'proposed' ? 'D03 block 2 · proposal from round 3' : 'D03 block 2'}</span>
+      <span className="mono ws-diff-sub">
+        {block1 ? 'commutation_aware_routing · local · −17 gates · passed' : `commutation_aware_routing · local · ${RUN.localModel}`}
+      </span>
+      <span className="ws-diff-actions">
+        <EditorButton onClick={onOpen}>{block1 ? 'Open fix review' : 'Review proposal'}</EditorButton>
+        <EditorButton onClick={onBack}>Show circuit</EditorButton>
+      </span>
+    </div>
+  )
+}
+
+function QasmLoading() {
+  const widths = [158, 158, 158, 72, 94, 108, 158, 158, 158, 158, 158, 172, 158, 158, 158, 158, 162, 158]
+  return (
+    <div className="ws-tile-pad">
+      <div className="ws-qasm is-loading" aria-hidden>
+        <div className="ws-qasm-rule" />
+        {widths.map((w, i) => (
+          <div key={i} className="ws-qasm-line">
+            <span className="ws-qasm-num" />
+            <span className="ws-qasm-code">
+              <Sk w={w} h={12} />
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Attempts as drawn at 400 s: rounds 1–2 decided, R3 reference verifying and local proposed, R4 queued. */
+function snapshotAttempts(): Record<number, Shown> {
+  return Object.fromEntries(
+    ATTEMPTS.map((a) => [a.n, a.round < 3 ? a.final : a.at400?.status ?? 'queued']),
+  ) as Record<number, Shown>
+}
+
+function hiddenAll(): Record<number, Shown> {
+  return Object.fromEntries(ATTEMPTS.map((a) => [a.n, 'hidden'])) as Record<number, Shown>
 }

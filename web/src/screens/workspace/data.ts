@@ -1,148 +1,191 @@
 /*
- * S-04 data, read from the Paper board (BL9-0). The circuit is sidechain_qaoa's first 12-qubit layer pair,
- * drawn on a 29 px wire pitch exactly as in Paper.
+ * S-04 view data: the scorecard as drawn at 400 s (MVN-0 20HZ-0), the seeds behind "best of 8", and the
+ * Rounds geometry (time axis 0–600 s on a 932 px plot). Values come from ../../data/demo; bar lengths are
+ * the board's (36 px track: the baseline bar on top, now below, the threshold tick).
  */
+import { metric, RUN } from '../../data/demo'
 
-export const WIRE_Y = (q: number) => 26 + 29 * q
-export const GATE_TOP = (q: number) => 16 + 29 * q
-export const CANVAS_W = 314
-export const CANVAS_H = 372
+export type LineMark = 'open' | 'accepted' | 'selected'
 
-export type Box = { q: number; x: number; w: 20 | 22; label: 'H' | 'RZ' | 'RX' | 'M' }
-export type Cx = { x: number; control: number; target: number }
+/* ── Status colors (the master's mark grammar) ───────────────────────── */
 
-const qubits = Array.from({ length: 12 }, (_, i) => i)
-const odd = qubits.filter((q) => q % 2 === 1)
-const evenInner = [2, 4, 6, 8, 10]
+export type Mark = 'high' | 'warning' | 'accepted' | 'passed' | 'rejected' | 'inconclusive' | 'verifying' | 'running' | 'proposed' | 'queued' | 'unavailable' | 'skipped' | 'pending'
 
-export const BOXES: Box[] = [
-  ...qubits.map((q) => ({ q, x: 40, w: 20 as const, label: 'H' as const })),
-  ...odd.map((q) => ({ q, x: 99, w: 22 as const, label: 'RZ' as const })),
-  ...evenInner.map((q) => ({ q, x: 189, w: 22 as const, label: 'RZ' as const })),
-  ...qubits.map((q) => ({ q, x: 249, w: 22 as const, label: 'RX' as const })),
-  ...qubits.map((q) => ({ q, x: 280, w: 20 as const, label: 'M' as const })),
-]
-
-export const CXS: Cx[] = [
-  // layer 1: q0→q1, q2→q3 … at columns 80 and 140
-  ...[0, 2, 4, 6, 8, 10].flatMap((c) => [
-    { x: 80, control: c, target: c + 1 },
-    { x: 140, control: c, target: c + 1 },
-  ]),
-  // layer 2: q1→q2, q3→q4 … at columns 170 and 230
-  ...[1, 3, 5, 7, 9].flatMap((c) => [
-    { x: 170, control: c, target: c + 1 },
-    { x: 230, control: c, target: c + 1 },
-  ]),
-]
-
-/** Finding regions on the canvas, as drawn in Paper. */
-export const REGIONS = {
-  accepted: { x: 66.75, y: 12.75, w: 86.5, h: 55.5, chip: { left: 71, top: 8, text: 'accepted' } },
-  D03: { x: 156.75, y: 99.75, w: 86.5, h: 113.5, chip: { left: 161, top: 95, text: 'D03 high' } },
-  D04: { x: 156.75, y: 273.75, w: 86.5, h: 55.5, chip: { left: 161, top: 269, text: 'D04 warning' } },
+export const C = {
+  high: 'var(--color-signal-bad)',
+  warning: 'var(--color-signal-warn)',
+  accepted: 'var(--color-signal-good)',
+  rejected: 'var(--color-signal-bad)',
+  inconclusive: 'var(--color-signal-warn)',
+  verifying: 'var(--color-signal-info)',
+  proposed: 'var(--color-signal-ai)',
+  queued: 'var(--color-text-tertiary)',
 } as const
 
-/** The gate that carries the yellow "you are here" outline for each selectable finding. */
-export const SELECTED_GATE: Record<string, { q: number; x: number }> = {
-  D03: { q: 4, x: 189 },
-  D04: { q: 10, x: 189 },
+/** The word color for a mark. */
+export function markColor(m: Mark): string {
+  switch (m) {
+    case 'high':
+    case 'rejected':
+      return C.high
+    case 'warning':
+    case 'inconclusive':
+      return C.warning
+    case 'accepted':
+      return C.accepted
+    case 'verifying':
+    case 'running':
+      return C.verifying
+    case 'proposed':
+      return C.proposed
+    case 'passed':
+      return 'var(--color-text-secondary)'
+    default:
+      return 'var(--color-text-tertiary)'
+  }
 }
 
-/** QASM lines (OpenQASM 2.0 · 12 q). */
-export const QASM: string[] = [
-  'OPENQASM 2.0;',
-  'include "qelib1.inc";',
-  'qreg q[12];',
-  'creg c[12];',
-  'h q;',
-  'cx q[0], q[1];',
-  'rz(0.42) q[1];',
-  'cx q[0], q[1];',
-  'cx q[2], q[3];',
-  'rz(0.42) q[3];',
-  'cx q[2], q[3];',
-  '// layer 2',
-  'cx q[3], q[4];',
-  'rz(0.42) q[4];',
-  'cx q[3], q[4];',
-  'cx q[5], q[6];',
-  'rz(0.42) q[6];',
-  'cx q[5], q[6];',
-  'rx(1.17) q;',
-  'measure q -> c;',
-]
 
-/** Lines of each finding's region, and the line of its selected gate. */
-export const FINDING_LINES: Record<string, { lines: number[]; gateLine: number }> = {
-  D03: { lines: [13, 14, 15, 16, 17, 18], gateLine: 14 },
-}
-
-/* ── Scorecard (baseline · best of 8) ─────────────────────────────────── */
 export type ScoreRow =
-  | { kind: 'group'; label: string }
+  | { kind: 'group'; label: string; note?: string; noteSize?: 10 | 11 }
   | {
       kind: 'metric'
-      id: string
-      value: string
-      unit?: string
-      status?: 'high' | 'warning' | 'info'
+      name: string
+      now: string
+      unit: string
+      /** bar lengths in px of 36: baseline, now; tick position */
+      bars?: [number, number]
+      tick?: number
+      /** the rule fires: now bar pink and the "high" word instead of the delta */
+      fires?: boolean
+      delta?: string
+      /** a word in the bar column instead of bars ("cv 0.12") */
       aside?: string
-      note?: string
-      bar?: { fill: number; marker: number }
+      primary?: boolean
+      /** no bottom rule (the caveat line follows) */
+      open?: boolean
     }
-  | { kind: 'skipped'; id: string; reason: string }
+  | { kind: 'caveat'; text: string }
+  | { kind: 'status'; name: string; note: string; status: 'unavailable' | 'skipped' | 'pending'; last?: boolean }
 
-export const SCORECARD: ScoreRow[] = [
-  { kind: 'group', label: 'resources' },
-  { kind: 'metric', id: 'width', value: '12', unit: 'q' },
-  { kind: 'metric', id: 'two_qubit_count', value: '44', unit: 'gates' },
-  { kind: 'metric', id: 'depth', value: '58', unit: 'layers' },
-  { kind: 'metric', id: 'two_qubit_depth', value: '24', unit: 'layers' },
-  { kind: 'group', label: 'hardware · FakeTorino' },
-  { kind: 'metric', id: 'routing_overhead', value: '0.41', unit: 'ratio', status: 'high', bar: { fill: 24, marker: 18 } },
-  { kind: 'metric', id: 'swaps_inserted', value: '18', unit: 'ops' },
-  {
-    kind: 'metric',
-    id: 'reliability_heuristic',
-    value: '0.692',
-    note: 'calibration-based reliability heuristic, not a success probability',
-  },
-  { kind: 'metric', id: 'seed_spread', value: '0.18', unit: 'ratio', status: 'info' },
+const fmt = (name: string, which: 'baseline' | 'afterR2') => {
+  const m = metric(name)
+  const v = m[which]!
+  return m.digits ? v.toFixed(m.digits) : String(v)
+}
+const delta = (name: string, digits?: number) => {
+  const m = metric(name)
+  const d = m.afterR2! - m.baseline!
+  const s = digits != null ? Math.abs(d).toFixed(digits) : String(Math.abs(Math.round(d)))
+  return `${d < 0 ? '−' : '+'}${s}`
+}
+
+/** The scorecard at 400 s: after round 2, against the baseline. */
+export const SCORE_ROWS: ScoreRow[] = [
+  { kind: 'group', label: 'resources', note: 'bars baseline · now · tick threshold', noteSize: 10 },
+  { kind: 'metric', name: 'width', now: '12', unit: 'qubits' },
+  { kind: 'metric', name: 'depth', now: fmt('depth', 'afterR2'), unit: 'layers', bars: [36, 33], delta: delta('depth') },
+  { kind: 'metric', name: 'two_qubit_count', now: fmt('two_qubit_count', 'afterR2'), unit: 'gates', bars: [36, 32], delta: delta('two_qubit_count'), primary: true },
+  { kind: 'metric', name: 'two_qubit_depth', now: fmt('two_qubit_depth', 'afterR2'), unit: 'layers', bars: [36, 33], delta: delta('two_qubit_depth') },
+  { kind: 'group', label: 'hardware', note: `${RUN.target} · seed ${RUN.bestSeed} · level ${RUN.optimizationLevel}`, noteSize: 11 },
+  { kind: 'metric', name: 'routing_overhead', now: fmt('routing_overhead', 'afterR2'), unit: 'ratio', bars: [31, 27], tick: 18, fires: true },
+  { kind: 'metric', name: 'swaps_inserted', now: fmt('swaps_inserted', 'afterR2'), unit: 'gates', bars: [36, 27], delta: delta('swaps_inserted') },
+  { kind: 'metric', name: 'compile_ratio', now: fmt('compile_ratio', 'afterR2'), unit: 'ratio', bars: [36, 31], delta: delta('compile_ratio', 2) },
+  { kind: 'metric', name: 'reliability_heuristic', now: fmt('reliability_heuristic', 'afterR2'), unit: '(0, 1]', bars: [31, 36], delta: delta('reliability_heuristic', 3), open: true },
+  { kind: 'caveat', text: metric('reliability_heuristic').note! },
+  { kind: 'metric', name: 'scheduled_duration', now: fmt('scheduled_duration', 'afterR2'), unit: 'µs', bars: [36, 32], delta: delta('scheduled_duration', 1) },
+  { kind: 'metric', name: 'seed_spread', now: fmt('seed_spread', 'afterR2'), unit: 'ratio', bars: [11, 8], tick: 18, delta: delta('seed_spread', 3) },
   { kind: 'group', label: 'opportunities' },
-  { kind: 'metric', id: 'commuting_block', value: '6', unit: '2q ops', status: 'high' },
-  { kind: 'metric', id: 'resynthesis_potential', value: '4', unit: 'gates', status: 'warning' },
+  { kind: 'metric', name: 'entanglement_variance', now: '9', unit: 'gates²', aside: 'cv 0.12' },
+  { kind: 'metric', name: 'resynthesis_potential', now: fmt('resynthesis_potential', 'afterR2'), unit: 'gates', bars: [32, 21], tick: 3, fires: true },
   { kind: 'group', label: 'research' },
-  { kind: 'metric', id: 'simulated_task_score', value: '0.87', unit: '±0.02', aside: 'n=5' },
-  { kind: 'skipped', id: 'mirror_score', reason: 'skipped · not selected' },
+  { kind: 'status', name: 'simulated_task_score', note: 'not in the MVP build', status: 'unavailable' },
+  { kind: 'status', name: 'mirror_score', note: 'not selected', status: 'skipped', last: true },
 ]
 
-/** sbox_oracle's partial scorecard (run 7f37·a2e4): two research metrics are unaffordable at 20 qubits. */
-export const SBOX_SCORECARD: ScoreRow[] = [
+/** The first score's resource rows, baseline only (DS-06 scoring frame). */
+export const BASELINE_ROWS: ScoreRow[] = [
   { kind: 'group', label: 'resources' },
-  { kind: 'metric', id: 'width', value: '20', unit: 'q' },
-  { kind: 'metric', id: 'two_qubit_count', value: '118', unit: 'gates' },
-  { kind: 'metric', id: 'depth', value: '212', unit: 'layers' },
-  { kind: 'group', label: 'hardware · FakeTorino' },
-  { kind: 'metric', id: 'routing_overhead', value: '0.52', unit: 'ratio', status: 'high', bar: { fill: 30, marker: 18 } },
-  { kind: 'metric', id: 'swaps_inserted', value: '61', unit: 'ops' },
-  { kind: 'metric', id: 'reliability_heuristic', value: '0.214' },
-  { kind: 'group', label: 'opportunities' },
-  { kind: 'metric', id: 'resynthesis_potential', value: '38', unit: 'gates', status: 'warning' },
-  { kind: 'metric', id: 'linear_block', value: '6', unit: 'cx', status: 'warning' },
-  { kind: 'group', label: 'research' },
-  { kind: 'skipped', id: 'simulated_task_score', reason: 'skipped · unaffordable' },
-  { kind: 'skipped', id: 'mirror_score', reason: 'skipped · unaffordable' },
+  { kind: 'metric', name: 'width', now: '12', unit: 'qubits' },
+  { kind: 'metric', name: 'depth', now: fmt('depth', 'baseline'), unit: 'layers' },
+  { kind: 'metric', name: 'two_qubit_count', now: fmt('two_qubit_count', 'baseline'), unit: 'gates', primary: true },
+  { kind: 'metric', name: 'two_qubit_depth', now: fmt('two_qubit_depth', 'baseline'), unit: 'layers' },
 ]
 
-/** Seeds tab: two-qubit count per seed; the chosen seed is outlined (states board). */
+/** two_qubit_count per seed after round 2; seed 37 is the best (281), spread = (max − min) ÷ best = 0.071. */
 export const SEEDS = [
-  { seed: 11, h: 86 },
-  { seed: 23, h: 98 },
-  { seed: 37, h: 80 },
-  { seed: 41, h: 92 },
-  { seed: 53, h: 84 },
-  { seed: 67, h: 75, chosen: true, label: '44' },
-  { seed: 79, h: 90 },
-  { seed: 97, h: 94 },
-]
+  { seed: 11, gates: 296 },
+  { seed: 23, gates: 289 },
+  { seed: 37, gates: 281 },
+  { seed: 41, gates: 301 },
+  { seed: 53, gates: 292 },
+  { seed: 67, gates: 285 },
+  { seed: 79, gates: 298 },
+  { seed: 97, gates: 293 },
+] as const
+
+/* ── Rounds geometry ─────────────────────────────────────────────────── */
+
+/** The plot is 932 px wide; the board puts 100 s every 155.75 px (400 s at 623 px). */
+export const PLOT_W = 932
+export const PX_PER_S = 623 / 400
+export const xOf = (s: number, zoom = 1) => s * PX_PER_S * zoom
+
+/** Card boxes on the plot as the master draws them at 400 s, [left, width] in px. */
+export const CARD_BOX: Record<number, [number, number]> = {
+  1: [4, 139],
+  2: [4, 181],
+  3: [189, 196],
+  4: [189, 196],
+  5: [393, 227],
+  6: [393, 227],
+  7: [642, 230],
+  8: [642, 230],
+}
+
+/** Round labels and their tick positions on the axis (px). */
+export const ROUND_TICKS = [
+  { label: 'R1', x: 6, tick: null },
+  { label: 'R2', x: 191, tick: 185 },
+  { label: 'R3', x: 395, tick: 389 },
+  { label: 'R4', x: 644, tick: 638 },
+] as const
+
+export const AXIS_LABELS = [
+  { label: '0 s', x: 6 },
+  { label: '100', x: 162 },
+  { label: '200', x: 317 },
+  { label: '300', x: 473 },
+  { label: '400', x: 629 },
+  { label: '500', x: 784 },
+] as const
+
+/**
+ * The full scorecard before round 2 lands (the first score, then round 1): baseline values, the rules
+ * that fire marked, no deltas yet. two_qubit_count follows the run (321, then 298 after R1).
+ */
+export function baselineScoreRows(twoQubit: number): ScoreRow[] {
+  return SCORE_ROWS.map((row) => {
+    if (row.kind !== 'metric' || row.name === 'width') return row
+    if (row.name === 'entanglement_variance') return row
+    const m = metric(row.name)
+    const now = row.name === 'two_qubit_count' ? String(twoQubit) : m.digits ? m.baseline!.toFixed(m.digits) : String(m.baseline)
+    const fires = row.fires
+    return {
+      ...row,
+      now,
+      delta: undefined,
+      bars: fires ? ([row.bars![0], row.bars![0]] as [number, number]) : undefined,
+      tick: fires ? row.tick : undefined,
+    }
+  }).map((row) => (row.kind === 'group' && row.label === 'resources' ? { ...row, note: 'baseline · best of 8', noteSize: 10 as const } : row))
+}
+
+/** Line marks for a point of the run: block 1 accepted, block 2 open with line 48 selected. */
+export function lineMarks({ block1, block2, selectedLine }: { block1?: 'open' | 'accepted'; block2?: 'open' | 'accepted'; selectedLine?: number }) {
+  const marks: Record<number, LineMark> = {}
+  if (block1) for (let n = 6; n <= 44; n++) marks[n] = block1
+  if (block2) for (let n = 48; n <= 86; n++) marks[n] = block2
+  if (selectedLine) marks[selectedLine] = 'selected'
+  return marks
+}

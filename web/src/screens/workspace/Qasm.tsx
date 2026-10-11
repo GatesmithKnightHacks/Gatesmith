@@ -1,48 +1,34 @@
 /*
- * QASM tile body: one color, a 36px gutter, finding regions get a pink rail plus the rule id,
- * the selected gate's line gets the yellow rail (DS-04 · Code block).
+ * QASM tile body (PXG-0): 20 px lines, mono 12, a 44 px gutter with a 2 px panel rule, and a 2 px rail
+ * per line: pink = a line in an open finding, #C2DADF = accepted, yellow = the selected line.
+ * The whole 88-line file scrolls; it opens at line 42 so the selected line sits in view.
  */
-import { useEffect, useRef } from 'react'
-import { FINDING_LINES, QASM } from './data'
+import { useLayoutEffect, useRef } from 'react'
+import { QASM } from '../../data/demo'
+import type { LineMark } from './data'
 
-export function Qasm({ regions, selected }: { regions: string[]; selected: string | null }) {
+export function Qasm({ marks, firstLine = 42 }: { marks: Record<number, LineMark>; firstLine?: number }) {
   const ref = useRef<HTMLDivElement>(null)
-  const marked = new Map<number, 'region' | 'selected'>()
-  const tags = new Map<number, string>()
-  for (const r of regions) {
-    const f = FINDING_LINES[r]
-    if (!f) continue
-    f.lines.forEach((l) => marked.set(l, 'region'))
-    tags.set(f.lines[0], r)
-    if (selected === r) marked.set(f.gateLine, 'selected')
-  }
-
-  // Selecting a finding scrolls its lines into view.
-  useEffect(() => {
-    const f = selected ? FINDING_LINES[selected] : undefined
-    if (!f || !ref.current) return
-    const line = ref.current.querySelector<HTMLElement>(`[data-line="${f.lines[0]}"]`)
-    line?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [selected])
-
+  useLayoutEffect(() => {
+    if (ref.current) ref.current.scrollTop = (firstLine - 1) * 20
+  }, [firstLine])
   return (
-    <div className="qasm" ref={ref}>
-      {QASM.map((text, i) => {
-        const n = i + 1
-        const m = marked.get(n)
-        return (
-          <div key={n} data-line={n} className={`qasm-line${m ? ` is-${m}` : ''}`}>
-            <span className="qasm-num">{n}</span>
-            <span className={`qasm-code${text.startsWith('//') ? ' is-comment' : ''}`}>{text}</span>
-            {tags.has(n) && (
-              <>
-                <span className="qasm-spacer" />
-                <span className="qasm-tag">{tags.get(n)}</span>
-              </>
-            )}
-          </div>
-        )
-      })}
+    <div className="ws-tile-pad">
+      <div className="ws-qasm-inset">
+        <div className="ws-qasm-rule" />
+        <div className="ws-qasm" ref={ref} role="region" aria-label="sidechain_qaoa.qasm" tabIndex={0}>
+        {QASM.map((text, i) => {
+          const n = i + 1
+          const m = marks[n]
+          return (
+            <div key={n} className={`ws-qasm-line${m ? ` is-${m}` : ''}`}>
+              <span className="ws-qasm-num">{n}</span>
+              <span className={`ws-qasm-code${text.startsWith('//') ? ' is-comment' : ''}`}>{text}</span>
+            </div>
+          )
+        })}
+        </div>
+      </div>
     </div>
   )
 }
