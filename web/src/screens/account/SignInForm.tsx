@@ -28,6 +28,7 @@ export function SignInForm({ view, onSignedIn }: { view: string | null; onSigned
         return { email: 'dev@qlab', password: '' }
       case 'wrong-password':
       case 'session-ended':
+      case 'signed-out':
         return { email: DEMO_SIGN_IN.email, password: '' }
       default:
         return remembered ? { email: acct.lastEmail, password: '' } : { ...DEMO_SIGN_IN }

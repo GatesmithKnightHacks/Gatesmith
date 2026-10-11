@@ -26,3 +26,56 @@ export function useAutoFocus(ref: RefObject<HTMLInputElement | null>, on: boolea
     if (on) ref.current?.focus({ preventScroll: true })
   }, [ref, on])
 }
+
+/**
+ * Copy text to the clipboard. The async clipboard needs a secure context, so plain http (a phone on
+ * the local network) falls back to a hidden textarea and execCommand.
+ */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    /* fall through to the textarea */
+  }
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  let ok = false
+  try {
+    ok = document.execCommand('copy')
+  } catch {
+    ok = false
+  }
+  area.remove()
+  return ok
+}
+
+/** The DS-08 done state: true for `ms` (1200) after `flash()`, then false again. */
+export function useDone(ms = 1200) {
+  const [done, setDone] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  const flash = () => {
+    window.clearTimeout(timer.current)
+    setDone(true)
+    timer.current = window.setTimeout(() => setDone(false), ms)
+  }
+  return { done, flash }
+}
+
+/** Re-render every `ms` so relative times ("synced 12 s ago") stay true. */
+export function useNow(ms = 5000) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), ms)
+    return () => window.clearInterval(id)
+  }, [ms])
+  return now
+}

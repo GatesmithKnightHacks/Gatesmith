@@ -1,4 +1,5 @@
 import { Component, useEffect, useLayoutEffect, useReducer, type ReactNode } from 'react'
+import { ensureAccountSnapshot } from '../data/account'
 import { ensureSnapshot } from '../data/run'
 import { setPreloader, useRoute } from './router'
 import { loadedScreen, preloadAll, preloadScreen } from './screens'
@@ -28,7 +29,10 @@ class ScreenBoundary extends Component<{ children: ReactNode; route: string }, {
 
 export function App() {
   const route = useRoute()
-  useLayoutEffect(() => ensureSnapshot(route), [route])
+  useLayoutEffect(() => {
+    ensureSnapshot(route)
+    ensureAccountSnapshot(route)
+  }, [route])
   useEffect(() => preloadAll(), [])
   const [, rerender] = useReducer((n: number) => n + 1, 0)
   const Screen = loadedScreen(route)

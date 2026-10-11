@@ -53,6 +53,8 @@ export type SavedExport = { file: string; fromRun: string; bytes: number }
 export type ActivityIcon = 'running' | 'queued' | 'export' | 'done' | 'action' | 'token' | 'failed' | 'sign-in'
 export type Activity = {
   day: 'today' | 'yesterday'
+  /** local date, "2026-10-10" */
+  date: string
   time: string
   icon: ActivityIcon
   title: string
@@ -165,18 +167,18 @@ const DEMO_EXPORTS: SavedExport[] = [
 ]
 
 const DEMO_ACTIVITY: Activity[] = [
-  { day: 'today', time: '11:42', icon: 'running', title: 'Run started', detail: 'sidechain_qaoa.qasm · round 2 of 4', value: '7f3c·1a02' },
-  { day: 'today', time: '11:40', icon: 'queued', title: 'Run queued', detail: 'sbox_oracle.qasm · waiting for GPU', value: '7f3c·0e17' },
-  { day: 'today', time: '11:16', icon: 'export', title: 'Export saved', detail: 'final.qasm · from 7f3b·0c5e', value: '38 KB' },
-  { day: 'today', time: '11:14', icon: 'done', title: 'Run done', detail: '7f3b·0c5e · 2 accepted · from 321', value: '281 gates' },
-  { day: 'today', time: '10:52', icon: 'action', title: 'Action enabled', detail: 'qlab/sidechain-packing', value: 'ci-bot' },
-  { day: 'today', time: '10:50', icon: 'token', title: 'Token created', detail: 'ci-bot · runs:write', value: '····c41a' },
-  { day: 'today', time: '10:12', icon: 'done', title: 'Run done', detail: '7f3a·0412 · stopped by the engine', value: '270 gates' },
-  { day: 'today', time: '09:55', icon: 'failed', title: 'Run failed', detail: '7f39·5b08 · WorkerStopped', value: '1 m 03 s' },
-  { day: 'today', time: '09:41', icon: 'sign-in', title: 'Sign-in', detail: 'from this machine', value: 'this session' },
-  { day: 'yesterday', time: '18:20', icon: 'export', title: 'Export saved', detail: 'final.qasm · from 7f38·e801', value: '37 KB' },
-  { day: 'yesterday', time: '18:12', icon: 'done', title: 'Run done', detail: '7f38·e801 · stopped by the engine', value: '281 gates' },
-  { day: 'yesterday', time: '17:40', icon: 'done', title: 'Run done', detail: '7f38·4d6a · sbox_oracle · score only', value: '1041 gates' },
+  { day: 'today', date: '2026-10-10', time: '11:42', icon: 'running', title: 'Run started', detail: 'sidechain_qaoa.qasm · round 2 of 4', value: '7f3c·1a02' },
+  { day: 'today', date: '2026-10-10', time: '11:40', icon: 'queued', title: 'Run queued', detail: 'sbox_oracle.qasm · waiting for GPU', value: '7f3c·0e17' },
+  { day: 'today', date: '2026-10-10', time: '11:16', icon: 'export', title: 'Export saved', detail: 'final.qasm · from 7f3b·0c5e', value: '38 KB' },
+  { day: 'today', date: '2026-10-10', time: '11:14', icon: 'done', title: 'Run done', detail: '7f3b·0c5e · 2 accepted · from 321', value: '281 gates' },
+  { day: 'today', date: '2026-10-10', time: '10:52', icon: 'action', title: 'Action enabled', detail: 'qlab/sidechain-packing', value: 'ci-bot' },
+  { day: 'today', date: '2026-10-10', time: '10:50', icon: 'token', title: 'Token created', detail: 'ci-bot · runs:write', value: '····c41a' },
+  { day: 'today', date: '2026-10-10', time: '10:12', icon: 'done', title: 'Run done', detail: '7f3a·0412 · stopped by the engine', value: '270 gates' },
+  { day: 'today', date: '2026-10-10', time: '09:55', icon: 'failed', title: 'Run failed', detail: '7f39·5b08 · WorkerStopped', value: '1 m 03 s' },
+  { day: 'today', date: '2026-10-10', time: '09:41', icon: 'sign-in', title: 'Sign-in', detail: 'from this machine', value: 'this session' },
+  { day: 'yesterday', date: '2026-10-09', time: '18:20', icon: 'export', title: 'Export saved', detail: 'final.qasm · from 7f38·e801', value: '37 KB' },
+  { day: 'yesterday', date: '2026-10-09', time: '18:12', icon: 'done', title: 'Run done', detail: '7f38·e801 · stopped by the engine', value: '281 gates' },
+  { day: 'yesterday', date: '2026-10-09', time: '17:40', icon: 'done', title: 'Run done', detail: '7f38·4d6a · sbox_oracle · score only', value: '1041 gates' },
 ]
 
 const DEMO_TOKENS: Token[] = [{ name: 'ci-bot', last4: 'c41a', scope: 'runs:write', usedAt: '11:42' }]
@@ -252,7 +254,7 @@ export function createMemoryAccountApi(): AccountApi & { demoSession(): Session 
         profile: { handle, email: key, createdAt: `${day} ${localTime(now)}`, plan: 'hackathon', passwordSetAt: day },
         runs: [],
         exports: [],
-        activity: [],
+        activity: [{ day: 'today', date: day, time: localTime(now), icon: 'sign-in', title: 'Account created', detail: 'from this machine', value: 'this session' }],
         tokens: [],
       })
       return open(key, handle)
@@ -402,10 +404,16 @@ export function ago(at: number, now = Date.now()) {
   return `at ${localTime(new Date(at))}`
 }
 
-/** Sizes as the boards print them: one decimal in MB, whole KB below 1 MB. */
-export function size(bytes: number): { value: string; unit: 'MB' | 'KB' } {
-  if (bytes === 0) return { value: '0', unit: 'MB' }
-  return bytes >= 100 * KB ? { value: (bytes / MB).toFixed(1), unit: 'MB' } : { value: String(Math.round(bytes / KB)), unit: 'KB' }
+/** Megabytes with one decimal, as totals print: "2.1". */
+export const mb = (bytes: number) => (bytes === 0 ? '0' : (bytes / MB).toFixed(1))
+/** Whole kilobytes, as single files print: "38". */
+export const kb = (bytes: number) => String(Math.round(bytes / KB))
+/** Local clock time, "11:42". */
+export const clock = (at: number) => localTime(new Date(at))
+
+/** A fresh copy of the demo account (qlab-dev), for the screens' design snapshots and states. */
+export function demoCopy(): AccountCopy {
+  return { profile: { ...DEMO_PROFILE }, runs: clone(DEMO_RUNS), exports: clone(DEMO_EXPORTS), activity: clone(DEMO_ACTIVITY), tokens: clone(DEMO_TOKENS) }
 }
 
 export const accountActions = {
@@ -444,7 +452,8 @@ export const accountActions = {
     }
     set({ sync: { ...state.sync, status: 'syncing', error: null } })
     try {
-      const copy = await api.sync(session, state.local)
+      const waiting = state.local.filter((r) => state.pending.includes(r.id))
+      const copy = await api.sync(session, waiting)
       if (state.session?.token !== session.token) return
       set({ copy, pending: [], sync: { status: 'synced', lastSyncedAt: Date.now(), error: null } })
     } catch (e) {
@@ -523,7 +532,7 @@ export function ensureAccountSnapshot(path: string) {
     set({
       session: memory.demoSession(),
       lastEmail: DEMO_PROFILE.email,
-      copy: { profile: { ...DEMO_PROFILE }, runs: clone(DEMO_RUNS), exports: clone(DEMO_EXPORTS), activity: clone(DEMO_ACTIVITY), tokens: clone(DEMO_TOKENS) },
+      copy: demoCopy(),
       local: clone(DEMO_RUNS),
       pending: [],
       sync: { status: 'synced', lastSyncedAt: Date.now() - 12_000, error: null },
