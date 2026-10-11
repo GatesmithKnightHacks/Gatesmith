@@ -28,3 +28,5 @@ Every approved change to `specs/` gets one line here: date, files, proposal id, 
 | 2026-10-09 | all | — | Spec set v2.0 created from "Quantum Optimization Engine: Architecture v2" and the MVP Spec docs (build guide, file reference), adapted for the Radeon PRO W7900, Neon, Hugging Face, Vultr and the agent workflow. |
 
 - 2026-10-11: User approved ChP-0040/0049: bot/HF delivery, scoped account setup, evidence envelope, actions rerun permission, new_high policy; hosting deferred. ChP-0048 implementation deferral lifted.
+
+- 2026-10-11: ChP-0054 approved by user: preserve Vultr deployment/live UI integration, migrate Neon to platform-owned SQLite and HTTPS workers; production verification awaits deployment owner.

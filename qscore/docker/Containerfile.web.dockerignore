@@ -1,0 +1,10 @@
+# Send only the web app and its shared design tokens (BuildKit reads <Dockerfile>.dockerignore).
+*
+!web
+!design/tokens.css
+web/node_modules
+web/dist
+web/tests/design
+web/tests/output
+web/test-results
+web/playwright-report

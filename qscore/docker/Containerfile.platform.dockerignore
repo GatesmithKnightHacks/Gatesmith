@@ -1,0 +1,10 @@
+# Send only what Containerfile.platform copies (BuildKit reads <Dockerfile>.dockerignore).
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!LICENSE
+!src
+!examples
+examples/broken
+**/__pycache__
