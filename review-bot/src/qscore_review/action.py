@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 from urllib.request import Request, urlopen
 
+from qscore.schemas.manifest import ProjectManifest
 from qscore.schemas.run import RunRecord
 from qscore.schemas.versions import SCORE_VERSION
 from ruamel.yaml import YAML
@@ -262,6 +263,64 @@ def _checksums(out: Path) -> dict[str, str]:
     return checksums
 
 
+def _evaluation_settings(
+    root: Path, config: RepoConfig, side: BundleSide, runtime: dict[str, Any], out: Path
+) -> dict[str, Any]:
+    """Conservative declarations, not a duplicate implementation of engine resolution.
+
+    Equal declarations under the same immutable engine preserve the same defaults.
+    Equivalent changes to where defaults are declared can be incomparable; callers
+    must describe that limitation instead of claiming these are resolved settings.
+    """
+    settings = {**runtime, "comparison": "conservative_declared_evaluation/v1", "items": {}}
+    if side.run is None:
+        return settings
+    record = RunRecord.model_validate_json((out / side.run).read_text(encoding="utf-8"))
+    source = _safe_path(root, config.manifest)
+    if source.suffix == ".qasm":
+        settings["items"] = {
+            item: {"input_mode": "single-qasm", "target": config.target} for item in record.items
+        }
+        return settings
+    manifest = ProjectManifest.model_validate(
+        YAML(typ="safe").load(source.read_text(encoding="utf-8"))
+    )
+    project_root = (source.parent / manifest.project.root).resolve()
+    if not project_root.is_relative_to(root.resolve()):
+        raise ValueError("evaluation project.root escapes source checkout")
+    defaults = manifest.defaults.model_dump(mode="json", exclude_none=True)
+    for item in manifest.circuits:
+        declared = item.model_dump(mode="json", exclude_none=True, exclude={"id", "source"})
+        references: dict[str, Any] = {}
+        for prefix, declaration in (("defaults", defaults), ("item", declared)):
+            calibration = declaration.get("target", {}).get("calibration")
+            observable = declaration.get("invariants", {}).get("task", {}).get("observable")
+            files = {}
+            if isinstance(calibration, dict) and isinstance(calibration.get("file"), str):
+                files["target.calibration"] = calibration["file"]
+            if isinstance(observable, str):
+                files["invariants.task.observable"] = observable
+            for field, reference in files.items():
+                path = (project_root / reference).resolve()
+                if not path.is_relative_to(root.resolve()):
+                    raise ValueError(f"evaluation reference escapes source checkout: {reference}")
+                key = f"{prefix}.{field}:{reference}"
+                if not path.is_file():
+                    # An overridden declaration can refer to an unused missing file.
+                    references[key] = {"missing": True}
+                else:
+                    if path.stat().st_size > MAX_FILE_BYTES:
+                        raise ValueError(f"evaluation reference exceeds size limit: {reference}")
+                    references[key] = {"sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        settings["items"][item.id] = {
+            "defaults": defaults,
+            "declared": declared,
+            "runner": manifest.project.runner.model_dump(mode="json"),
+            "referenced_files": references,
+        }
+    return settings
+
+
 def produce_bundle(
     base_root: Path,
     head_root: Path,
@@ -293,8 +352,12 @@ def produce_bundle(
     out.mkdir(parents=True)
     base = _side(base_root, out / "base", provenance.base_sha, config, runner)
     head = _side(head_root, out / "head", provenance.head_sha, config, runner)
-    _write_json(out / "base/settings.json", settings)
-    _write_json(out / "head/settings.json", settings)
+    _write_json(
+        out / "base/settings.json", _evaluation_settings(base_root, config, base, settings, out)
+    )
+    _write_json(
+        out / "head/settings.json", _evaluation_settings(head_root, config, head, settings, out)
+    )
     bundle = ReviewBundle.model_validate(
         {
             "schema": "qscore.review-bundle/v0.1",

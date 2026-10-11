@@ -164,3 +164,29 @@ def test_single_quoted_toml_lock_has_actual_package_line(tmp_path: Path) -> None
     )
     assert versions(tmp_path)["qiskit"].line == 5
     assert versions(tmp_path)["qiskit-aer"].line == 2
+
+
+def test_universal_lock_retains_ambiguous_marker_bound_versions(tmp_path: Path) -> None:
+    (tmp_path / "uv.lock").write_text(
+        "version=1\nrequires-python='>=3.9'\n"
+        "[[package]]\nname='qiskit'\nversion='1.2.0'\n"
+        "resolution-markers=[\"python_version < '3.10'\"]\n"
+        "[[package]]\nname='qiskit'\nversion='2.5.0'\n"
+        "resolution-markers=[\"python_version >= '3.10'\"]\n"
+    )
+    result = versions(tmp_path)["qiskit"]
+    assert result.value.startswith("ambiguous lock declarations:")
+    declarations = json.loads(result.value.split(": ", 1)[1])
+    assert [entry["version"] for entry in declarations] == ["1.2.0", "2.5.0"]
+    assert [entry["line"] for entry in declarations] == [4, 8]
+    assert declarations[0]["resolution-markers"] == ["python_version < '3.10'"]
+    assert declarations[1]["resolution-markers"] == ["python_version >= '3.10'"]
+
+
+def test_conditional_requirements_never_choose_first_pin(tmp_path: Path) -> None:
+    (tmp_path / "requirements.txt").write_text(
+        'qiskit==1.2.0; python_version < "3.10"\nqiskit==2.5.0; python_version >= "3.10"\n'
+    )
+    value = versions(tmp_path)["qiskit"].value
+    assert value.startswith("ambiguous declarations:")
+    assert "1.2.0" in value and "2.5.0" in value

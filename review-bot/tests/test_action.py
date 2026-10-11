@@ -208,3 +208,75 @@ def test_configured_single_qasm_uses_explicit_target(
     card = Scorecard.model_validate_json((out / result.head.scorecards[0]).read_text())
     assert card.target is not None
     assert card.target.name == "line-5"
+
+
+def test_objective_change_alters_per_item_evaluation_guard(
+    tmp_path: Path, provenance: BundleProvenance
+) -> None:
+    base = circuit_repo(tmp_path / "base")
+    head = circuit_repo(tmp_path / "head")
+    manifest = head / "qscore.yaml"
+    manifest.write_text(
+        manifest.read_text().replace(
+            "    source: {qasm: bell.qasm}",
+            "    source: {qasm: bell.qasm}\n    objective: {primary: depth, direction: minimize}",
+        )
+    )
+    out = tmp_path / "bundle"
+    result = produce_bundle(base, head, out, provenance)
+    assert (result.base.exit_code, result.head.exit_code) == (0, 0)
+    baseline = json.loads((out / "base/settings.json").read_text())
+    proposed = json.loads((out / "head/settings.json").read_text())
+    assert baseline["comparison"] == "conservative_declared_evaluation/v1"
+    assert baseline["items"]["bell"] != proposed["items"]["bell"]
+    assert proposed["items"]["bell"]["declared"]["objective"]["primary"] == "depth"
+    assert "source" not in proposed["items"]["bell"]["declared"]
+
+
+def test_added_circuit_has_separate_evaluation_identity(
+    tmp_path: Path, provenance: BundleProvenance
+) -> None:
+    base = circuit_repo(tmp_path / "base")
+    head = circuit_repo(tmp_path / "head")
+    manifest = head / "qscore.yaml"
+    manifest.write_text(manifest.read_text() + "  - id: extra\n    source: {qasm: bell.qasm}\n")
+    out = tmp_path / "bundle"
+    produce_bundle(base, head, out, provenance)
+    baseline = json.loads((out / "base/settings.json").read_text())["items"]
+    proposed = json.loads((out / "head/settings.json").read_text())["items"]
+    assert baseline["bell"] == proposed["bell"]
+    assert set(proposed) - set(baseline) == {"extra"}
+
+
+def test_observable_content_change_alters_evaluation_guard(
+    tmp_path: Path, provenance: BundleProvenance
+) -> None:
+    base = circuit_repo(tmp_path / "base")
+    head = circuit_repo(tmp_path / "head")
+    for root, coefficient in ((base, 1.0), (head, 0.5)):
+        manifest = root / "qscore.yaml"
+        manifest.write_text(
+            manifest.read_text()
+            + (
+                "    invariants:\n      intent: expectation\n"
+                "      task: {observable: observable.json, tolerance: 0.02, shots: 4000}\n"
+            )
+        )
+        qasm = root / "bell.qasm"
+        qasm.write_text(qasm.read_text() + "creg c[2];\nmeasure q -> c;\n")
+        (root / "observable.json").write_text(
+            json.dumps(
+                {
+                    "schema": "qscore.observable/v0.1",
+                    "num_qubits": 2,
+                    "terms": [{"pauli": "ZZ", "coeff": coefficient}],
+                }
+            )
+        )
+    out = tmp_path / "bundle"
+    result = produce_bundle(base, head, out, provenance)
+    assert (result.base.exit_code, result.head.exit_code) == (0, 0)
+    baseline = json.loads((out / "base/settings.json").read_text())["items"]["bell"]
+    proposed = json.loads((out / "head/settings.json").read_text())["items"]["bell"]
+    assert baseline["declared"] == proposed["declared"]
+    assert baseline["referenced_files"] != proposed["referenced_files"]

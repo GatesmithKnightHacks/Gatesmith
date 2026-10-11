@@ -13,6 +13,7 @@ import os
 import re
 import tomllib
 from pathlib import Path
+from typing import Any
 
 from ruamel.yaml import YAML
 
@@ -61,6 +62,7 @@ def detect_versions(root: Path) -> list[DetectedVersion]:
     """Return declaration evidence in spec order, without resolving dependency ranges."""
     root = root.resolve()
     found: dict[str, DetectedVersion] = {}
+    declarations: dict[str, list[dict[str, object]]] = {}
 
     def put(
         name: str,
@@ -71,13 +73,28 @@ def detect_versions(root: Path) -> list[DetectedVersion]:
         line: int | None = None,
     ) -> None:
         normalized = _name(name)
-        if not _wanted(normalized) or normalized in found or not isinstance(value, str):
+        if not _wanted(normalized) or not isinstance(value, str):
             return
+        source = path.relative_to(root).as_posix()
+        source_line = line if line is not None else _line(text, needle or name)
+        existing = found.get(normalized)
+        if existing is not None and existing.source != source:
+            return  # preserve the source priority defined in §3.1
+        declaration = {"value": value, "line": source_line}
+        evidence = declarations.setdefault(normalized, [])
+        if any(entry["value"] == value for entry in evidence):
+            return
+        evidence.append(declaration)
+        result = (
+            value
+            if len(evidence) == 1
+            else ("ambiguous declarations: " + json.dumps(evidence, sort_keys=True))
+        )
         found[normalized] = DetectedVersion(
             package=normalized,
-            value=value,
-            source=path.relative_to(root).as_posix(),
-            line=line if line is not None else _line(text, needle or name),
+            value=result,
+            source=source,
+            line=existing.line if existing is not None else source_line,
         )
 
     def dependency(
@@ -91,6 +108,10 @@ def detect_versions(root: Path) -> list[DetectedVersion]:
         constraint = match[2].strip()
         if not constraint or (pinned_only and not constraint.startswith("==")):
             return
+        if ";" in value:
+            constraint = "conditional declaration: " + json.dumps(
+                {"value": constraint, "markers": value.split(";", 1)[1].strip()}, sort_keys=True
+            )
         put(match[1], constraint, path, text, value, line)
 
     for filename in ("uv.lock", "poetry.lock"):
@@ -100,19 +121,34 @@ def detect_versions(root: Path) -> list[DetectedVersion]:
         text = _read(root, path)
         document = tomllib.loads(text)
         put("python", document.get("requires-python"), path, text, "requires-python")
+        packages: dict[str, list[dict[str, Any]]] = {}
+        offsets: dict[str, int] = {}
         for package in document.get("package", []):
-            if isinstance(package, dict) and isinstance(package.get("name"), str):
-                package_line = next(
-                    (
-                        index
-                        for index, entry in enumerate(text.splitlines(), 1)
-                        if re.match(
-                            r"^\s*name\s*=\s*['\"]" + re.escape(package["name"]) + r"['\"]", entry
-                        )
-                    ),
-                    1,
-                )
-                put(package["name"], package.get("version"), path, text, line=package_line)
+            if not isinstance(package, dict) or not isinstance(package.get("name"), str):
+                continue
+            name = package["name"]
+            locations = [
+                index
+                for index, entry in enumerate(text.splitlines(), 1)
+                if re.match(r"^\s*name\s*=\s*['\"]" + re.escape(name) + r"['\"]", entry)
+            ]
+            offset = offsets.get(name, 0)
+            package_line = locations[offset] if offset < len(locations) else 1
+            offsets[name] = offset + 1
+            declaration = {"version": package.get("version"), "line": package_line}
+            for marker in ("resolution-markers", "markers", "python-versions"):
+                if marker in package:
+                    declaration[marker] = package[marker]
+            packages.setdefault(name, []).append(declaration)
+        for name, entries in packages.items():
+            distinct = {entry["version"] for entry in entries if isinstance(entry["version"], str)}
+            if len(distinct) > 1:
+                version = "ambiguous lock declarations: " + json.dumps(entries, sort_keys=True)
+            elif any(len(entry) > 2 for entry in entries):
+                version = "conditional lock declaration: " + json.dumps(entries, sort_keys=True)
+            else:
+                version = entries[0]["version"]
+            put(name, version, path, text, line=int(entries[0]["line"]))
     path = root / "Pipfile.lock"
     if path.is_file():
         text = _read(root, path)
@@ -142,12 +178,12 @@ def detect_versions(root: Path) -> list[DetectedVersion]:
         document = tomllib.loads(text)
         project = document.get("project", {})
         put("python", project.get("requires-python"), path, text, "requires-python")
-        declarations = list(project.get("dependencies", []))
+        project_dependencies = list(project.get("dependencies", []))
         for group in project.get("optional-dependencies", {}).values():
-            declarations.extend(group)
+            project_dependencies.extend(group)
         for group in document.get("dependency-groups", {}).values():
-            declarations.extend(entry for entry in group if isinstance(entry, str))
-        for entry in declarations:
+            project_dependencies.extend(entry for entry in group if isinstance(entry, str))
+        for entry in project_dependencies:
             dependency(entry, path, text)
         poetry = document.get("tool", {}).get("poetry", {})
         poetry_dependencies = dict(poetry.get("dependencies", {}))
@@ -176,8 +212,8 @@ def detect_versions(root: Path) -> list[DetectedVersion]:
             for entry in config.get("options", "install_requires", fallback="").splitlines():
                 dependency(entry, path, text)
         if config.has_section("options.extras_require"):
-            for _, entries in config.items("options.extras_require"):
-                for entry in entries.splitlines():
+            for _, extra_lines in config.items("options.extras_require"):
+                for entry in extra_lines.splitlines():
                     dependency(entry, path, text)
     path = root / "setup.py"
     if path.is_file():

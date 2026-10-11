@@ -15,7 +15,12 @@ persisting checkout credentials. The policy and Gemini opt-in come from the base
 commit's `.github/qscore-review.yml`. Each side uses its own manifest at that same
 configured path. The receiving App rejects comparisons whose target, seeds,
 calibration or evaluation settings differ. Added/removed circuit IDs remain
-visible. PR manifests are never silently replaced with the base manifest.
+visible. The Action also records a conservative per-item comparison of declared
+defaults, objectives, invariants, execution settings, diagnostic policy and
+referenced calibration/observable file hashes under the identical engine pin.
+Circuit source content is excluded. Semantically equivalent edits to the way
+defaults are declared can still be reported as incomparable; these declaration
+records are not represented as resolved engine settings. PR manifests are never silently replaced with the base manifest.
 
 The scorer is pinned to engine commit
 `6b42f722730f19a5c3d9b72e1a19cf8d54a0fedd`. Changing that input requires a matching
