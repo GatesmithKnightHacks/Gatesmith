@@ -89,3 +89,39 @@ def test_quota_retries_same_model_only_and_keeps_budget_reserved(tmp_path, monke
     assert len(models.calls) == 3
     assert {call["model"] for call in models.calls} == {MODEL}
     assert state.model("head")["cost"] > 0
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("prompt_token_count", None),
+        ("candidates_token_count", None),
+        ("thoughts_token_count", None),
+        ("thoughts_token_count", -1),
+        ("candidates_token_count", True),
+        ("prompt_token_count", 1.5),
+        ("candidates_token_count", 100_000),
+        ("prompt_token_count", 1_000_000),
+        ("total_token_count", 999),
+    ],
+)
+def test_missing_invalid_or_excess_usage_keeps_entire_reservation(tmp_path, field, value):
+    class InvalidUsageModels(FakeModels):
+        async def generate_content(self, **kwargs):
+            result = await super().generate_content(**kwargs)
+            setattr(result.usage_metadata, field, value)
+            return result
+
+    models = InvalidUsageModels()
+    state = State(tmp_path / "state.db")
+    client = Gemini(settings(tmp_path), state, SimpleNamespace(aio=SimpleNamespace(models=models)))
+    with pytest.raises(LayerError, match="billed usage"):
+        asyncio.run(client.draft("head", "comparison", {}))
+    record = state.model("head")
+    usage = json.loads(record["usage"])
+    assert usage["usage_status"] == "unknown_or_invalid"
+    assert record["cost"] == usage["reserved_cost_usd"] > 0
+    assert "output_tokens" not in usage and record["draft"] is None
+    with pytest.raises(LayerError, match="already attempted"):
+        asyncio.run(client.draft("head", "comparison", {}))
+    assert len(models.calls) == 1

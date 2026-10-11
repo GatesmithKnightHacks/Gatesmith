@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from google import genai
@@ -52,7 +52,8 @@ class Gemini:
 
     async def draft(self, identity: str, comparison: str, context: dict[str, Any]) -> ReviewDraft:
         prompt = json.dumps({"quoted_untrusted_review_data": context}, separators=(",", ":"))
-        size = len(prompt.encode("utf-8")) + len(SYSTEM.encode("utf-8"))
+        schema_size = len(json.dumps(ReviewDraft.model_json_schema(by_alias=True)).encode("utf-8"))
+        size = len(prompt.encode("utf-8")) + len(SYSTEM.encode("utf-8")) + schema_size + 1024
         if size > self.settings.gemini_max_input_bytes:
             raise LayerError("Gemini input budget exceeded")
         client = self._client()
@@ -93,17 +94,43 @@ class Gemini:
                     continue
                 raise LayerError("Gemini review failed: " + type(exc).__name__) from exc
             usage = response.usage_metadata
-            if usage is None or usage.prompt_token_count is None:
-                raise LayerError("Gemini response is missing billed token metadata")
-            input_tokens = usage.prompt_token_count
-            output_tokens = (usage.candidates_token_count or 0) + (usage.thoughts_token_count or 0)
+            tokens = {
+                "input_tokens": getattr(usage, "prompt_token_count", None),
+                "candidate_tokens": getattr(usage, "candidates_token_count", None),
+                "thinking_tokens": getattr(usage, "thoughts_token_count", None),
+            }
+            valid = all(type(value) is int and value >= 0 for value in tokens.values())
+            if valid:
+                input_tokens = cast(int, tokens["input_tokens"])
+                thinking_tokens = cast(int, tokens["thinking_tokens"])
+                output_tokens = cast(int, tokens["candidate_tokens"]) + thinking_tokens
+                valid = input_tokens <= size and output_tokens <= output_cap
+                total = getattr(usage, "total_token_count", None)
+                if total is not None:
+                    valid = valid and type(total) is int and total == input_tokens + output_tokens
+            if not valid:
+                self.state.record_model(
+                    identity,
+                    reservation,
+                    {
+                        "model": MODEL,
+                        "prompt_version": PROMPT_VERSION,
+                        "usage_status": "unknown_or_invalid",
+                        "attempts": attempt + 1,
+                        "reserved_cost_usd": reservation,
+                    },
+                    None,
+                )
+                raise LayerError(
+                    "Gemini response has missing, invalid or out-of-bound billed usage"
+                )
             cost = unknown_cost + (input_tokens * 2 + output_tokens * 12) / 1_000_000
             record = {
                 "model": MODEL,
                 "prompt_version": PROMPT_VERSION,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
-                "thinking_tokens": usage.thoughts_token_count or 0,
+                "thinking_tokens": thinking_tokens,
                 "attempts": attempt + 1,
                 "estimated_cost_usd": cost,
             }
