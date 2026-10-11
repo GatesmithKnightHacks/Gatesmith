@@ -181,12 +181,17 @@ def _local_reproduction(loaded: LoadedBundle, config: RepoConfig) -> list[str]:
         "(",
         shlex.join(["set", "-eu"]),
         shlex.join(["mkdir", root]),
-        shlex.join(["python3.12", "-m", "venv", root + "/engine"]),
-        shlex.join(
+        shlex.join(["python3.12", "-I", "-m", "venv", root + "/engine"]),
+        "env -i "
+        + preserved_environment
+        + " PIP_CONFIG_FILE=/dev/null "
+        + shlex.join(
             [
                 root + "/engine/bin/python",
+                "-I",
                 "-m",
                 "pip",
+                "--isolated",
                 "install",
                 "qscore @ git+https://github.com/GatesmithKnightHacks/Gatesmith.git@"
                 + p.engine_revision

@@ -4,6 +4,7 @@ import re
 import shlex
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -149,9 +150,28 @@ def test_local_recipe_uses_exact_engine_commits_and_isolated_runtime_without_tar
     commands = [shlex.split(line) for line in recipe.splitlines()]
     root = "../gatesmith-review-1-5-4-1"
     assert [
+        "env",
+        "-i",
+        *[
+            f"${{{name}+{name}=${name}}}"
+            for name in (
+                "PATH",
+                "HOME",
+                "TMPDIR",
+                "TMP",
+                "TEMP",
+                "SYSTEMROOT",
+                "WINDIR",
+                "LANG",
+                "LC_ALL",
+            )
+        ],
+        "PIP_CONFIG_FILE=/dev/null",
         root + "/engine/bin/python",
+        "-I",
         "-m",
         "pip",
+        "--isolated",
         "install",
         (
             "qscore @ git+https://github.com/GatesmithKnightHacks/Gatesmith.git@"
@@ -161,10 +181,10 @@ def test_local_recipe_uses_exact_engine_commits_and_isolated_runtime_without_tar
         "qiskit==2.5.0",
         "qiskit-aer==0.17",
     ] in commands
-    assert ["python3.12", "-m", "venv", root + "/engine"] in commands
+    assert ["python3.12", "-I", "-m", "venv", root + "/engine"] in commands
     assert ["git", "worktree", "add", "--detach", root + "/base", BASE] in commands
     assert ["git", "worktree", "add", "--detach", root + "/head", HEAD] in commands
-    scores = [command for command in commands if command and command[0] == "env"]
+    scores = [command for command in commands if "QSCORE_PROFILE=ci" in command]
     assert len(scores) == 2
     for side, command in zip(("base", "head"), scores, strict=True):
         assert command == [
@@ -208,7 +228,7 @@ def test_generated_score_launch_strips_extra_flags_and_credentials(tmp_path, sid
     )
     result = build_summary(reproduction_fixture(config), config, run_url="url", docs_url="url")
     _, recipe = shell_recipe(result.body)
-    launches = [line.strip() for line in recipe.splitlines() if line.strip().startswith("env ")]
+    launches = [line.strip() for line in recipe.splitlines() if " QSCORE_PROFILE=ci " in line]
     launch = launches[0 if side == "base" else 1]
     engine = tmp_path / "engine" / "bin"
     engine.mkdir(parents=True)
@@ -278,6 +298,117 @@ def test_generated_score_launch_strips_extra_flags_and_credentials(tmp_path, sid
     assert BASE in recipe and HEAD in recipe and ENGINE in recipe
 
 
+def test_setup_python_isolation_blocks_repository_shadow_modules(tmp_path):
+    _, recipe = shell_recipe(summary().body)
+    commands = [shlex.split(line) for line in recipe.splitlines()]
+    create_venv = next(command for command in commands if command and command[0] == "python3.12")
+    install_line = next(line.strip() for line in recipe.splitlines() if " -m pip " in line)
+    install_prefix = install_line.split(" install ", 1)[0]
+    clone = tmp_path / "clone"
+    clone.mkdir()
+    for module in ("venv", "pip"):
+        (clone / (module + ".py")).write_text(
+            f"from pathlib import Path\nPath('{module}-shadow-ran').touch()\n"
+            "raise RuntimeError('synthetic shadow module executed')\n"
+        )
+    # Prove these harmless shadow modules would be importable without isolation.
+    python = str(Path(sys.executable).resolve())
+    environment = {"PATH": "/usr/bin:/bin", "PYTHONPATH": str(clone)}
+    for module in ("venv", "pip"):
+        control = subprocess.run(
+            [python, "-m", module, "--help"],
+            cwd=clone,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert control.returncode != 0 and "synthetic shadow module executed" in control.stderr
+        marker = clone / (module + "-shadow-ran")
+        assert marker.is_file()
+        marker.unlink()
+    (tmp_path / "gatesmith-review-1-5-4-1").mkdir()
+    # Use the generated venv arguments with the running interpreter. ensurepip is
+    # bundled/offline; the generated install is reduced to harmless pip --version.
+    subprocess.run(
+        [python, *create_venv[1:]], cwd=clone, env=environment, capture_output=True, check=True
+    )
+    version = subprocess.run(
+        ["/bin/sh", "-eu", "-c", install_prefix + " --version"],
+        cwd=clone,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert version.stdout.startswith("pip ")
+    assert not (clone / "venv-shadow-ran").exists()
+    assert not (clone / "pip-shadow-ran").exists()
+    home = tmp_path / "home"
+    redirects = tmp_path / "unwanted-install"
+    redirect_config = tmp_path / "caller-pip.conf"
+    redirect_config.write_text("[global]\ntarget = " + str(redirects) + "\n")
+    for config in (
+        home / ".pip" / "pip.conf",
+        home / ".config" / "pip" / "pip.conf",
+        home / "Library" / "Application Support" / "pip" / "pip.conf",
+    ):
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_text("[global]\ntarget = " + str(redirects) + "\n")
+    wheel = tmp_path / "qscore_reproduction_probe-0.0.0-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("qscore_reproduction_probe/__init__.py", "value = 'offline-test'\n")
+        archive.writestr(
+            "qscore_reproduction_probe-0.0.0.dist-info/METADATA",
+            "Metadata-Version: 2.1\nName: qscore-reproduction-probe\nVersion: 0.0.0\n",
+        )
+        archive.writestr(
+            "qscore_reproduction_probe-0.0.0.dist-info/WHEEL",
+            "Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+        )
+        archive.writestr("qscore_reproduction_probe-0.0.0.dist-info/RECORD", "")
+    pip_environment = {
+        **environment,
+        "HOME": str(home),
+        "XDG_CONFIG_HOME": str(home / ".config"),
+        "PIP_TARGET": str(redirects / "target"),
+        "PIP_PREFIX": str(redirects / "prefix"),
+        "PIP_CONFIG_FILE": str(redirect_config),
+    }
+    subprocess.run(
+        [
+            "/bin/sh",
+            "-eu",
+            "-c",
+            install_prefix
+            + " "
+            + shlex.join(
+                ["install", "--no-index", "--no-deps", "--disable-pip-version-check", str(wheel)]
+            ),
+        ],
+        cwd=clone,
+        env=pip_environment,
+        capture_output=True,
+        check=True,
+    )
+    probe = subprocess.run(
+        [
+            create_venv[-1] + "/bin/python",
+            "-I",
+            "-c",
+            "import qscore_reproduction_probe; print(qscore_reproduction_probe.value)",
+        ],
+        cwd=clone,
+        env=pip_environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert probe.stdout.strip() == "offline-test"
+    assert not redirects.exists()
+    assert not (clone / "pip-shadow-ran").exists()
+
+
 def test_reproduction_pins_changed_recorded_qiskit_and_aer_versions():
     loaded = load_bundle(fixture_bundle())
     for run in loaded.runs.values():
@@ -319,7 +450,7 @@ def test_shell_quoting_preserves_manifest_and_optional_target_without_markdown_e
     result = build_summary(reproduction_fixture(config), config, run_url="url", docs_url="url")
     _, recipe = shell_recipe(result.body)
     scores = [
-        shlex.split(line.strip()) for line in recipe.splitlines() if line.strip().startswith("env ")
+        shlex.split(line.strip()) for line in recipe.splitlines() if " QSCORE_PROFILE=ci " in line
     ]
     assert len(scores) == 2
     for command in scores:
