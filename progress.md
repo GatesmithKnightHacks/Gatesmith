@@ -2,7 +2,7 @@
 
 ## Current state
 
-- Branch `github-app`; UI PR3 retained; approved engine baseline `6b42f72` merged as `cc2e485`. No Gatesmith source push. This chat owns bot/Gemini/HF and narrow engine corrections; UI/verifier/loop/platform remain friend-owned.
+- Branch `github-app`; UI PR3 retained; approved engine baseline `6b42f72` merged as `cc2e485`. User authorized committing and pushing all reviewed `github-app` source on 2026-10-11. Remote synchronization must be verified after the push. This chat owns bot/Gemini/HF and narrow engine corrections; UI/verifier/loop/platform remain friend-owned.
 - The Action scores immutable base/head commits in real GitHub Actions using qscore. The App validates checksums, provenance and comparable settings before posting one summary and one check. Repository code never runs in the App.
 - Private demo [PR1](https://github.com/GatesmithKnightHacks/gatesmith-bot-demo/pull/1): Linux runs `38118723185` attempts 1+2, `38119782036`, `38120273945`, and `38120522229` attempts 1+2 succeeded. Latest head `71c1c0ac6f2977f54d6ea3c6a364779e83adbb02`; base `a28b3ea0ec205c7383e6b0721bca9b4b04503a39`. Actual two-qubit count 1 → 6, depth 4 → 10, routing 0 → 0.5, one SWAP, new D01 high. The regression check correctly fails despite successful computation.
 - Sticky summary `6106354610` persists across reruns/heads. Latest check `114414371289`. Gemini HIGH prompt v3 posted [review 5482293104](https://github.com/GatesmithKnightHacks/gatesmith-bot-demo/pull/1#pullrequestreview-5482293104), with a valid RIGHT-line 9 comment citing recorded D01 evidence. Unsigned webhook 401, signed 202 and duplicate 202 verified through locally signed ingestion of real artifacts. Public webhook reception is not deployed.
@@ -31,7 +31,7 @@
 
 ## Active work
 
-- Scoped implementation and acceptance checks are complete; overall report remains partial. Ledger, report and handoff distinguish deployment/verification/full-Linux gaps. No Gatesmith source push.
+- Scoped implementation and acceptance checks are complete; overall report remains partial. Ledger, report and handoff distinguish deployment/verification/full-Linux gaps. User authorized committing and pushing all reviewed `github-app` source on 2026-10-11. Remote synchronization must be verified after the push.
 - Reproduction commits `f55d4e1`, `6b3ea19`, `7e28242` were independently reviewed. Exact engine/commit/recorded Qiskit/Aer pins, isolated Python/pip/environment and protected local checkout; explicitly equivalent commands with unrecorded dependency/hardware limitations.
 - Latest live rescore posted the recipe and retained summary `6106354610`, review `5482293104`, check `114414371289` and 21 model records without extra inference.
 

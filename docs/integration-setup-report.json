@@ -1,7 +1,7 @@
 {
   "task_id": "B1-B6-T25-T29-engine-integration",
   "status": "partial",
-  "summary": "Implemented and independently reviewed the GitHub scoring/review bot, Gemini HIGH review, pinned HF proposer panel, read-only HF leaderboard Space and two narrow engine fixes on github-app. Real Linux CI scored a private PR; the App posted one updating summary, a correct regression failure and a validated Gemini line comment. Real engine output also produced a request consumed by Qwen through HF. Source is committed locally, not pushed; public hosting, verifier/loop, platform import and full Linux test gates remain incomplete.",
+  "summary": "Implemented and independently reviewed the GitHub scoring/review bot, Gemini HIGH review, pinned HF proposer panel, read-only HF leaderboard Space and two narrow engine fixes on github-app. Real Linux CI scored a private PR; the App posted one updating summary, a correct regression failure and a validated Gemini line comment. Real engine output also produced a request consumed by Qwen through HF. User authorized committing and publishing all reviewed github-app source on 2026-10-11; public hosting, verifier/loop, platform import and full Linux test gates remain incomplete.",
   "branch": "github-app",
   "commits": [
     "7e28242",
@@ -178,7 +178,7 @@
     {
       "command": "Public HTTPS webhook, Docker build, new-source Linux full suite, verifier/loop/conformance",
       "result": "not_run",
-      "details": "Friend provides host; Docker absent locally; source not pushed; verifier/loop handoff absent. No successful deployment, accepted fix or populated benchmark claim."
+      "details": "Friend provides host; Docker absent locally; full Linux gates pending; verifier/loop handoff absent. No successful deployment, accepted fix or populated benchmark claim."
     }
   ],
   "acceptance": [
@@ -210,7 +210,7 @@
     {
       "criterion": "Continuously deployed bot and complete Linux engine gate.",
       "met": false,
-      "evidence": "Webhook inactive pending public HTTPS host; source unpublished; full Linux suite pending. Live acceptance used locally signed ingestion of real artifacts."
+      "evidence": "Webhook inactive pending public HTTPS host; full Linux suite pending. Live acceptance used locally signed ingestion of real artifacts."
     },
     {
       "criterion": "Verified improvement workflow and measured leaderboard.",
@@ -221,11 +221,10 @@
   "spec_deviations": [],
   "fallbacks_introduced": [],
   "open_questions": [
-    "Public HTTPS destination from deployment owner.",
-    "Fresh authorization before publishing Gatesmith source and coordinating the immutable engine/Action pin update."
+    "Public HTTPS destination from deployment owner."
   ],
   "follow_ups": [
-    "Publish reviewed source when authorized, run full Ubuntu CI, then coordinate matching Action engine pin, definition pack and server allowlist.",
+    "Publish reviewed source under the user’s explicit authorization, verify the remote ref, run full Ubuntu CI, then coordinate matching Action engine pin, definition pack and server allowlist.",
     "Deploy one App process with persistent SQLite and mounted secrets behind HTTPS; activate and test actual GitHub webhook deliveries.",
     "Connect friend-owned verifier/loop and approved improvement handoff; run controlled conformance benchmarks before exporting ranked HF results."
   ]

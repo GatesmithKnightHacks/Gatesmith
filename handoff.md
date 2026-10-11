@@ -4,7 +4,7 @@
 
 ## 1. State
 
-- Root: `/Users/ralph/Documents/Projects/knight hacks`; branch: `github-app`; source HEAD: `7e28242` before this documentation commit. No Gatesmith source push.
+- Root: `/Users/ralph/Documents/Projects/knight hacks`; branch: `github-app`; source HEAD: `7e28242` before this documentation commit. User authorized publishing all reviewed `github-app` source on 2026-10-11. Verify the remote ref before assuming synchronization.
 - GitHub bot, Gemini review, HF adapter/Space and two narrow engine fixes are implemented, independently reviewed and tested. Public hosting, full Linux gates, verifier/loop and platform import remain unfinished.
 - Read `docs/integration-setup-report.json` and `progress.md` for acceptance evidence and outstanding work.
 
@@ -14,7 +14,7 @@ This scoped integration pass did not recompute overall MVP/product percentages o
 
 ## 2. Next actions
 
-1. Obtain fresh authorization to publish reviewed `github-app` source, then run full Ubuntu CI. Existing macOS sandbox failures remain; never weaken sandbox limits or skip assertions.
+1. Publish reviewed `github-app` source using a normal fast-forward push, verify the remote ref, then run full Ubuntu CI. Existing macOS sandbox failures remain; never weaken sandbox limits or skip assertions.
 2. After publication, coordinate a reviewed immutable engine/Action pin update: Action constants/`action.yml`, knowledge definition binding and server allowlist must agree. The live demo still pins published engine `6b42f722730f19a5c3d9b72e1a19cf8d54a0fedd`; local Q406/D03 fixes have not run in released CI.
 3. Friend supplies HTTPS host. Deploy `review-bot/Dockerfile`, one process per persistent SQLite DB, mount App PEM/secrets, configure `/webhooks/github`, activate the App webhook and test real delivery. Local signed ingestion is not public deployment.
 4. Connect friend-owned verifier/loop and approved improvement handoff. Run controlled conformance benchmarks before populating the leaderboard. Parsing an HF proposal does not establish verification or acceptance.
@@ -22,7 +22,7 @@ This scoped integration pass did not recompute overall MVP/product percentages o
 ## 3. Repository, ownership and delegations
 
 - User authorized bot/Gemini/HF, subagents, selected private resources/account setup, the named engine baseline merge and development caps of HF $15 / Gemini $25. Friend is not editing the engine; user requested narrow engine corrections and real scoring integration.
-- UI/verifier/loop/platform remain friend-owned. No Vultr this pass. No Gatesmith source push without fresh authorization. Synthetic private demo pushes/reruns were separately authorized and are complete.
+- UI/verifier/loop/platform remain friend-owned. No Vultr this pass. User explicitly authorized committing and pushing all reviewed source on `github-app`; this does not authorize force-pushing or merging `main`. Synthetic private demo pushes/reruns were separately authorized and are complete.
 - Delegates are offline, without secrets or cloud access. No automatic fixes/merges. Improve and full-file review explicitly report unavailable.
 - All agents and root test/live jobs completed; no continuously running server. Managed `bot-action` worktree retains an offline demo lab, potentially including embedded Git repositories.
 - Archive requests for completed `bot-service` and `hf-adapter` worktrees were queued after integration. Verify app artifacts/worktree state before assuming removal; use app archive/restore tools. Needed HF lab files are now committed at root.
@@ -71,7 +71,7 @@ This scoped integration pass did not recompute overall MVP/product percentages o
 - ChP-0050 static Space alternative withdrawn after user bought PRO; retain Gradio with free CPU.
 - ChP-0051 documents exact-Operator-verified authored algebra prompt examples without claiming absent reference-proposer provenance.
 - ChP-0052 documents strict SDK serialization and bounded HTTP plumbing. ChP-0053 bounds primary Gemini generation to ten comments. No public-contract weakening or fallback.
-- Pending user action: publication authorization; pending friend handoffs: HTTPS host and verifier/loop/platform integration.
+- Source publication is authorized; pending friend handoffs: HTTPS host and verifier/loop/platform integration.
 
 ## 9. Secrets and traps
 
