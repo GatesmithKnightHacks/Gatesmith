@@ -1,7 +1,8 @@
 """Plan, event, issue report, hardware profile and bench result (specs/04-contracts.md §8-§11).
 
-`RunRecord` is `qscore.run/v0.2` (04 §13: ChP-0004 fields plus ChP-0028 `interpretation` and
-scorecard hashes). `ItemSummary` (specs/03 §3.2) is not built in the MVP.
+`RunRecord` is `qscore.run/v0.3` (04 §13: ChP-0004 fields plus ChP-0028 `interpretation` and
+scorecard hashes, ChP-0034 compiled circuit exports, ChP-0035 `project_source`).
+`ItemSummary` (specs/03 §3.2) is not built in the MVP.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ EVENT_SCHEMA = "qscore.event/v0.2"
 ISSUES_SCHEMA = "qscore.issues/v0.2"
 PROFILE_SCHEMA = "qscore.profile/v0.2"
 BENCH_SCHEMA = "qscore.bench/v0.2"
-RUN_SCHEMA = "qscore.run/v0.2"
+RUN_SCHEMA = "qscore.run/v0.3"
 
 EventKind = Literal[
     "run_started",
@@ -191,6 +192,36 @@ class RunScorecardRef(QModel):
     sha256: str  # of the scorecard file bytes
 
 
+class RunCompiledRef(QModel):
+    """One exported compiled circuit (ChP-0034): `<out>/compiled/<item_id>.qasm`."""
+
+    item_id: str
+    path: str  # relative to the run's output directory
+    sha256: str  # of the file bytes
+    seed: int  # equals the scorecard's `compile.representative_seed`
+
+
+class RunCompiledSkip(QModel):
+    """An item without an exported compiled circuit, and why (ChP-0034)."""
+
+    item_id: str
+    reason: str
+
+
+class ProjectSource(QModel):
+    """Git state of `project.root` at score time (ChP-0035 §2.1 D)."""
+
+    url: str | None  # remote.origin.url without userinfo; null when there is no remote
+    commit: str  # HEAD
+    dirty: bool  # uncommitted changes present
+
+
+class ProjectSourceError(QModel):
+    """Why the git state could not be read, e.g. "git not installed" (ChP-0035 §2.1 D)."""
+
+    error: str
+
+
 class RunProvenance(QModel):
     """Run-wide versions; per-item seeds and settings stay in each scorecard's provenance."""
 
@@ -207,7 +238,7 @@ class RunRecord(QDocument):
     """One scoring run, written last as `<out>/run.json` (04 §13)."""
 
     SCHEMA_ID = RUN_SCHEMA
-    schema_: Literal["qscore.run/v0.2"] = Field(alias="schema")
+    schema_: Literal["qscore.run/v0.3"] = Field(alias="schema")
     run_id: str
     job_id: UUID | None = None
     command: str
@@ -225,4 +256,8 @@ class RunRecord(QDocument):
     # record carries no exit code in the MVP; the worker sets it for queued jobs.
     exit_code: int | None = None
     scorecards: list[RunScorecardRef]
+    compiled: list[RunCompiledRef]
+    compiled_skipped: list[RunCompiledSkip]
+    # null when `project.root` is not inside a git work tree (ChP-0035 §2.1 D).
+    project_source: ProjectSource | ProjectSourceError | None
     provenance: RunProvenance

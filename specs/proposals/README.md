@@ -10,6 +10,13 @@ Every deviation from the specs is written here first (rule R5 in `../00-operatin
 
 | ChP | Title | Class | Status | Date |
 |---|---|---|---|---|
+| [ChP-0040](ChP-0040-github-review-bot.md) | qscore review bot: Gemini-powered GitHub App reviewing quantum-circuit PRs from CI-produced qscore results (teammate-owned) | A | proposed | 2026-10-11 |
+| [ChP-0037](ChP-0037-scripts-notebooks-packages.md) | Scripts, notebooks and packages as builders (line mode, package import, removed-API hints) | A | approved, applied | 2026-10-10 |
+| [ChP-0036](ChP-0036-score-path-accepts-manifest.md) | `qscore score PATH` accepts a manifest or a project directory | A | approved, applied | 2026-10-10 |
+| [ChP-0035](ChP-0035-repository-link-intake.md) | Repository link → discover → pick → score in one flow | A | approved, applied | 2026-10-10 |
+| [ChP-0034](ChP-0034-export-compiled-circuit-qasm.md) | Export each item's final compiled circuit as OpenQASM 3 | A | approved, applied | 2026-10-10 |
+| [ChP-0033](ChP-0033-t09-drafting-clarifications.md) | T09 drafting decisions and intake helper signatures | B | approved; applied | 2026-10-10 |
+| [ChP-0032](ChP-0032-w7900-rocm-tuning-and-evidence.md) | W7900 ROCm tuning, measured memory planning and AMD evidence report | A | approved; application deferred behind researcher intake | 2026-10-10 |
 | [ChP-0001](ChP-0001-verification-ladder-correctness.md) | Verification ladder correctness (GPU tolerance, global phase, QCEC mapping and timeout, mutation test) | A | approved | 2026-10-10 |
 | [ChP-0002](ChP-0002-request-proposal-contracts.md) | Request/proposal contracts — layout transport, whole-circuit strategies, strategy id, privacy context | A | approved | 2026-10-10 |
 | [ChP-0003](ChP-0003-reversible-io-declaration.md) | Declare data/ancilla qubits for `reversible_function` items | A | approved | 2026-10-10 |
@@ -34,3 +41,4 @@ Every deviation from the specs is written here first (rule R5 in `../00-operatin
 | [ChP-0022](ChP-0022-fast-track-cpu-scoring-slice.md) | Fast-track CPU scoring slice (downscoped build order) | A | approved | 2026-10-10 |
 | [ChP-0023](ChP-0023-mvp-is-the-scoring-and-diagnostics-engine.md) | The MVP is the scoring and diagnostics engine — a circuit in, diagnostics and scores out | A | approved | 2026-10-10 |
 | [ChP-0028](ChP-0028-run-record-and-mvp-spec-gaps.md) | Run record `run.json` (+ per-card `x-run`), budget reason, nullable representative, and MVP spec gaps (custom calibration, all-to-all basis, Q207 extras, calibration in item hash, target one-of merge, Q208) | A | approved | 2026-10-10 |
+| [ChP-0029](ChP-0029-draft-values-picking-and-notebook-listing.md) | Deterministic manifest drafting: picking, values/ranges, values file, call-site suggestions, notebook listing | A | approved | 2026-10-10 |

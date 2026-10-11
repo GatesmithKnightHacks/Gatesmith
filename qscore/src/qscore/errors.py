@@ -29,7 +29,9 @@ class ConfigError(QscoreError):
     """Missing settings or secrets, or an incompatible environment (exit code 4)."""
 
 
-SandboxKind = Literal["timeout", "import_error", "user_exception", "not_a_circuit"]
+SandboxKind = Literal[
+    "timeout", "import_error", "user_exception", "not_a_circuit", "args_for_circuit"
+]
 
 
 class SandboxError(QscoreError):
@@ -75,6 +77,10 @@ class NeonError(RecordError):
 
 class HubError(RecordError):
     """A Hugging Face Hub operation failed after bounded retries."""
+
+
+class FetchError(QscoreError):
+    """`git clone` of a repository link failed; carries git's message (ChP-0035, exit code 3)."""
 
 
 class LayerError(QscoreError):

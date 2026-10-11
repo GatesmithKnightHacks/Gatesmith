@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     cache_dir: Path = Path(".qscore")
     device_default: Literal["auto", "cpu", "gpu"] = "auto"
     sandbox_mode: Literal["process", "process-unlimited"] = "process"
+    fetch_timeout_s: float = Field(default=300, gt=0)  # `git clone` of a repository link (ChP-0035)
     neon_dsn: SecretStr | None = None
     # "data-api" | "relay" arrive only with FB-03, which awaits the user's decision (specs/17 §2).
     neon_transport: Literal["postgres"] = "postgres"

@@ -19,7 +19,8 @@
 | `qscore.profile/v0.2` | `HardwareProfile` | Internal |
 | `qscore.bench/v0.2` | `BenchResult` | Internal (published) |
 | `qscore.conformance/v0.2` | `ConformanceReport` | Internal (published) |
-| `qscore.run/v0.2` | `RunRecord` (§13) | Internal |
+| `qscore.run/v0.3` | `RunRecord` (§13) | Internal |
+| `qscore.values/v0.1` | `DraftValues` (§14, ChP-0029) | Internal (input only) |
 
 - Every document carries `schema: "<id>"` as its first field.
 - **Semantic versioning:** new optional fields bump the minor version; any change of meaning bumps the major; each step ships a `migrate()` function and `qscore migrate`.
@@ -102,7 +103,7 @@ Bitstrings use **Qiskit's order: qubit 0 is the rightmost bit.** Say so in every
 |---|---|
 | `schema` | Required; unknown major version refused (Q106). |
 | `circuits[].id` | Unique, `^[a-z0-9_][a-z0-9_\-]{0,63}$` (Q105, Q103). |
-| `source` | Exactly one of `qasm` or `builder` (Q103). Builder format `path/to/file.py::function` (Q103). |
+| `source` | Exactly one of `qasm` or `builder` (Q103). Builder format `path/to/file.py::name` or `path/to/file.ipynb::name` (Q103); optional `source.line: int ≥ 1` (ChP-0037). Without `line`: `name` is a function, imported and called with `args`. With `line`: qscore runs the file's top-level statements whose first line is ≤ `line`, then takes `name`: a `QuantumCircuit` (then `args` must be empty, Q103) or a function called with `args`. Notebook lines count in the code-cell script printed by `qscore discover` (code cells joined, `%`/`!` lines removed). A notebook builder requires `line` (Q103). |
 | `invariants.intent` | `reversible_function` only when every gate is `x`/`cx`/`ccx`/`swap` (Q400). `known_output`/`distribution`/`expectation` require `task` (Q104) and, for the first two, measurements (Q401). `exact_unitary` forbids mid-circuit measurement (Q402). |
 | `invariants.final_permutation` | Must be `allowed` whenever `layout` or `routing` is permitted (Q408). |
 | `invariants.task.observable` | JSON file of Pauli terms (§2.4); width must equal circuit width (Q403). |
@@ -320,13 +321,13 @@ Per item and metric: `{metric, device: cpu|gpu, method, precision, est_bytes, es
 - Stored JSON (Neon `jsonb`, Hub files) always includes `schema`; readers dispatch on it.
 - Exported JSON Schemas are committed under `qscore/schemas/<id with / replaced by _>.json`; `tests/contract/test_schema_drift.py` fails if they differ from `export_json_schemas()`.
 
-## 13. Run record `qscore.run/v0.2` (`<out>/run.json`; ChP-0004, ChP-0028)
+## 13. Run record `qscore.run/v0.3` (`<out>/run.json`; ChP-0004, ChP-0028, ChP-0034, ChP-0035)
 
 Written last by every confirmed scoring run.
 
 ```json
 {
-  "schema": "qscore.run/v0.2",
+  "schema": "qscore.run/v0.3",
   "run_id": "run-20261010T150211",
   "job_id": null,
   "command": "score",
@@ -342,6 +343,9 @@ Written last by every confirmed scoring run.
   "status": "complete",
   "exit_code": null,
   "scorecards": [{"item_id": "sbox_oracle", "item_sha256": "…", "path": "scorecards/sbox_oracle.json", "sha256": "…"}],
+  "compiled": [{"item_id": "sbox_oracle", "path": "compiled/sbox_oracle.qasm", "sha256": "…", "seed": 37}],
+  "compiled_skipped": [],
+  "project_source": {"url": "https://github.com/org/repo", "commit": "…", "dirty": false},
   "provenance": {"qscore": "0.1.0", "score_version": "qscore-2026.1", "git_commit": "…", "git_dirty": false,
                  "lock_sha256": "…", "python": "3.12.3", "qiskit": "2.x"}
 }
@@ -354,5 +358,23 @@ Written last by every confirmed scoring run.
 | `status` | `complete` if every scorecard is complete, `failed` if every one failed, else `partial`. |
 | `exit_code` | `null` from the CLI/services (the CLI applies `--allow-partial`/`--fail-on` afterwards, 05 §11); the worker sets it for queued jobs. |
 | `scorecards[]` | `path` is relative to the output directory; `sha256` hashes the scorecard file bytes. |
+| `compiled[]` | One per item with a representative compile (ChP-0034, 05 §9): `path` relative to the output directory; `sha256` hashes the file bytes; `seed` equals the scorecard's `compile.representative_seed`. |
+| `compiled_skipped[]` | Items without an exported circuit and why, e.g. `{"item_id": "…", "reason": "no representative compile (objective metric failed)"}`. |
+| `project_source` | Read at score time from `project.root` with git (ChP-0035): `url` = `remote.origin.url` with any userinfo removed (null when no remote), `commit` = `HEAD`, `dirty` = uncommitted changes present. `null` when `project.root` is not inside a git work tree; `{"error": "git not installed"}` when git is missing, and `{"error": "<git's message>"}` for any other git read failure (no commit yet, `git status` failed, timeout). Applies to every run. |
 | `provenance` | Run-wide versions; per-item seeds and settings stay in each scorecard's provenance. |
+| Migration | v0.2 → v0.3 adds `compiled: []`, `compiled_skipped: []`, `project_source: null`. |
 
+## 14. Draft values `qscore.values/v0.1` (ChP-0029)
+
+Input to `qscore discover --draft --values FILE` only. It never takes part in scoring and is not part of the item hash.
+
+```yaml
+schema: qscore.values/v0.1
+builders:
+  src/packing/qaoa.py::build_qaoa:       # same reference format as source.builder
+    args: {rotamers: 3, p: 2}             # scalars only
+    sweep: {n_residues: "2..6"}           # at most one key; range string (a..b or a..b..s) or int list
+    parameters: {file: params/qaoa_p2.json}   # optional; copied to source.parameters (ChP-0029 amendment)
+```
+
+Unknown top-level or per-builder keys → Q101; a parse error → Q100; a non-scalar arg → Q102; a bad range string or more than one sweep key → Q103; a key that matches no discovered builder → Q202; an argument not in the signature → Q203; a sweep argument not in the signature → Q204; an unknown key inside `parameters` → Q101; a `parameters.file` that does not exist → Q200. Files under `tests/**` and `test_*.py` are call-site sources only, never candidates. Every issue is located in the values file (line:column).

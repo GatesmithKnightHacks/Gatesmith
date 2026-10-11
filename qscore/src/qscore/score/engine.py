@@ -11,6 +11,7 @@ import os
 import time
 from datetime import UTC, datetime
 
+from qscore.compile.pipeline import CompiledResult
 from qscore.compile.select import SELECTION_POLICY
 from qscore.config import Settings
 from qscore.diagnose.policy import apply, effective_policy, rank
@@ -92,6 +93,14 @@ def _run_metric(metric: Metric, ctx: ScoringContext) -> MetricResult:
 def score_item(
     resolved: ResolvedItem, loaded: LoadedCircuit, manifest_sha256: str, settings: Settings
 ) -> Scorecard:
+    return score_item_compiled(resolved, loaded, manifest_sha256, settings)[0]
+
+
+def score_item_compiled(
+    resolved: ResolvedItem, loaded: LoadedCircuit, manifest_sha256: str, settings: Settings
+) -> tuple[Scorecard, CompiledResult | str]:
+    """The scorecard plus the representative compile it describes, or why there is none, for
+    the compiled circuit export (ChP-0034)."""
     started, t0, c0 = datetime.now(UTC), time.perf_counter(), _cpu_time()
     item = resolved.item
     ctx = ScoringContext(resolved, loaded.circuit, loaded.rebuild)
@@ -170,7 +179,7 @@ def score_item(
     seed_sim = item.execution.seed_simulator
     if seed_sim is None:
         raise InvalidInput(f"[Q104] item {item.id}: execution.seed_simulator is null", report=None)
-    return Scorecard.model_validate(
+    card = Scorecard.model_validate(
         {
             "schema": SCORECARD_SCHEMA,
             "item": ItemRef(
@@ -201,6 +210,14 @@ def score_item(
             "x-diagnose": {"skipped_rules": diagnosis.skipped},
         }
     )
+    if rep is not None:
+        return card, rep
+    failure = ctx.failures.get(Requirement.COMPILED)
+    if failure is not None:
+        return card, f"compile failed: {type(failure).__name__}: {failure}"
+    if compiled is None:
+        return card, "no compile ran (no selected metric needs one)"
+    return card, "no representative compile (objective metric failed)"
 
 
 def error_card_details(exc: Exception) -> ErrorInfo:

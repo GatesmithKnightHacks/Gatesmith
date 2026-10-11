@@ -19,7 +19,9 @@ from rich.console import Console
 from qscore import services
 from qscore.config import get_settings, log_startup
 from qscore.errors import ConfigError, InvalidInput, QscoreError
+from qscore.intake.draft import PromptSpec
 from qscore.logging import setup_logging
+from qscore.schemas.run import Event
 
 app = typer.Typer(
     name="qscore",
@@ -50,10 +52,118 @@ def main() -> None:
 
 
 @app.command()
+def discover(
+    path: Annotated[
+        str,
+        typer.Argument(
+            help="Repository link (https://, ssh://, git@host:owner/repo, file://), or a "
+            "repository, Python, QASM or notebook path."
+        ),
+    ] = ".",
+    draft: Annotated[
+        bool, typer.Option("--draft", help="Write a manifest draft after showing its diff.")
+    ] = False,
+    pick: Annotated[
+        str | None, typer.Option(help="Candidate numbers or names, comma-separated.")
+    ] = None,
+    values: Annotated[Path | None, typer.Option(help="qscore.values/v0.1 YAML file.")] = None,
+    no_input: Annotated[
+        bool, typer.Option("--no-input", help="Never prompt; requires --pick for drafting.")
+    ] = False,
+    ref: Annotated[
+        str | None, typer.Option(help="Branch, tag or full commit SHA of a repository link.")
+    ] = None,
+    into: Annotated[
+        Path | None, typer.Option(help="Clone destination (default ./<repo-name>).")
+    ] = None,
+    subdir: Annotated[
+        Path | None, typer.Option("--path", help="Limit discovery to this subdirectory.")
+    ] = None,
+    score_after: Annotated[
+        bool, typer.Option("--score", help="Score the draft right after writing it.")
+    ] = False,
+    out: Annotated[
+        Path | None, typer.Option(help="Output directory for --score (default <root>/qscore-out).")
+    ] = None,
+    yes: Annotated[bool, typer.Option("--yes", help="With --score: do not ask.")] = False,
+) -> None:
+    """Find circuits without executing code; optionally draft their manifest entries."""
+    if not draft and (pick is not None or values is not None or no_input or score_after):
+        err.print("--pick, --values, --no-input and --score require --draft")
+        raise typer.Exit(2)
+    if not score_after and (out is not None or yes):
+        err.print("--out and --yes require --score")
+        raise typer.Exit(2)
+
+    def prompt(spec: PromptSpec) -> str:
+        for suggestion in spec.suggestions:
+            typer.echo(f"  Suggested: {suggestion.value!r} from {suggestion.where}")
+        return str(typer.prompt(spec.message, default="", show_default=False))
+
+    def on_event(event: Event) -> None:
+        typer.echo(event.message)
+
+    def confirm(summary: str) -> bool:
+        err.print(summary, markup=False)
+        return typer.confirm("Continue?", err=True)
+
+    try:
+        found = services.discover_candidates(
+            path,
+            on_event,
+            draft=draft,
+            pick=pick,
+            values=values,
+            no_input=no_input,
+            prompt=None if no_input else prompt,
+            ref=ref,
+            into=into,
+            subdir=subdir,
+        )
+        if score_after:
+            assert found.draft_path is not None and found.root is not None  # --draft wrote it
+            result = services.score_project(
+                found.draft_path,
+                out if out is not None else found.root / "qscore-out",
+                on_event,
+                confirm="yes" if yes else confirm,
+                fetched=found.fetched,
+            )
+            for card, p in zip(result.scorecards, result.paths, strict=True):
+                typer.echo(f"{card.item.id}: {card.status} → {p}")
+            for compiled in result.compiled_paths:
+                typer.echo(f"compiled → {compiled}")
+            if result.run_record_path is not None:
+                typer.echo(f"report → {result.report_path}")
+    except InvalidInput as exc:
+        err.print(f"[red]invalid input:[/red] {exc}")
+        if exc.report is not None:
+            for issue in exc.report.issues:
+                loc = issue.location
+                err.print(
+                    f"  {issue.code} {loc.file}:{loc.line}:{loc.column} "
+                    f"{loc.field or ''} — {issue.message}",
+                    markup=False,
+                )
+                if issue.hint:
+                    err.print(f"    {issue.hint}", markup=False)
+        raise typer.Exit(2) from exc
+    except ConfigError as exc:
+        err.print(f"[red]configuration error:[/red] {exc}")
+        raise typer.Exit(4) from exc
+    except QscoreError as exc:
+        err.print(f"[red]runtime failure:[/red] {type(exc).__name__}: {exc}")
+        raise typer.Exit(3) from exc
+
+
+@app.command()
 def score(
     path: Annotated[
         Path | None,
-        typer.Argument(help="A single OpenQASM file to score, or - to paste QASM on stdin."),
+        typer.Argument(
+            help="A manifest (*.yaml/*.yml), a project directory (its qscore.yaml), a single "
+            "OpenQASM file, or - to paste QASM on stdin."
+        ),
     ] = None,
     manifest: Annotated[Path | None, typer.Option(help="qscore.yaml manifest.")] = None,
     target: Annotated[
@@ -69,9 +179,21 @@ def score(
 ) -> None:
     """Score circuits: compile across seeds, compute metrics, run diagnostics."""
     if (path is None) == (manifest is None):
-        err.print("give exactly one of PATH (an OpenQASM file) or --manifest")
+        err.print("give exactly one of PATH or --manifest")
         raise typer.Exit(2)
+    # PATH routing (ChP-0036): a manifest or a directory's qscore.yaml means manifest mode.
+    if path is not None and (path.suffix in (".yaml", ".yml") or path.is_dir()):
+        manifest, path = (path / "qscore.yaml" if path.is_dir() else path), None
     pasted = path == Path("-")
+    # The mode PATH resolved to is named before anything runs (ChP-0036).
+    err.print(
+        f"Input: manifest {manifest}"
+        if manifest is not None
+        else "Input: pasted OpenQASM (stdin)"
+        if pasted
+        else f"Input: single file {path}",
+        markup=False,
+    )
     if pasted and not yes:
         err.print("reading QASM from stdin needs --yes (stdin cannot also answer the prompt)")
         raise typer.Exit(2)
@@ -124,6 +246,8 @@ def score(
             f"{card.item.id}: {card.status} · {len(live)} finding(s) "
             f"({', '.join(f'{f.rule}:{f.severity}' for f in live) or 'none'}) → {p}"
         )
+    for compiled in result.compiled_paths:
+        err.print(f"compiled → {compiled}")
     err.print(f"report → {result.report_path}")
     if pasted and not as_json:
         sys.stdout.write(result.report_path.read_text(encoding="utf-8"))

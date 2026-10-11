@@ -3,7 +3,15 @@ is known. Parses nothing and runs nothing; every issue of every item is returned
 
 Codes here: Q200 (QASM, parameters or observable file not found), Q201-Q204 (builder file,
 function, arguments, size-sweep argument; checked with `ast`, never imported), Q301 (builder file
-does not parse), Q206 (unknown target), Q103 (synthetic target with backend calibration).
+does not parse), Q206 (unknown target), Q103 (synthetic target with backend calibration; line
+mode: `source.line` past the end of the script, unreadable notebook).
+
+Line mode (ChP-0037): with `source.line`, `name` must be bound by a top-level statement starting
+at or before `line` (a def, an assignment, an import; not a class) in the script text (a
+notebook's code-cell script), else Q202. When that binding is a def, its signature is checked
+against `args` as in function mode. Known limit: bindings inside top-level compound
+statements (`if`/`for`/`with`/`try`) and augmented assignments are not seen, so such a name is
+Q202 here even though the runner would bind it.
 """
 
 from __future__ import annotations
@@ -12,6 +20,8 @@ import ast
 from collections.abc import Callable
 from pathlib import Path
 
+from qscore.errors import InvalidInput
+from qscore.intake.script import bound_names, check_line, first_line, parse_script, script_text
 from qscore.schemas.manifest import BuilderSource, CircuitItem, QasmSource
 from qscore.schemas.run import IssueModel
 from qscore.targets.registry import target_problem
@@ -118,11 +128,18 @@ def _builder_issues(
             "Paths are relative to project.root.",
         )
         return issues
-    try:
-        tree = ast.parse(path.read_bytes(), filename=rel)
-    except SyntaxError as exc:
-        issues.append(
-            make_issue(
+    if source.line is not None:
+        found = _line_binding(item, name, source.line, path, rel, file, at, locate)
+        if isinstance(found, list):
+            return issues + found
+        if found is None:
+            return issues
+        function = found
+    else:
+        try:
+            tree = ast.parse(path.read_bytes(), filename=rel)
+        except SyntaxError as exc:
+            add_syntax = make_issue(
                 "Q301",
                 item.id,
                 rel,
@@ -133,19 +150,20 @@ def _builder_issues(
                 line=exc.lineno,
                 column=exc.offset,
             )
-        )
-        return issues
-    functions = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
-    if name not in functions:
-        known = ", ".join(sorted(functions)) or "none"
-        add(
-            "Q202",
-            ("source", "builder"),
-            f"function {name!r} not found in {rel}",
-            f"Top-level functions in {rel}: {known}.",
-        )
-        return issues
-    sig = functions[name].args
+            issues.append(add_syntax)
+            return issues
+        functions = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+        if name not in functions:
+            known = ", ".join(sorted(functions)) or "none"
+            add(
+                "Q202",
+                ("source", "builder"),
+                f"function {name!r} not found in {rel}",
+                f"Top-level functions in {rel}: {known}.",
+            )
+            return issues
+        function = functions[name]
+    sig = function.args
     positional = sig.posonlyargs + sig.args
     named = [a.arg for a in sig.args + sig.kwonlyargs]
     required = [a.arg for a in positional[: len(positional) - len(sig.defaults)]]
@@ -171,3 +189,66 @@ def _builder_issues(
             f"Signature: {name}({', '.join(named)}).",
         )
     return issues
+
+
+def _line_binding(
+    item: CircuitItem,
+    name: str,
+    line: int,
+    path: Path,
+    rel: str,
+    file: str,
+    at: Callable[..., FieldPath | None],
+    locate: Locate | None,
+) -> list[IssueModel] | ast.FunctionDef | ast.AsyncFunctionDef | None:
+    """Line mode: the issues (Q103, Q301, Q202), or the def binding `name` last at or before
+    `line` (its signature is checked next), or None when `name` is bound by a non-def."""
+    try:
+        text = script_text(path, rel)
+        check_line(text, line, rel)
+        tree = parse_script(text, rel)
+    except InvalidInput as exc:
+        # Q103 (unreadable notebook, `line` past the end) or Q301 (syntax, located in the file).
+        assert exc.code is not None
+        (issue,) = exc.report.issues
+        located: tuple[str, FieldPath | None, Locate | None]
+        if issue.location.line is not None:
+            located = (rel, None, None)
+        else:
+            field = (
+                ("source", "line")
+                if issue.location.field == "source.line"
+                else ("source", "builder")
+            )
+            located = (file, at(*field), locate)
+        return [
+            make_issue(
+                exc.code,
+                item.id,
+                *located,
+                issue.message,
+                issue.hint,
+                line=issue.location.line,
+                column=issue.location.column,
+            )
+        ]
+    binding: ast.stmt | None = None
+    for node in tree.body:
+        if first_line(node) <= line and name in bound_names(node):
+            binding = node
+    if binding is None:
+        return [
+            make_issue(
+                "Q202",
+                item.id,
+                file,
+                at("source", "builder"),
+                locate,
+                f"{name!r} is not bound at the top level of {rel} at or before line {line}",
+                "Line mode takes a variable, function or import bound before `line`; "
+                "move `line` later or name another variable (qscore discover lists them).",
+            )
+        ]
+    if isinstance(binding, ast.FunctionDef | ast.AsyncFunctionDef):
+        return binding
+    return None

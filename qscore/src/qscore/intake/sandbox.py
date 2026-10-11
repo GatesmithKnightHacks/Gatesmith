@@ -1,7 +1,8 @@
 """Run a builder in a separate process (specs/05-pipeline.md §4.2, ★ process mode).
 
 The child is ``python -I intake/runner.py request.json`` with a timeout, ``RLIMIT_AS = mem_mb``
-and ``RLIMIT_CPU``, a temporary working directory and an environment stripped of secrets. The
+and ``RLIMIT_CPU``, a temporary working directory (line mode: the builder file's directory,
+ChP-0037 §2.1 D, set by the runner) and an environment stripped of secrets. The
 sandbox is not a security boundary for hostile code (R10): builders come only from curated
 example repos or the user's own repo in laptop mode.
 """
@@ -35,12 +36,25 @@ _SECRET = re.compile(r"(_TOKEN|_KEY|_DSN)$|SECRET|^(HF|NEON|GEMINI|OPENAI)_", re
 
 @dataclass(frozen=True)
 class BuilderRequest:
-    """One builder call: ``file::function(**args)`` with ``project_root`` on ``sys.path``."""
+    """One builder call: ``file::function(**args)`` with ``project_root`` on ``sys.path``.
+
+    Line mode (ChP-0037): ``source_text`` is the script prefix from ``intake.script.prefix``
+    (statements at or before ``line``), run in ``cwd``; ``function`` then names a circuit
+    variable or a function. ``line`` is only used to name the line in a missing-name message.
+    """
 
     project_root: Path
     file: Path
     function: str
     args: dict[str, object] = field(default_factory=dict)
+    source_text: str | None = None
+    cwd: Path | None = None
+    line: int | None = None
+
+    def __post_init__(self) -> None:
+        line_mode = (self.source_text is not None, self.cwd is not None, self.line is not None)
+        if any(line_mode) and not all(line_mode):
+            raise ValueError("line mode needs source_text, cwd and line together")
 
 
 @dataclass(frozen=True)
@@ -90,6 +104,9 @@ def run_builder(request: BuilderRequest, timeout_s: float, mem_mb: int) -> Sandb
             "file": str(request.file.resolve()),
             "function": request.function,
             "args": request.args,
+            "source_text": request.source_text,
+            "cwd": None if request.cwd is None else str(request.cwd.resolve()),
+            "line": request.line,
             "qpy": str(qpy_path),
             "status": str(status_path),
         }

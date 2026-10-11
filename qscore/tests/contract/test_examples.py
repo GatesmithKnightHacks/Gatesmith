@@ -43,7 +43,7 @@ MODELS: dict[str, type[BaseModel]] = {
     "qscore.job/v0.2": JobSpec,
     "qscore.event/v0.2": Event,
     "qscore.issues/v0.2": IssueReportModel,
-    "qscore.run/v0.2": RunRecord,
+    "qscore.run/v0.3": RunRecord,
 }
 
 

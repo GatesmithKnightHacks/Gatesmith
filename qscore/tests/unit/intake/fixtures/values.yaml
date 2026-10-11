@@ -1,0 +1,7 @@
+schema: qscore.values/v0.1
+builders:
+  builders.py::annotated:
+    args: {label: from-file}
+    sweep: {n: "2..4"}
+  builders.py::returned:
+    args: {num_qubits: 3, theta: 0.25}
