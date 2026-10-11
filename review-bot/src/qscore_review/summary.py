@@ -108,6 +108,7 @@ def build_summary(
         "<!-- gatesmith:qscore-summary -->",
         "## Gatesmith circuit comparison",
         f"Base `{p.base_sha[:12]}` → head `{p.head_sha[:12]}`.",
+        f"Workflow run `{p.run_id}`, attempt `{p.run_attempt}`.",
         "",
     ]
     evidence: dict[str, dict[str, Any]] = {}

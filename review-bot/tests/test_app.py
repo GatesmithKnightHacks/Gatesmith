@@ -169,3 +169,39 @@ def test_durable_worker_records_sanitized_failure_and_recovers(tmp_path):
     asyncio.run(exercise())
     row = state.db.execute("SELECT status,error_type FROM jobs").fetchone()
     assert tuple(row) == ("failed", "KeyError")
+
+
+def test_rescore_refreshes_deterministic_results_without_another_gemini_call(tmp_path):
+    from types import SimpleNamespace
+
+    from test_gemini import FakeModels
+
+    from qscore_review.gemini import Gemini
+
+    cfg = settings(tmp_path)
+    cfg.knowledge_path = Path(__file__).parents[1] / "knowledge/qiskit.json"
+    state = State(tmp_path / "state.db")
+    config = {"gemini": True, "fail_on": "new_high"}
+    github = FakeGitHub(
+        fixture_bundle(config=config), b"version: 1\ngemini: true\nfail_on: new_high\n"
+    )
+    models = FakeModels()
+    gemini = Gemini(cfg, state, SimpleNamespace(aio=SimpleNamespace(models=models)))
+    service = Service(cfg, state, github, gemini)
+    asyncio.run(service.process("workflow_run", payload()))
+    first_posts = len(github.posts)
+    github.run["run_attempt"] = 2
+
+    def rerun(envelope, payloads):
+        envelope["provenance"]["run_attempt"] = 2
+
+    github.raw = fixture_bundle(config=config, head_count=22, mutate=rerun)
+    asyncio.run(service.process("workflow_run", payload()))
+    assert len(github.posts) > first_posts
+    assert "attempt `2`" in github.posts[first_posts][1]
+    assert "| 10 | 22 |" in github.posts[first_posts][1]
+    assert len(models.calls) == 1
+    assert state.db.execute("SELECT COUNT(*) FROM reviews").fetchone()[0] == 2
+    posts_after_rescore = len(github.posts)
+    asyncio.run(service.process("workflow_run", payload()))
+    assert len(github.posts) == posts_after_rescore

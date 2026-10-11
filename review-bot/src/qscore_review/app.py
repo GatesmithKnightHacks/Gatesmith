@@ -154,7 +154,8 @@ class Service:
             )
             if config != loaded.envelope.config:
                 raise RecordError("Bundle configuration differs from trusted base configuration")
-            identity = f"{p.repository_id}:{p.pull_request}:{p.base_sha}:{p.head_sha}"
+            comparison = f"{p.repository_id}:{p.pull_request}:{p.base_sha}:{p.head_sha}"
+            identity = f"{comparison}:run:{p.run_id}:attempt:{p.run_attempt}"
             previous = self.state.review(identity)
             if previous and previous["status"] == "complete":
                 return
@@ -183,7 +184,7 @@ class Service:
             token,
             summary.conclusion,
             body,
-            identity,
+            comparison,
             previous.get("check_id") if previous else None,
         )
         self.state.save_review(identity, check_id=check_id)
@@ -214,7 +215,7 @@ class Service:
             if not await self.current(allowed.repository, p.pull_request, p.head_sha, token):
                 return
             draft = await self.gemini.draft(
-                f"{p.repository_id}:{p.pull_request}:{p.head_sha}", identity, context
+                f"{p.repository_id}:{p.pull_request}:{p.head_sha}", comparison, context
             )
             validated = validate_review(
                 draft, diff, evidence, config, loaded.envelope.detected_versions
@@ -239,7 +240,7 @@ class Service:
             if validated.comments:
                 marker = (
                     "<!-- gatesmith:review:"
-                    + hashlib.sha256(identity.encode()).hexdigest()
+                    + hashlib.sha256(comparison.encode()).hexdigest()
                     + " -->"
                 )
                 reviews = await self.github.pages(
@@ -293,7 +294,7 @@ class Service:
             return
         await self.github.sticky(allowed.repository, p.pull_request, token, body)
         await self.github.check(
-            allowed.repository, p.head_sha, token, conclusion, body, identity, check_id
+            allowed.repository, p.head_sha, token, conclusion, body, comparison, check_id
         )
         self.state.save_review(
             identity,
