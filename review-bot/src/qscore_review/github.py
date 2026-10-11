@@ -28,12 +28,14 @@ class GitHub:
         now = int(time.time())
         try:
             return jwt.encode(
-                {"iat": now - 60, "exp": now + 540, "iss": self.settings.app_id},
+                {"iat": now - 60, "exp": now + 540, "iss": str(self.settings.app_id)},
                 self.settings.private_key_path.read_text(),
                 algorithm="RS256",
             )
-        except (OSError, jwt.PyJWTError, ValueError) as exc:
-            raise PlatformError("GitHub App key could not be loaded") from exc
+        except (OSError, jwt.PyJWTError, ValueError, TypeError) as exc:
+            raise PlatformError(
+                "GitHub App JWT could not be signed with the configured key"
+            ) from exc
 
     async def token(self, installation: int) -> str:
         cached = self._tokens.get(installation)
