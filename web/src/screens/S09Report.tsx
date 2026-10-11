@@ -15,11 +15,14 @@ import { FinalCircuit, OriginalCircuit } from './report/Circuits'
 import {
   ESTIMATE_FINAL,
   ESTIMATE_PARTIAL,
+  ESTIMATE_R1,
   FINDINGS_FINAL,
   FINDINGS_PARTIAL,
+  FINDINGS_R1,
   JOB,
   METRICS_FINAL,
   METRICS_PARTIAL,
+  METRICS_R1,
   RELIABILITY_CAVEAT,
   REPRODUCIBILITY,
   ROUNDS,
@@ -153,7 +156,9 @@ function MetricsTile({ state }: { state: S09State }) {
   const meta =
     state === 'partial'
       ? 'before → after round 2 · partial'
-      : state === 'loading'
+      : state === 'one-round'
+        ? 'before → after round 1 · best of 8 seeds · seed 37'
+        : state === 'loading'
         ? 'building'
         : state === 'error'
           ? 'report.json · failed'
@@ -194,6 +199,17 @@ function MetricsTile({ state }: { state: S09State }) {
             </div>
           </div>
         </>
+      ) : state === 'one-round' ? (
+        <div className="rp-inset rp-table is-fill">
+          <TableHead />
+          <MetricLines lines={METRICS_R1} />
+          <div className="rp-research">
+            <span className="rp-research-label">not run</span>
+            <MarkIcon kind="unavailable" />
+            <span className="rp-research-word">skipped</span>
+            <span className="mono rp-research-name">rounds 2 to 4 · budget was 1 round</span>
+          </div>
+        </div>
       ) : (
         <div className="rp-inset rp-table is-fill">
           <TableHead />
@@ -504,7 +520,7 @@ function OneRoundLane({ decision, value }: { decision: 'accepted' | 'rejected'; 
 
 /* ── Machine estimate ─────────────────────────────────────────────────── */
 function EstimateTile({ state }: { state: S09State }) {
-  const e: Estimate = state === 'partial' ? ESTIMATE_PARTIAL : ESTIMATE_FINAL
+  const e: Estimate = state === 'partial' ? ESTIMATE_PARTIAL : state === 'one-round' ? ESTIMATE_R1 : ESTIMATE_FINAL
   const loading = state === 'loading'
   const empty = state === 'empty'
   return (
@@ -568,7 +584,7 @@ function ReportInspector({ state }: { state: S09State }) {
           : empty
             ? 'Runs on this machine · no run finished yet'
             : `Runs on this machine · job ${JOB} · done in 8 m 10 s`
-  const findings: FindingLine[] = state === 'partial' ? FINDINGS_PARTIAL : FINDINGS_FINAL
+  const findings: FindingLine[] = state === 'partial' ? FINDINGS_PARTIAL : state === 'one-round' ? FINDINGS_R1 : FINDINGS_FINAL
   const facts = RUN_FACTS.map(([k, v]): [string, string] =>
     k === 'wall time' && state === 'partial' ? [k, '400 s · 6 m 40 s'] : k === 'wall time' && state === 'one-round' ? [k, '118 s · 1 m 58 s'] : [k, v],
   )
@@ -618,7 +634,7 @@ function ReportInspector({ state }: { state: S09State }) {
       <Section
         icon={Icons.list}
         title="Findings"
-        meta={empty ? 'not scored yet' : state === 'partial' ? '3 open · 1 accepted' : '2 open · 2 accepted'}
+        meta={empty ? 'not scored yet' : state === 'partial' ? '3 open · 1 accepted' : state === 'one-round' ? '4 open · 0 accepted' : '2 open · 2 accepted'}
         bodyStyle={{ gap: 0 }}
       >
         {empty ? (

@@ -3,7 +3,7 @@
  * color), spinner ring beside a stage word, shimmer blocks, inspector fact rows, code blocks, status marks.
  * Motion follows DS-08: spinner 1000 ms linear, shimmer 1200 ms linear, everything else eases.
  */
-import type { CSSProperties, ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { GpuStatus } from '../../ui/Shell'
 import { HANDLE, type CodeLine } from './data'
 import './bits.css'
@@ -193,24 +193,42 @@ export function FactRow({ label, value, labelWidth = 128, loading }: { label: Re
 /* ── Code block ──────────────────────────────────────────────────────── */
 /** 20 px lines, 44 px gutter with a 2 px #243237 rule, a 2 px rail per line, mono 12. */
 export function CodeBlock({ lines, start = 1, pending = 0, className = '' }: { lines: CodeLine[]; start?: number; pending?: number; className?: string }) {
+  // The view keeps whole lines: its height rounds down to 20 px lines (plus 4 + 4 padding, 1 + 1 border)
+  // and the rest scrolls, so no line is ever cut in half at the bottom edge.
+  const box = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState<number | undefined>(undefined)
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    const measure = () => {
+      const fit = Math.max(1, Math.floor((el.clientHeight - 10) / 20))
+      setHeight(fit * 20 + 10)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   return (
-    <div className={`rp-code ${className}`}>
-      {lines.map((l, i) => (
-        <div key={i} className="rp-code-line">
-          <span className="rp-code-n mono">{start + i}</span>
-          <span className={`rp-code-rail${l.rail ? ` is-${l.rail}` : ''}`} />
-          <span className={`rp-code-text mono${l.comment ? ' is-comment' : ''}`}>{l.text || ' '}</span>
-        </div>
-      ))}
-      {Array.from({ length: pending }, (_, i) => (
-        <div key={`p${i}`} className="rp-code-line">
-          <span className="rp-code-n mono">{start + lines.length + i}</span>
-          <span className="rp-code-rail" />
-          <span className="rp-code-text">
-            <Shim w={[120, 180, 150, 96][i % 4]} h={10} onPanel />
-          </span>
-        </div>
-      ))}
+    <div className="rp-code-box" ref={box}>
+      <div className={`rp-code ${className}`} style={height != null ? { flex: 'none', height } : undefined}>
+        {lines.map((l, i) => (
+          <div key={i} className="rp-code-line">
+            <span className="rp-code-n mono">{start + i}</span>
+            <span className={`rp-code-rail${l.rail ? ` is-${l.rail}` : ''}`} />
+            <span className={`rp-code-text mono${l.comment ? ' is-comment' : ''}`}>{l.text || ' '}</span>
+          </div>
+        ))}
+        {Array.from({ length: pending }, (_, i) => (
+          <div key={`p${i}`} className="rp-code-line">
+            <span className="rp-code-n mono">{start + lines.length + i}</span>
+            <span className="rp-code-rail" />
+            <span className="rp-code-text">
+              <Shim w={[120, 180, 150, 96][i % 4]} h={10} onPanel />
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

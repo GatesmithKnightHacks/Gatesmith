@@ -165,6 +165,26 @@ export const PRIMARY_AFTER_R1: MetricRow = {
   change: '−7.2%',
 }
 
+/**
+ * Round 1 only (budget 1 round): the primary metric is the canonical 321 → 298; reliability_heuristic
+ * follows from the canonical per-round cost (6.72 → 6.30 $ per run, cost scales with 1 ÷ reliability).
+ */
+export const METRICS_R1: MetricLine[] = [
+  { kind: 'group', label: 'after round 1', note: 'bars before · after · tick threshold' },
+  PRIMARY_AFTER_R1,
+  {
+    kind: 'row',
+    name: 'reliability_heuristic',
+    bars: { before: 41, after: 44 },
+    delta: '+0.018',
+    before: '0.263',
+    after: '0.281',
+    unit: '(0, 1]',
+    change: '+6.8%',
+  },
+  { kind: 'note', text: 'calibration-based reliability heuristic, not a success probability' },
+]
+
 /* ── Rounds ─────────────────────────────────────────────────────────── */
 export type Decision = 'accepted' | 'rejected' | 'inconclusive'
 export type RoundCell = Decision | 'skipped'
@@ -200,6 +220,12 @@ export const ESTIMATE_PARTIAL: Estimate = {
   cost: ['6.72 $', '5.70 $', '−1.02 $'],
 }
 
+export const ESTIMATE_R1: Estimate = {
+  reliability: ['0.263', '0.281', '+6.8%'],
+  qpu: ['4.2 s', '3.9 s', '3 744 shots'],
+  cost: ['6.72 $', '6.30 $', '−0.42 $'],
+}
+
 /* ── Inspector ──────────────────────────────────────────────────────── */
 export const RUN_FACTS: [string, string][] = [
   ['seeds', '11 23 37 41 53 67 79 97'],
@@ -225,6 +251,14 @@ export const FINDINGS_PARTIAL: FindingLine[] = [
   { rank: '#2 D03', title: 'Commuting block', evidence: 'block 1', status: 'accepted', word: 'accepted R2' },
   { rank: '#3 D03', title: 'Commuting block', evidence: 'block 2', status: 'high', word: 'high' },
   { rank: '#4 D04', title: 'Resynthesizable blocks', evidence: '6 gates', status: 'high', word: 'high' },
+]
+
+/** Round 1 only: routing_search touched no commuting block, so every finding stays open. */
+export const FINDINGS_R1: FindingLine[] = [
+  { rank: '#1 D01', title: 'Routing-dominated', evidence: '≥ 0.30 ratio', status: 'high', word: 'high' },
+  { rank: '#2 D03', title: 'Commuting block', evidence: 'block 1', status: 'high', word: 'high' },
+  { rank: '#3 D03', title: 'Commuting block', evidence: 'block 2', status: 'high', word: 'high' },
+  { rank: '#4 D04', title: 'Resynthesizable blocks', evidence: '9 gates', status: 'high', word: 'high' },
 ]
 
 /** fix-round-2 D28: what reproduces this report, bit for bit. Hashes match the S-10 files. */

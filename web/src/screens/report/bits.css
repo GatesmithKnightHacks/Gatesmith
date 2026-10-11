@@ -185,6 +185,12 @@
 }
 
 /* ── Code block ────────────────────────────────────────────────────────── */
+.rp-code-box {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
 .rp-code {
   display: flex;
   flex-direction: column;
