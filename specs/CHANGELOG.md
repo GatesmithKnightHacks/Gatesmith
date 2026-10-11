@@ -26,3 +26,5 @@ Every approved change to `specs/` gets one line here: date, files, proposal id, 
 | 2026-10-10 | 15 §3a, proposals/ | ChP-0022 | Fast-track CPU scoring slice S1–S6 built before the rest of P1/P2; one review pass at the slice's end. |
 | 2026-10-10 | 00, 03, 14, 15, 16, templates/task-brief, templates/repo-AGENTS, proposals/ | ChP-0020 | Repo = team repo `Gatesmith/` (engine in `qscore/`, specs committed); workspace root `KnightHacks26/` with `specs` symlink; worktree engine at `<worktree>/qscore`. |
 | 2026-10-09 | all | — | Spec set v2.0 created from "Quantum Optimization Engine: Architecture v2" and the MVP Spec docs (build guide, file reference), adapted for the Radeon PRO W7900, Neon, Hugging Face, Vultr and the agent workflow. |
+
+- 2026-10-11: User approved ChP-0040/0049: bot/HF delivery, scoped account setup, evidence envelope, actions rerun permission, new_high policy; hosting deferred. ChP-0048 implementation deferral lifted.

@@ -87,6 +87,10 @@ class LayerError(QscoreError):
     """An improvement layer had an infrastructure failure (not "no idea", which returns [])."""
 
 
+class HfBudgetExhausted(LayerError):
+    """The explicit Hugging Face call or estimated-cost budget was exhausted."""
+
+
 class FallbackRefused(QscoreError):
     """A fallback was needed but is not enabled; the message names the FB id."""
 

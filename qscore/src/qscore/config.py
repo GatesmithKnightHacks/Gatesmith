@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     hub_dataset_repo: str | None = None
     hub_wheels_repo: str | None = None
     hf_router_base_url: str = "https://router.huggingface.co/v1"
+    hf_max_calls: int = Field(default=30, ge=1)
+    hf_max_cost_usd: float = Field(default=1.00, gt=0)
     worker_id: str | None = None
     capabilities_override: dict[str, bool] | None = Field(default=None, alias="QSCORE_CAPABILITIES")
 
