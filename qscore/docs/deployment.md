@@ -134,13 +134,33 @@ It only calls `services.score_project`; no engine code was changed for it. Start
 folder of an up-to-date checkout (the same commit as the platform, or score jobs fail with a manifest
 hash mismatch), in a terminal that stays open (`tmux`, or `nohup … &`), not a notebook cell:
 
+Settings come from a private `.env.worker` file at the repo root, made from the shared template:
+
 ```bash
+cp .env.example .env.worker            # once; git ignores .env.worker (only .env.example is shared)
+# edit .env.worker: the qscore_worker connection string (production, DIRECT host), this machine's
+# capabilities, and a worker id. Get the password from the deployment owner privately.
+
+cd qscore
 uv sync --frozen --extra neon          # adds psycopg; install git too if missing
-export QSCORE_NEON_DSN='<qscore_worker connection string, DIRECT host, production branch>'
-export QSCORE_CAPABILITIES='{"gpu": true, "neon_write": true}'   # required until the profiler exists
-export QSCORE_WORKER_ID=w7900-<session>                           # optional; default worker-<hostname>
+set -a; . ../.env.worker; set +a       # load the settings into this shell
 uv run python -m qscore.worker
 ```
+
+| Variable | Required | Value |
+|---|---|---|
+| `QSCORE_NEON_DSN` | yes | `qscore_worker` role, production branch, **direct** host (no `-pooler`); single-quoted (contains `&`) |
+| `QSCORE_CAPABILITIES` | yes | `'{"gpu": true, "neon_write": true}'` on the AMD notebook; `"gpu": false` on a laptop |
+| `QSCORE_WORKER_ID` | no | e.g. `'w7900-notebook'`; default `worker-<hostname>` |
+| `QSCORE_EXAMPLES_DIR` | no | defaults to this checkout's `qscore/examples` |
+
+The Vultr server's settings are a different file and template: `/opt/qscore/.env` from
+`qscore/docker/env.example` (§7).
+
+**Run workers from a Linux or macOS checkout** (like the AMD notebook). A Windows checkout with
+`core.autocrlf=true` rewrites line endings in the example manifests, so their hash differs from the
+platform's and every job fails with "this worker's copy of … differs from the platform's" (seen
+2026-10-10). On Windows, use WSL or Docker, or clone with `git -c core.autocrlf=false clone …`.
 
 | Situation | Behaviour (verified 2026-10-10) |
 |---|---|

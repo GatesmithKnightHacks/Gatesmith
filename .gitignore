@@ -19,6 +19,7 @@ qscore/qscore-out/
 # Secrets and large artifacts (R8.3, R10)
 .env
 .env.*
+!.env.example
 *.whl
 *.safetensors
 *.gguf
