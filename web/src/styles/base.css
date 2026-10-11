@@ -20,8 +20,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-synthesis: none;
-  /* The workbench keeps its 1280 px layout; a narrower desktop window scrolls sideways instead of clipping. */
-  overflow: auto hidden;
+  /* The workbench keeps its 1440 × 900 layout; a smaller desktop window scrolls to it instead of clipping. */
+  overflow: auto;
 }
 
 button {
