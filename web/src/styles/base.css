@@ -20,8 +20,15 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-synthesis: none;
-  /* The workbench keeps its 1440 × 900 layout; a smaller desktop window scrolls to it instead of clipping. */
-  overflow: auto;
+  overflow: hidden;
+}
+
+/*
+ * The board is drawn at 1440 × 900 and never reflows. A smaller window shows all of it scaled as
+ * one unit (app/fit.ts sets --fit from the window size); at or above the board's size it is 1:1.
+ */
+#root {
+  zoom: var(--fit, 1);
 }
 
 button {

@@ -1,6 +1,7 @@
 import { Component, createElement, useEffect, useLayoutEffect, useReducer, type ReactNode } from 'react'
 import { ensureAccountSnapshot } from '../data/account'
 import { ensureSnapshot } from '../data/run'
+import { useFitToWindow } from './fit'
 import { Gate } from '../screens/gate/Gate'
 import { useGate } from '../screens/gate/useGate'
 import { setPreloader, useRoute } from './router'
@@ -29,7 +30,8 @@ class ScreenBoundary extends Component<{ children: ReactNode; route: string }, {
 
 export function App() {
   const route = useRoute()
-  // Touch-only devices and windows under 1024 px get the gate (S-20/S-21) instead of any screen. The gate
+  useFitToWindow()
+  // Touch-only devices (no mouse or trackpad) get the gate (S-20/S-21) instead of any screen. The gate
   // only swaps what is drawn: the route, the session and the saved runs stay as they are.
   const gated = useGate()
   useLayoutEffect(() => {
