@@ -348,6 +348,37 @@ def score(
 reference_app = typer.Typer(help="Build the pinned public reference corpus.", no_args_is_help=True)
 app.add_typer(reference_app, name="reference")
 
+models_app = typer.Typer(help="Check the pinned HF inference panel.", no_args_is_help=True)
+app.add_typer(models_app, name="models")
+
+
+@models_app.command("check")
+def models_check() -> None:
+    """Check every pinned provider without generating proposals (10 §5)."""
+    try:
+        from qscore.improve.hf_layer import HfJobContext, HfLayer, load_model_entries
+    except ModuleNotFoundError as exc:
+        if exc.name != "openai":
+            raise
+        err.print("HF model checks require the qscore[hf] extra; no check was performed.")
+        raise typer.Exit(3) from exc
+    try:
+        entries = load_model_entries()
+        job = HfJobContext()
+        failed = False
+        for entry in entries:
+            try:
+                HfLayer(entry, job=job).check_catalog()
+            except QscoreError as exc:
+                err.print(f"{entry.routed_id}: unavailable ({exc})", markup=False)
+                failed = True
+            else:
+                typer.echo(f"{entry.routed_id}: live; structured output supported")
+    except QscoreError as exc:
+        err.print(f"HF panel check failed: {exc}", markup=False)
+        raise typer.Exit(3) from exc
+    raise typer.Exit(3 if failed else 0)
+
 
 @reference_app.command("build")
 def reference_build(
