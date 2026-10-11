@@ -2,6 +2,7 @@ import { Component, useEffect, useLayoutEffect, useReducer, type ReactNode } fro
 import { ensureSnapshot } from '../data/run'
 import { setPreloader, useRoute } from './router'
 import { loadedScreen, preloadAll, preloadScreen } from './screens'
+import { ShellSkeleton } from '../ui/ShellSkeleton'
 import './transitions.css'
 
 setPreloader(preloadScreen)
@@ -35,5 +36,5 @@ export function App() {
   useEffect(() => {
     if (!Screen) void preloadScreen(route).then(rerender)
   }, [route, Screen])
-  return <ScreenBoundary route={route}>{Screen ? <Screen /> : null}</ScreenBoundary>
+  return <ScreenBoundary route={route}>{Screen ? <Screen /> : <ShellSkeleton />}</ScreenBoundary>
 }
