@@ -358,3 +358,53 @@ def test_unreadable_file_is_a_warning_when_others_have_candidates(tmp_path: Path
     (tmp_path / "good.py").unlink()
     with pytest.raises(InvalidInput):
         discover(tmp_path, unreadable=[])
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        "qc.assign_parameters({}, inplace=True)",
+        "qc.assign_parameters({}, True)",
+        "qc.compose(qc, inplace=True)",
+        "qc.compose(qc, None, None, False, True)",
+        "qc.assign_parameters(*args)",
+        "qc.compose(**options)",
+        "qc.assign_parameters({}, inplace=flag)",
+    ],
+)
+def test_inplace_methods_do_not_signal_circuit_returns(tmp_path: Path, call: str) -> None:
+    (tmp_path / "k.py").write_text(
+        "from qiskit import QuantumCircuit\n\n"
+        "def mutate():\n    qc = QuantumCircuit(1)\n    return " + call + "\n"
+    )
+    assert discover(tmp_path) == []
+
+
+def test_single_file_service_keeps_companion_parse_failure(tmp_path: Path) -> None:
+    from qscore.services import discover_candidates
+
+    source = tmp_path / "builder.py"
+    source.write_text("from qiskit import QuantumCircuit\ndef b():\n    return QuantumCircuit(1)\n")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_broken.py").write_text("def broken(:\n")
+    with pytest.raises(InvalidInput) as caught:
+        discover_candidates(source)
+    assert caught.value.report.issues[0].code == "Q301"
+    assert caught.value.report.issues[0].location.file == "tests/test_broken.py"
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        "qc.assign_parameters({}, inplace=False)",
+        "qc.assign_parameters({}, False)",
+        "qc.compose(qc, inplace=False)",
+        "qc.compose(qc, None, None, False, False)",
+    ],
+)
+def test_non_inplace_methods_keep_circuit_signal(tmp_path: Path, call: str) -> None:
+    (tmp_path / "k.py").write_text(
+        "from qiskit import QuantumCircuit\n\n"
+        "def build():\n    qc = QuantumCircuit(1)\n    return " + call + "\n"
+    )
+    assert [c.name for c in discover(tmp_path)] == ["build"]

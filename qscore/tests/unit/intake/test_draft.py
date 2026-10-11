@@ -654,3 +654,21 @@ def test_kwargs_value_and_sweep_overlap_is_located(tmp_path: Path) -> None:
         4,
         12,
     )
+
+
+def test_excluded_picks_keep_discovery_order(candidates: list[Candidate]) -> None:
+    selected = pick_candidates(candidates, "not:2,returned,2", None)
+    assert selected == [c for c in candidates if c.index != 2 and c.name != "returned"]
+
+
+@pytest.mark.parametrize("pick", ["not:", "not:99", "not:missing", "not:1,", "not:,1"])
+def test_invalid_exclusions(candidates: list[Candidate], pick: str) -> None:
+    with pytest.raises(InvalidInput):
+        pick_candidates(candidates, pick, None)
+
+
+def test_exclusion_cannot_leave_empty_selection(candidates: list[Candidate]) -> None:
+    with pytest.raises(InvalidInput) as exc:
+        pick_candidates(candidates, "not:" + ",".join(str(c.index) for c in candidates), None)
+    assert exc.value.code == "Q103"
+    assert "no draftable" in exc.value.report.issues[0].message

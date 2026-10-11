@@ -26,6 +26,7 @@ SCHEMA_VERSIONS: dict[str, str] = {
     "qscore.conformance": "v0.2",
     "qscore.run": "v0.3",
     "qscore.values": "v0.1",  # ChP-0029: draft values, input only
+    "qscore.reference": "v0.1",  # ChP-0038: derived public-circuit distributions
 }
 
 _SCHEMA_ID = re.compile(r"^(?P<name>qscore\.[a-z]+)/v(?P<major>\d+)\.(?P<minor>\d+)$")

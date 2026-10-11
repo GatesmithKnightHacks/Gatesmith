@@ -21,7 +21,7 @@
 | D-015 | Memory planning: 1.2× overhead, 10 % margin; budgets 43.2 GiB exclusive / 25.9 GiB with the 8B model at 40 % | Ad hoc batch sizes | A | 09 §2 |
 | D-016 | Local model `Qiskit/granite-3.3-8b-qiskit` on vLLM at 40 % memory; 14B only in exclusive mode; 24B does not fit | 24B (needs ~48 GB) | A | 10 §5 |
 | D-017 | One OpenAI-compatible client for local and HF Inference Providers | Separate SDKs | A | 10 §5 |
-| D-018 | Neon is queue + system of record; `claim_job()` with `FOR UPDATE SKIP LOCKED`; boolean capability flags | Redis/pgmq/platform API | A | 11 |
+| D-018 | **Superseded by ChP-0047**: queue = platform HTTPS job API (11 §3) with atomic claim by boolean capability flags; records = local files + Hub | Hosted queue / Hub-file queue | A | 11 |
 | D-019 | Hub layout content-addressed; attempts as one Parquet file **per job** under `attempts/date=…/` (the v2 doc said one file per date; per-job avoids read-modify-write) | One Parquet per date | B | 11 §7 |
 | D-020 | Worker heartbeat 10 s, stale after 60 s, max 3 attempts; failed jobs are not retried automatically | Automatic retries | A | 11 §5 |
 | D-021 | Processes + uv venvs on the W7900 (no Docker assumed); Compose on laptop/Vultr | Containers everywhere | B | 02 §8, 13 |

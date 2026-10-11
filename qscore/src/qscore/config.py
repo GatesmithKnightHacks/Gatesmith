@@ -21,7 +21,7 @@ from qscore.errors import ConfigError, FallbackRefused
 log = logging.getLogger(__name__)
 
 Profile = Literal["dev", "ci", "demo"]
-FallbackStatus = Literal["planned", "approved", "rejected", "needs decision"]
+FallbackStatus = Literal["planned", "approved", "rejected", "needs decision", "retired"]
 
 
 @dataclass(frozen=True)
@@ -37,8 +37,8 @@ FALLBACK_REGISTRY: dict[str, FallbackEntry] = {
     e.id: e
     for e in (
         FallbackEntry("FB-01", "planned", demo_on=False),
-        FallbackEntry("FB-02", "planned", demo_on=False),
-        FallbackEntry("FB-03", "needs decision", demo_on=False),
+        FallbackEntry("FB-02", "retired", demo_on=False),  # ChP-0048: no local model server
+        FallbackEntry("FB-03", "retired", demo_on=False),  # ChP-0047: database queue removed
         FallbackEntry("FB-04", "planned", demo_on=True),  # demo "on (if approved)"
         FallbackEntry("FB-05", "planned", demo_on=True),  # demo "on (if approved)"
         FallbackEntry("FB-07", "planned", demo_on=False),
@@ -58,12 +58,10 @@ class Settings(BaseSettings):
     device_default: Literal["auto", "cpu", "gpu"] = "auto"
     sandbox_mode: Literal["process", "process-unlimited"] = "process"
     fetch_timeout_s: float = Field(default=300, gt=0)  # `git clone` of a repository link (ChP-0035)
-    neon_dsn: SecretStr | None = None
-    # "data-api" | "relay" arrive only with FB-03, which awaits the user's decision (specs/17 §2).
-    neon_transport: Literal["postgres"] = "postgres"
+    platform_url: str | None = None  # platform job API base URL (specs/11 §3, ChP-0047)
+    worker_token: SecretStr | None = None  # per-worker bearer token issued by the platform
     hub_dataset_repo: str | None = None
     hub_wheels_repo: str | None = None
-    local_llm_base_url: str = "http://127.0.0.1:8000/v1"
     hf_router_base_url: str = "https://router.huggingface.co/v1"
     worker_id: str | None = None
     capabilities_override: dict[str, bool] | None = Field(default=None, alias="QSCORE_CAPABILITIES")

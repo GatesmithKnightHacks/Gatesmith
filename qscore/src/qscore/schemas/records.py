@@ -103,17 +103,15 @@ class AttemptRecord(QDocument):
 
 
 class JobRequirements(QModel):
-    """Boolean capability flags only, so matching is JSONB containment (§7)."""
+    """Boolean capability flags only, so matching is simple containment (specs/11 §2)."""
 
     gpu: bool | None = None
     aer_gpu: bool | None = None
-    local_model: bool | None = None
     hub_write: bool | None = None
-    neon_write: bool | None = None
 
     @model_serializer(mode="wrap")
     def _omit_unset_flags(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
-        """Flags not given are omitted (never null), so JSONB containment works (§7)."""
+        """Flags not given are omitted (never null), so containment matching works (specs/11 §2)."""
         data: dict[str, Any] = handler(self)
         return {k: v for k, v in data.items() if v is not None}
 

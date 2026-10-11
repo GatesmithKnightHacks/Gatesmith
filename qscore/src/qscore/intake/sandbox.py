@@ -20,6 +20,7 @@ import sys
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from importlib.metadata import version
 from pathlib import Path
 
 from qiskit import QuantumCircuit, qpy
@@ -31,7 +32,7 @@ from qscore.schemas.common import sha256_hex
 RUNNER = Path(__file__).with_name("runner.py")
 
 # Stripped from the child's environment (05 §4.2).
-_SECRET = re.compile(r"(_TOKEN|_KEY|_DSN)$|SECRET|^(HF|NEON|GEMINI|OPENAI)_", re.IGNORECASE)
+_SECRET = re.compile(r"(_TOKEN|_KEY|_DSN)$|SECRET|^(HF|GEMINI|OPENAI)_", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -93,7 +94,51 @@ def _limits(timeout_s: float, mem_mb: int) -> Callable[[], None] | None:
     return apply
 
 
-def run_builder(request: BuilderRequest, timeout_s: float, mem_mb: int) -> SandboxResult:
+def project_python(root: Path, timeout_s: float, mem_mb: int) -> Path:
+    """Check the explicitly configured uv interpreter before any builder code runs."""
+    python = (
+        root / ".qscore/venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    )
+    hint = f"Run qscore deps {root} to prepare the project environment."
+    if not python.is_file():
+        raise ConfigError(f"project runner interpreter missing: {python}. {hint}")
+    command = (
+        "import json,sys; from importlib.metadata import version; "
+        "print(json.dumps({'python':list(sys.version_info[:2]), 'qiskit':version('qiskit')}))"
+    )
+    try:
+        with tempfile.TemporaryDirectory(prefix="qscore-env-check-") as work:
+            result = subprocess.run(
+                [str(python), "-I", "-c", command],
+                cwd=work,
+                env=child_env(dict(os.environ)),
+                preexec_fn=_limits(timeout_s, mem_mb),
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout_s,
+            )
+        if result.returncode != 0:
+            raise ConfigError(
+                f"project environment version check failed (exit {result.returncode}). {hint}"
+            )
+        facts = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+        raise ConfigError(
+            f"could not verify project environment: {type(exc).__name__}. {hint}"
+        ) from exc
+    expected = {"python": list(sys.version_info[:2]), "qiskit": version("qiskit")}
+    if facts != expected:
+        raise ConfigError(
+            f"project environment needs Python {sys.version_info.major}.{sys.version_info.minor} "
+            f"and qiskit=={expected['qiskit']}. {hint}"
+        )
+    return python
+
+
+def run_builder(
+    request: BuilderRequest, timeout_s: float, mem_mb: int, *, python: Path | None = None
+) -> SandboxResult:
     """Build the circuit in the sandbox; failures raise ``SandboxError`` (Q300-Q303)."""
     preexec = _limits(timeout_s, mem_mb)
     with tempfile.TemporaryDirectory(prefix="qscore-builder-") as tmp:
@@ -114,7 +159,12 @@ def run_builder(request: BuilderRequest, timeout_s: float, mem_mb: int) -> Sandb
         where = f"{request.file.name}::{request.function}"
         try:
             proc = subprocess.run(
-                [sys.executable, "-I", str(RUNNER), str(work / "request.json")],
+                [
+                    str(python) if python is not None else sys.executable,
+                    "-I",
+                    str(RUNNER),
+                    str(work / "request.json"),
+                ],
                 cwd=work,
                 env=child_env(dict(os.environ)),
                 preexec_fn=preexec,

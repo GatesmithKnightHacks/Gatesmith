@@ -243,6 +243,21 @@ def _derived_kind(node: ast.expr | None, bound: dict[str, Signal]) -> Signal | N
         and node.func.attr in CIRCUIT_METHODS
         and isinstance(node.func.value, ast.Name)
     ):
+        # An explicit in-place call returns None; an unknown expression is not
+        # evidence that the method returns a new circuit either.
+        if node.func.attr in {"assign_parameters", "compose"} and (
+            any(k.arg is None for k in node.keywords)
+            or any(isinstance(arg, ast.Starred) for arg in node.args)
+        ):
+            return None
+        inplace = next((k.value for k in node.keywords if k.arg == "inplace"), None)
+        position = {"assign_parameters": 1, "compose": 4}.get(node.func.attr)
+        if position is not None and len(node.args) > position:
+            inplace = node.args[position]
+        if inplace is not None and not (
+            isinstance(inplace, ast.Constant) and inplace.value is False
+        ):
+            return None
         return bound.get(node.func.value.id)
     return None
 
@@ -673,7 +688,7 @@ def discover(
             tests.append((rel, _parse(_read_bytes(path, rel), rel)))
         except InvalidInput as exc:
             issues += exc.report.issues
-    if issues and unreadable is not None and root.is_dir() and found:
+    if issues and unreadable is not None and start.is_dir() and found:
         unreadable.extend(issues)
         issues = []
     if issues:

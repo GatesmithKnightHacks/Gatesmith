@@ -90,7 +90,7 @@ def evidence_line(f: Finding) -> str | None:
             parts.append("routing overhead rises at every sweep size")
         if ev["exponent_gap"] is not None:
             parts.append(
-                f"compiled size grows with exponent +{ev['exponent_gap']:.2f} over logical"
+                f"compiled size grows with exponent {ev['exponent_gap']:+.2f} over logical"
             )
         return "; ".join(parts).capitalize() + "."
     return None
@@ -128,6 +128,7 @@ def render(cards: list[Scorecard]) -> str:
                 status = STATUS_ICON[m.status] + (f" ({detail})" if detail else "")
                 lines.append(f"| `{m.id}` | {_fmt(m.value)} | {m.unit or ''} | {status} |")
             lines.append("")
+        lines += reference_lines(card)
         lines += ["### Findings", ""]
         if not card.findings:
             lines.append("No rule fired.")
@@ -158,3 +159,52 @@ def render(cards: list[Scorecard]) -> str:
             "",
         ]
     return "\n".join(lines)
+
+
+def reference_lines(card: Scorecard) -> list[str]:
+    """Render the descriptive comparison without judging different algorithms."""
+    reference = card.model_dump(mode="json").get("x-reference", {})
+    lines = ["### Public reference circuits", ""]
+    benchmark = reference.get("benchpress")
+    if benchmark:
+        if "error" in benchmark:
+            lines.append(f"Benchpress convention FAILED: {benchmark['error']}")
+        else:
+            lines.append(
+                f"Benchpress convention: {benchmark['gate_count_2q']} {benchmark['two_q_gate']} "
+                f"gates, {benchmark['depth_2q']} two-qubit layers; optimization level 2, "
+                f"seed {benchmark['seed']}. Benchpress leaves its seed unset; qscore fixes it."
+            )
+        lines.append("")
+    if reference.get("corpus") is None:
+        lines += [f"no reference corpus for {card.item.score_version}", ""]
+    elif "placement" not in reference:
+        target = card.target.name if card.target else "this target"
+        lines += [f"No reference corpus coverage for {target}.", ""]
+    else:
+        values = {m.id: m.value for m in card.metrics}
+        target = card.target.name if card.target else "this target"
+        for metric, entry in reference["placement"].items():
+            n, band = entry["n"], entry["band"]
+            if "percentile" in entry:
+                position = round(entry["percentile"])
+                suffix = (
+                    "th"
+                    if 10 <= position % 100 <= 20
+                    else {1: "st", 2: "nd", 3: "rd"}.get(position % 10, "th")
+                )
+                lines.append(
+                    f"- `{metric}`: {_fmt(values[metric])} · {position}{suffix} percentile of "
+                    f"{n} reference circuits ({band} qubits, {target}); "
+                    f"median {_fmt(entry['median'])}."
+                )
+            else:
+                lines.append(f"- `{metric}`: {entry['reason']} ({n}, {band} qubits, {target}).")
+        lines += [
+            "",
+            "Compared with public benchmark circuits of similar width. Different "
+            "algorithms are not directly comparable; percentiles are descriptive, "
+            "not quality ratings.",
+            "",
+        ]
+    return lines

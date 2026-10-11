@@ -71,8 +71,8 @@ class RecordError(QscoreError):
     """Writing or reading records failed, or a replayed write conflicts with stored content."""
 
 
-class NeonError(RecordError):
-    """Neon (Postgres) was unreachable or a query failed after bounded retries."""
+class PlatformError(RecordError):
+    """The platform job API was unreachable or rejected a call after bounded retries (11 §3)."""
 
 
 class HubError(RecordError):

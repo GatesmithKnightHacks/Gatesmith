@@ -11,9 +11,8 @@ import sys
 import traceback
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
-import click
 import typer
 from rich.console import Console
 
@@ -32,6 +31,36 @@ app = typer.Typer(
 )
 err = Console(stderr=True)
 SEVERITY_ORDER = {"info": 0, "warning": 1, "high": 2}
+
+
+def _disabled(values: list[str] | None, allowed: set[str]) -> set[str]:
+    disabled = {name.strip() for value in (values or []) for name in value.split(",")}
+    unknown = disabled - allowed
+    if unknown:
+        raise typer.BadParameter(
+            f"unknown/empty name(s) {', '.join(repr(n) for n in sorted(unknown))}; "
+            f"valid names: {', '.join(sorted(allowed))}",
+            param_hint="--not",
+        )
+    return disabled
+
+
+def _complete_not(ctx: typer.Context, incomplete: str) -> list[str]:
+    allowed = {
+        "discover": ["input", "confirm"],
+        "score": ["confirm"],
+        "deps": ["confirm"],
+        "bench": ["fusion"],
+    }
+    prefix, separator, tail = incomplete.rpartition(",")
+    before = prefix + separator
+    return [before + name for name in allowed[str(ctx.command.name)] if name.startswith(tail)]
+
+
+def _legacy_input(value: bool) -> bool:
+    if value:
+        raise typer.BadParameter("--no-input was removed; use --not input")
+    return value
 
 
 class FailOn(StrEnum):
@@ -68,8 +97,16 @@ def discover(
         str | None, typer.Option(help="Candidate numbers or names, comma-separated.")
     ] = None,
     values: Annotated[Path | None, typer.Option(help="qscore.values/v0.1 YAML file.")] = None,
-    no_input: Annotated[
-        bool, typer.Option("--no-input", help="Never prompt; requires --pick for drafting.")
+    disable: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--not",
+            autocompletion=_complete_not,
+            help="Disable input prompts or score confirmation: input,confirm (repeatable).",
+        ),
+    ] = None,
+    legacy_no_input: Annotated[
+        bool, typer.Option("--no-input", hidden=True, callback=_legacy_input, is_eager=True)
     ] = False,
     ref: Annotated[
         str | None, typer.Option(help="Branch, tag or full commit SHA of a repository link.")
@@ -95,8 +132,11 @@ def discover(
     ] = None,
 ) -> None:
     """Find circuits without executing code; optionally draft their manifest entries."""
+    disabled = _disabled(disable, {"input", "confirm"} if score_after else {"input"})
+    no_input = "input" in disabled
+    yes = yes or "confirm" in disabled
     if not draft and (pick is not None or values is not None or no_input or score_after):
-        err.print("--pick, --values, --no-input and --score require --draft")
+        err.print("--pick, --values, --not input and --score require --draft")
         raise typer.Exit(2)
     if not score_after and (out is not None or yes or allow_partial or fail_on is not None):
         err.print("--out, --yes, --allow-partial and --fail-on require --score")
@@ -156,7 +196,7 @@ def discover(
     except QscoreError as exc:
         err.print(f"[red]runtime failure:[/red] {type(exc).__name__}: {exc}")
         raise typer.Exit(3) from exc
-    except click.exceptions.Abort:  # Ctrl-C / EOF at a prompt: click's own "Aborted!" exit
+    except typer.Abort:  # Ctrl-C / EOF at a prompt: Typer's own "Aborted!" exit
         raise
     except Exception as exc:  # ChP-0017: anything that is not a QscoreError is a bug → exit 3
         err.print(f"[red]unexpected error (a bug):[/red]\n{traceback.format_exc()}")
@@ -224,6 +264,14 @@ def score(
     ] = None,
     out: Annotated[Path, typer.Option(help="Output directory.")] = Path("qscore-out"),
     yes: Annotated[bool, typer.Option("--yes", help="Do not ask for confirmation.")] = False,
+    disable: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--not",
+            autocompletion=_complete_not,
+            help="Disable confirmation: confirm (repeatable).",
+        ),
+    ] = None,
     allow_partial: Annotated[bool, typer.Option("--allow-partial")] = False,
     fail_on: Annotated[
         FailOn | None, typer.Option(help="Exit 1 on findings at/above this severity.")
@@ -231,6 +279,8 @@ def score(
     as_json: Annotated[bool, typer.Option("--json", help="Print scorecards as JSON.")] = False,
 ) -> None:
     """Score circuits: compile across seeds, compute metrics, run diagnostics."""
+    disabled = _disabled(disable, {"confirm"})
+    yes = yes or "confirm" in disabled
     if (path is None) == (manifest is None):
         err.print("give exactly one of PATH or --manifest")
         raise typer.Exit(2)
@@ -285,7 +335,7 @@ def score(
     except QscoreError as exc:
         err.print(f"[red]runtime failure:[/red] {type(exc).__name__}: {exc}")
         raise typer.Exit(3) from exc
-    except click.exceptions.Abort:  # Ctrl-C / EOF at a prompt: click's own "Aborted!" exit
+    except typer.Abort:  # Ctrl-C / EOF at a prompt: Typer's own "Aborted!" exit
         raise
     except Exception as exc:  # ChP-0017: anything that is not a QscoreError is a bug → exit 3
         err.print(f"[red]unexpected error (a bug):[/red]\n{traceback.format_exc()}")
@@ -293,3 +343,130 @@ def score(
     _finish_run(
         result, allow_partial=allow_partial, fail_on=fail_on, as_json=as_json, pasted=pasted
     )
+
+
+reference_app = typer.Typer(help="Build the pinned public reference corpus.", no_args_is_help=True)
+app.add_typer(reference_app, name="reference")
+
+
+@reference_app.command("build")
+def reference_build(
+    out: Annotated[
+        Path, typer.Option(help="Source checkouts, runs and derived corpus output.")
+    ] = Path("qscore-reference-src"),
+) -> None:
+    """Maintainer command: clone pinned sources and score them in the builder sandbox."""
+    try:
+        result = services.build_reference(out, on_event=lambda event: typer.echo(event.message))
+    except ConfigError as exc:
+        err.print(f"configuration error: {exc}")
+        raise typer.Exit(4) from exc
+    except InvalidInput as exc:
+        err.print(str(exc))
+        raise typer.Exit(2) from exc
+    except QscoreError as exc:
+        err.print(str(exc))
+        raise typer.Exit(3) from exc
+    except Exception as exc:
+        traceback.print_exc()
+        raise typer.Exit(3) from exc
+    raise typer.Exit(result.exit_code)
+
+
+@app.command()
+def deps(
+    path: Annotated[Path, typer.Argument(help="Project directory or qscore manifest.")] = Path("."),
+    disable: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--not",
+            autocompletion=_complete_not,
+            help="Disable confirmation: confirm (repeatable).",
+        ),
+    ] = None,
+) -> None:
+    """Prepare an isolated builder environment with the engine's exact Qiskit version."""
+    disabled = _disabled(disable, {"confirm"})
+
+    def confirm(summary: str) -> bool:
+        err.print(summary, markup=False)
+        return typer.confirm("Install these project dependencies?", err=True)
+
+    try:
+        result = services.prepare_dependencies(
+            path,
+            on_event=lambda e: typer.echo(e.message),
+            confirm="yes" if "confirm" in disabled else confirm,
+        )
+    except ConfigError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(4) from exc
+    except InvalidInput as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(2) from exc
+    except QscoreError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(3) from exc
+    except typer.Abort:
+        raise
+    except Exception as exc:
+        traceback.print_exc()
+        raise typer.Exit(3) from exc
+    if not result.installed:
+        typer.echo("not confirmed; no dependencies installed")
+
+
+class BenchDevice(StrEnum):
+    both = "both"
+    cpu = "cpu"
+    gpu = "gpu"
+
+
+@app.command()
+def bench(
+    out: Annotated[Path, typer.Option(help="Output directory for the benchmark files.")] = Path(
+        "qscore-bench"
+    ),
+    device: Annotated[BenchDevice, typer.Option(help="Devices to time.")] = BenchDevice.both,
+    sizes: Annotated[
+        str | None, typer.Option(help="Comma-separated qubit counts (default: the suite's).")
+    ] = None,
+    reps: Annotated[int, typer.Option(min=1, help="Measured repetitions per row.")] = 3,
+    disable: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--not",
+            autocompletion=_complete_not,
+            help="Disable steps: fusion (the GPU fusion sweep). Repeatable.",
+        ),
+    ] = None,
+) -> None:
+    """EXPERIMENTAL: CPU vs AMD GPU (ROCm Aer) statevector benchmark with an evidence report."""
+    try:
+        size_list = [int(s) for s in sizes.split(",")] if sizes else None
+    except ValueError as exc:
+        err.print(f"--sizes must be comma-separated integers: {sizes!r}", markup=False)
+        raise typer.Exit(2) from exc
+    devices: list[Literal["cpu", "gpu"]] = (
+        ["cpu", "gpu"] if device is BenchDevice.both else [device.value]  # type: ignore[list-item]
+    )
+    try:
+        result = services.run_bench(
+            out,
+            devices,
+            size_list,
+            reps,
+            1,
+            "fusion" not in _disabled(disable, {"fusion"}),
+            on_event=lambda e: typer.echo(e.message),
+        )
+    except ConfigError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(4) from exc
+    except InvalidInput as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(2) from exc
+    except QscoreError as exc:
+        err.print(str(exc), markup=False)
+        raise typer.Exit(3) from exc
+    typer.echo(f"report: {result.report_path}")

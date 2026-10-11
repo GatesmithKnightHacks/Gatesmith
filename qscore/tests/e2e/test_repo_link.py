@@ -107,7 +107,7 @@ def test_failed_clone_exits_3(tmp_path: Path) -> None:
 def test_single_candidate_is_picked_and_announced(tmp_path: Path) -> None:
     url, _ = make_repo(tmp_path, {"ghz.py": GHZ})
     dest = tmp_path / "clone"
-    code, out = run("discover", url, "--into", str(dest), "--draft", "--no-input")
+    code, out = run("discover", url, "--into", str(dest), "--draft", "--not", "input")
     assert code == 0, out
     assert "Only one circuit found: ghz.py::ghz" in out
     assert "builder: ghz.py::ghz" in (dest / "qscore.yaml").read_text()
@@ -115,14 +115,14 @@ def test_single_candidate_is_picked_and_announced(tmp_path: Path) -> None:
 
 def test_several_candidates_without_pick_is_q104(tmp_path: Path) -> None:
     url, _ = make_repo(tmp_path, {"ghz.py": GHZ, "b.py": GHZ.replace("ghz", "ghz_b")})
-    code, out = run("discover", url, "--into", str(tmp_path / "c"), "--draft", "--no-input")
+    code, out = run("discover", url, "--into", str(tmp_path / "c"), "--draft", "--not", "input")
     assert code == 2 and "Q104" in out
 
 
 def test_missing_import_is_warned(tmp_path: Path) -> None:
     text = "import not_installed_qscore_mod\n" + GHZ
     url, _ = make_repo(tmp_path, {"ghz.py": text})
-    code, out = run("discover", url, "--into", str(tmp_path / "c"), "--draft", "--no-input")
+    code, out = run("discover", url, "--into", str(tmp_path / "c"), "--draft", "--not", "input")
     assert code == 0, out
     assert "ghz.py:1: module 'not_installed_qscore_mod' is not installed" in out
 
@@ -138,7 +138,7 @@ def test_score_stops_on_required_placeholder(tmp_path: Path) -> None:
     url, _ = make_repo(tmp_path, {"ghz.py": GHZ.replace("n: int = 3", "n: int")})
     dest = tmp_path / "c"
     code, out = run(
-        "discover", url, "--into", str(dest), "--draft", "--no-input", "--score", "--yes"
+        "discover", url, "--into", str(dest), "--draft", "--not", "input", "--score", "--yes"
     )
     assert code == 2 and "Q107" in out
     assert not (dest / "qscore-out").exists()
@@ -148,7 +148,7 @@ def test_link_to_complete_scorecard(tmp_path: Path) -> None:
     url, head = make_repo(tmp_path, {"ghz.py": GHZ})
     dest = tmp_path / "c"
     code, out = run(
-        "discover", url, "--into", str(dest), "--draft", "--no-input", "--score", "--yes"
+        "discover", url, "--into", str(dest), "--draft", "--not", "input", "--score", "--yes"
     )
     assert code == 0, out
     assert "1 builder function(s) from " + url + "@" + head in out
@@ -164,7 +164,7 @@ def test_interactive_trust_notice_declined_runs_nothing(tmp_path: Path) -> None:
     url, _ = make_repo(tmp_path, {"ghz.py": GHZ})
     dest = tmp_path / "c"
     code, out = run(
-        "discover", url, "--into", str(dest), "--draft", "--no-input", "--score", stdin="n\n"
+        "discover", url, "--into", str(dest), "--draft", "--not", "input", "--score", stdin="n\n"
     )
     assert code == 0, out
     assert "will run as your user" in out
@@ -175,7 +175,7 @@ def test_outputs_inside_the_clone_do_not_make_it_dirty(tmp_path: Path) -> None:
     # 04 §13: dirty = uncommitted changes in the user's tree; qscore's own outputs don't count.
     draft_url, _ = make_repo(tmp_path / "a", {"ghz.py": GHZ})
     first = tmp_path / "first"
-    code, out = run("discover", draft_url, "--into", str(first), "--draft", "--no-input")
+    code, out = run("discover", draft_url, "--into", str(first), "--draft", "--not", "input")
     assert code == 0, out
     manifest = (first / "qscore.yaml").read_text()
     url, head = make_repo(tmp_path / "b", {"ghz.py": GHZ, "qscore.yaml": manifest})
@@ -223,7 +223,7 @@ def test_discover_score_exit_codes_match_score(
 ) -> None:
     # ChP-0042: with --score, exit codes, --allow-partial and --fail-on are those of `score`.
     url, _ = make_repo(tmp_path, {"ghz.py": GHZ})
-    base = ["discover", url, "--draft", "--no-input", "--score", "--yes"]
+    base = ["discover", url, "--draft", "--not", "input", "--score", "--yes"]
     code, out = run(*base, "--into", str(tmp_path / "high"), "--fail-on", "info")
     assert code == 1, out  # a GHZ chain on FakeTorino has at least an info finding
     monkeypatch.setattr(Depth, "compute", _boom)
@@ -242,7 +242,8 @@ def test_discover_score_declined_says_so(tmp_path: Path) -> None:
         "--into",
         str(tmp_path / "c"),
         "--draft",
-        "--no-input",
+        "--not",
+        "input",
         "--score",
         stdin="n\n",
     )
@@ -253,5 +254,5 @@ def test_discover_score_declined_says_so(tmp_path: Path) -> None:
 @pytest.mark.parametrize("extra", [["--allow-partial"], ["--fail-on", "high"]])
 def test_run_flags_need_score(tmp_path: Path, extra: list[str]) -> None:
     (tmp_path / "ghz.py").write_text(GHZ)
-    code, out = run("discover", str(tmp_path), "--draft", "--no-input", *extra)
+    code, out = run("discover", str(tmp_path), "--draft", "--not", "input", *extra)
     assert code == 2, out

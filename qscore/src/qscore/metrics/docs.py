@@ -71,7 +71,8 @@ def render() -> str:
             f"{d.definition}\n\n"
             f"| Kind | Scope | Unit | Requires | Version |\n|---|---|---|---|---|\n"
             f"| {' | '.join(row)} |\n\n"
-            f"Reference: {d.reference}\n"
+            f"Reference: {d.reference}\n\n"
+            "[Published convention and differences](standard.md#measurement-conventions).\n"
         )
     return "\n".join(parts)
 

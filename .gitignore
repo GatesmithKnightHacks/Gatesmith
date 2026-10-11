@@ -10,7 +10,7 @@ dist/
 .ruff_cache/
 .hypothesis/
 
-# qscore local state (cache, runs, scorecards, spool) — results go to Neon/Hub
+# qscore local state (cache, runs, scorecards, spool) — results go to the Hub
 .qscore/
 qscore/runs/
 qscore/scorecards/

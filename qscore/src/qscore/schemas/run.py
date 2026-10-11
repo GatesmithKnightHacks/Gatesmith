@@ -178,7 +178,7 @@ class BenchResult(QDocument):
 
 
 class Confirmation(QModel):
-    """How the run was confirmed before compute (05 §5); modes match Neon `confirmed_mode`."""
+    """How the run was confirmed before compute (05 §5); modes as stored with a job (11 §3)."""
 
     mode: Literal["interactive", "yes_flag", "stored"]
     at: AwareDatetime

@@ -11,6 +11,7 @@ import os
 import time
 from datetime import UTC, datetime
 
+from qscore.compile.counts import active_qubits
 from qscore.compile.pipeline import CompiledResult
 from qscore.compile.select import SELECTION_POLICY
 from qscore.config import Settings
@@ -22,6 +23,7 @@ from qscore.manifest.resolve import ResolvedItem
 from qscore.metrics.base import Metric, Requirement
 from qscore.metrics.registry import all_metrics
 from qscore.record.provenance import collect
+from qscore.record.reference import load_corpus
 from qscore.schemas.common import Status
 from qscore.schemas.scorecard import (
     SCORECARD_SCHEMA,
@@ -36,6 +38,7 @@ from qscore.schemas.scorecard import (
 )
 from qscore.schemas.versions import SCORE_VERSION
 from qscore.score.context import ScoringContext
+from qscore.score.reference import benchpress_block, place
 
 log = logging.getLogger(__name__)
 
@@ -174,7 +177,8 @@ def score_item_compiled(
             else {"two_qubit_count": min(r.two_qubit_count for r in all_to_all.results)},
             route_only=None if route is None else {"swaps_inserted": route.swaps_inserted},
         )
-    failed = any(m.status is Status.FAILED for m in metrics)
+    reference = {} if rep is None else benchpress_block(loaded.circuit, target, rep.seed)
+    failed = any(m.status is Status.FAILED for m in metrics) or "error" in reference
     assert item.execution is not None  # resolved items always carry execution (ChP-0021)
     seed_sim = item.execution.seed_simulator
     if seed_sim is None:
@@ -208,8 +212,29 @@ def score_item_compiled(
             "provenance": collect(settings, ctx.seeds, seed_sim, started),
             "created_at": datetime.now(UTC),
             "x-diagnose": {"skipped_rules": diagnosis.skipped},
+            "x-reference": {"benchpress": reference, "corpus": None}
+            if reference
+            else {"corpus": None},
         }
     )
+    if loaded.dependency_sha256 is not None:
+        card = card.model_copy(
+            update={
+                "provenance": card.provenance.model_copy(
+                    update={"x-dependencies": {"sha256": loaded.dependency_sha256}}
+                )
+            }
+        )
+    corpus_data = load_corpus(SCORE_VERSION)
+    if corpus_data is not None:
+        corpus, digest = corpus_data
+        extension = card.model_dump(mode="json")["x-reference"]
+        extension["corpus"] = {"score_version": corpus.score_version, "sha256": digest}
+        if card.target is not None and card.target.name in corpus.targets:
+            extension["placement"] = place(
+                card, corpus, width=len(active_qubits(rep.circuit)) if rep is not None else None
+            )
+        card = card.model_copy(update={"x-reference": extension})
     if rep is not None:
         return card, rep
     failure = ctx.failures.get(Requirement.COMPILED)

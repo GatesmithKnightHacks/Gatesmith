@@ -47,6 +47,10 @@ def test_unknown_fallback_id_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_needs_decision_fallback_cannot_be_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    from qscore import config
+
+    entry = config.FallbackEntry("FB-03", "needs decision", demo_on=False)
+    monkeypatch.setitem(config.FALLBACK_REGISTRY, "FB-03", entry)
     monkeypatch.setenv("QSCORE_PROFILE", "demo")
     monkeypatch.setenv("QSCORE_FALLBACKS", "FB-03")
     with pytest.raises(ValidationError, match="cannot be enabled"):
@@ -54,14 +58,14 @@ def test_needs_decision_fallback_cannot_be_enabled(monkeypatch: pytest.MonkeyPat
 
 
 def test_require_fallback_raises_when_disabled() -> None:
-    with pytest.raises(FallbackRefused, match="FB-05 needed: Neon unreachable"):
-        Settings().require_fallback("FB-05", "Neon unreachable")
+    with pytest.raises(FallbackRefused, match="FB-05 needed: platform API unreachable"):
+        Settings().require_fallback("FB-05", "platform API unreachable")
 
 
 def test_require_fallback_passes_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("QSCORE_PROFILE", "demo")
     monkeypatch.setenv("QSCORE_FALLBACKS", "FB-05")
-    Settings().require_fallback("FB-05", "Neon unreachable")
+    Settings().require_fallback("FB-05", "platform API unreachable")
 
 
 def test_require_unknown_fallback_is_config_error() -> None:
@@ -77,9 +81,10 @@ def test_get_settings_maps_invalid_settings_to_config_error(
         get_settings()
 
 
-def test_neon_transport_alternatives_need_fb03(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("QSCORE_NEON_TRANSPORT", "relay")
-    with pytest.raises(ValidationError):
+def test_retired_fallback_cannot_be_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("QSCORE_PROFILE", "demo")
+    monkeypatch.setenv("QSCORE_FALLBACKS", "FB-03")  # retired by ChP-0047
+    with pytest.raises(ValidationError, match="cannot be enabled"):
         Settings()
 
 

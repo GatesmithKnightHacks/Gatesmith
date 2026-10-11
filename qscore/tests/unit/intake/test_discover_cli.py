@@ -43,7 +43,7 @@ def test_draft_then_score_with_custom_target(tmp_path: Path) -> None:
     )
     manifest.write_text(original)
     result = CliRunner().invoke(
-        app, ["discover", str(root), "--draft", "--pick", "ghz", "--no-input"]
+        app, ["discover", str(root), "--draft", "--pick", "ghz", "--not", "input"]
     )
     assert result.exit_code == 0, result.output
     draft = root / "qscore.yaml.draft"
@@ -62,7 +62,7 @@ def test_noninteractive_pick_required_and_bad_value_located(tmp_path: Path) -> N
     # Two candidates: a single one would be picked and announced (ChP-0035).
     (root / "other.py").write_text((root / "builder.py").read_text().replace("ghz", "other"))
     runner = CliRunner()
-    result = runner.invoke(app, ["discover", str(root), "--draft", "--no-input"])
+    result = runner.invoke(app, ["discover", str(root), "--draft", "--not", "input"])
     assert result.exit_code == 2
     assert "Q104" in result.output
     values = root / "values.yaml"
@@ -71,7 +71,17 @@ def test_noninteractive_pick_required_and_bad_value_located(tmp_path: Path) -> N
     )
     result = runner.invoke(
         app,
-        ["discover", str(root), "--draft", "--pick", "ghz", "--no-input", "--values", str(values)],
+        [
+            "discover",
+            str(root),
+            "--draft",
+            "--pick",
+            "ghz",
+            "--not",
+            "input",
+            "--values",
+            str(values),
+        ],
     )
     assert result.exit_code == 2
     assert "Q102" in result.output and "values.yaml:4:" in result.output
@@ -79,7 +89,7 @@ def test_noninteractive_pick_required_and_bad_value_located(tmp_path: Path) -> N
 
 
 def test_unfilled_placeholder_is_announced_and_blocks_scoring(tmp_path: Path) -> None:
-    # No default, no call site, --no-input: the draft must say "<required>", never a dummy value.
+    # No default, no call site, --not input: the draft must say "<required>", never a dummy value.
     root = tmp_path / "repo"
     root.mkdir()
     (root / "builder.py").write_text(
@@ -88,7 +98,9 @@ def test_unfilled_placeholder_is_announced_and_blocks_scoring(tmp_path: Path) ->
         "    return QuantumCircuit(n_qubits)\n"
     )
     runner = CliRunner()
-    result = runner.invoke(app, ["discover", str(root), "--draft", "--pick", "ghz", "--no-input"])
+    result = runner.invoke(
+        app, ["discover", str(root), "--draft", "--pick", "ghz", "--not", "input"]
+    )
     assert result.exit_code == 0, result.output
     text = (root / "qscore.yaml").read_text()
     assert "n_qubits: <required>  # required" in text
@@ -111,7 +123,7 @@ def test_existing_draft_is_never_overwritten(tmp_path: Path) -> None:
     draft = root / "qscore.yaml.draft"
     draft.write_text("researcher's unfinished edits\n")
     result = CliRunner().invoke(
-        app, ["discover", str(root), "--draft", "--pick", "ghz", "--no-input"]
+        app, ["discover", str(root), "--draft", "--pick", "ghz", "--not", "input"]
     )
     assert result.exit_code != 0
     assert draft.read_text() == "researcher's unfinished edits\n"
@@ -139,7 +151,7 @@ def test_custom_project_root_is_preserved(tmp_path: Path) -> None:
         "schema: qscore.project/v0.2\nproject: {name: demo, root: src}\ncircuits: []\n"
     )
     result = CliRunner().invoke(
-        app, ["discover", str(tmp_path), "--draft", "--pick", "ghz", "--no-input"]
+        app, ["discover", str(tmp_path), "--draft", "--pick", "ghz", "--not", "input"]
     )
     assert result.exit_code == 0, result.output
     drafted, _ = load_manifest_with_positions(tmp_path / "qscore.yaml.draft")
@@ -176,7 +188,7 @@ def test_existing_item_settings_survive_duplicate_pick(tmp_path: Path) -> None:
     )
     (root / "qscore.yaml").write_text(original)
     result = CliRunner().invoke(
-        app, ["discover", str(root), "--draft", "--pick", "ghz", "--no-input"]
+        app, ["discover", str(root), "--draft", "--pick", "ghz", "--not", "input"]
     )
     assert result.exit_code == 0, result.output
     assert "existing entry is kept" in result.output
@@ -192,7 +204,7 @@ def test_single_file_discovery_drafts_only_that_file(tmp_path: Path) -> None:
     root = builder_repo(tmp_path)
     (root / "other.qasm").write_text('OPENQASM 2.0; include "qelib1.inc"; qreg q[1];')
     result = CliRunner().invoke(
-        app, ["discover", str(root / "builder.py"), "--draft", "--pick", "ghz", "--no-input"]
+        app, ["discover", str(root / "builder.py"), "--draft", "--pick", "ghz", "--not", "input"]
     )
     assert result.exit_code == 0, result.output
     assert "other.qasm" not in result.output
@@ -207,7 +219,7 @@ def test_unfinished_manifest_can_be_listed_and_extended(tmp_path: Path) -> None:
     )
     runner = CliRunner()
     first = runner.invoke(
-        app, ["discover", str(tmp_path), "--draft", "--pick", "first", "--no-input"]
+        app, ["discover", str(tmp_path), "--draft", "--pick", "first", "--not", "input"]
     )
     assert first.exit_code == 0, first.output
     original = (tmp_path / "qscore.yaml").read_text()
@@ -216,7 +228,7 @@ def test_unfinished_manifest_can_be_listed_and_extended(tmp_path: Path) -> None:
     assert listed.exit_code == 0, listed.output
     assert "b.py::second" in listed.output
     second = runner.invoke(
-        app, ["discover", str(tmp_path), "--draft", "--pick", "second", "--no-input"]
+        app, ["discover", str(tmp_path), "--draft", "--pick", "second", "--not", "input"]
     )
     assert second.exit_code == 0, second.output
     assert (tmp_path / "qscore.yaml").read_text() == original
@@ -236,7 +248,8 @@ def test_invalid_utf8_values_returns_typed_error(tmp_path: Path) -> None:
             "--draft",
             "--pick",
             "ghz",
-            "--no-input",
+            "--not",
+            "input",
             "--values",
             str(values),
         ],
@@ -267,7 +280,7 @@ def test_shared_function_names_get_the_file_stem(tmp_path: Path) -> None:
     (body / "qft.py").write_text(text)
     (body / "builder.py").unlink()
     result = CliRunner().invoke(
-        app, ["discover", str(body), "--draft", "--pick", "1,2", "--no-input"]
+        app, ["discover", str(body), "--draft", "--pick", "1,2", "--not", "input"]
     )
     assert result.exit_code == 0, result.output
     manifest = (body / "qscore.yaml").read_text()

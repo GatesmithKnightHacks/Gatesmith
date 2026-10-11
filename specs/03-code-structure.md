@@ -21,8 +21,7 @@ Gatesmith/qscore/                the engine's contents:
 ├── schemas/                     generated JSON Schemas (committed; drift-checked)
 ├── scripts/
 │   ├── bootstrap_radeon.sh      W7900 session setup (13-gpu-runbook.md)
-│   ├── build_aer_rocm.sh        Aer ROCm wheel build for gfx1100
-│   └── neon/                    0001_init.sql, 0002_roles.sql, ...
+│   └── build_aer_rocm.sh        Aer ROCm wheel build for gfx1100
 ├── docker/                      (T1) compose.yaml for laptop `lite` and Vultr; Containerfile.platform; Caddyfile
 ├── src/qscore/
 │   ├── __init__.py              public Python API
@@ -53,7 +52,7 @@ Gatesmith/qscore/                the engine's contents:
 │   ├── verify/     ladder.py  reduce.py  equivalence.py  task.py  permitted.py
 │   ├── improve/    protocol.py  requests.py  loop.py  reference_qiskit.py
 │   │               openai_compat.py (T1)  prompts.py (T1)  models.yaml (T1)  conformance.py (T1)
-│   ├── record/     scorecard.py  run_record.py  provenance.py  report.py  neon.py  hub.py  spool.py  templates/
+│   ├── record/     scorecard.py  run_record.py  provenance.py  report.py  jobs_client.py  hub.py  spool.py  templates/
 │   ├── bench/      suite.py
 │   ├── hardware/   profiler.py
 │   └── ui/         (T1) app.py  backend.py  components.py
@@ -103,13 +102,13 @@ Public names below are part of the spec (R1). Private helpers are the implemente
 
 | File | Provides |
 |---|---|
-| `pyproject.toml` | Package `qscore`; console script `qscore = "qscore.cli:app"`; extras `[gpu-rocm]` (marker only: the ROCm Aer wheel is installed from the Hub, never from PyPI), `[hf]` (openai, huggingface_hub, pyarrow), `[ui]` (gradio, fastapi, uvicorn), `[neon]` (psycopg[binary]); entry-point groups `qscore.metrics` and `qscore.layers`; pytest markers `gpu`, `slow`, `neon`, `hub`, `llm`; ruff, mypy, import-linter settings. **Install either CPU `qiskit-aer` or the ROCm build, never both** (both provide the `qiskit_aer` module). |
+| `pyproject.toml` | Package `qscore`; console script `qscore = "qscore.cli:app"`; extras `[gpu-rocm]` (marker only: the ROCm Aer wheel is installed from the Hub, never from PyPI), `[hf]` (openai, huggingface_hub, pyarrow), `[ui]` (gradio, fastapi, uvicorn); `httpx` for the job client; entry-point groups `qscore.metrics` and `qscore.layers`; pytest markers `gpu`, `slow`, `hub`, `llm`; ruff, mypy, import-linter settings. **Install either CPU `qiskit-aer` or the ROCm build, never both** (both provide the `qiskit_aer` module). |
 | `__init__.py` | `load_manifest()`, `validate()`, `score()`, `__version__`; re-exports schema classes. |
 | `cli.py` | Commands: `init`, `discover`, `validate`, `plan`, `score`, `improve`, `report`, `diff`, `bench`, `profile`, `conform` (T1), `explain`, `rerun`, `migrate`, `worker`, `db migrate`, `db ping`, `export` (T1). Shared flags: `--manifest`, `--item`, `--group`, `--metrics`, `--skip`, `--device`, `--seeds`, `--precision`, `--budget-s`, `--no-cache`, `--json`, `--out`, `--fail-on`, `--yes`, `--profile`. Exit codes in `05-pipeline.md` §11. Rich tables and a progress bar fed by events. |
 | `worker.py` | `run_worker(settings) -> NoReturn`: loop of `requeue_stale → claim_job → heartbeat thread → services call → write results → finish`. One GPU lease per process. See `11-records-and-queue.md` §5. |
 | `services.py` | `init_project()`, `discover_candidates()`, `validate_project()`, `plan_project()`, `score_project()`, `improve_item()`, `render_report()`, `diff_scorecards()`, `run_bench()`, `profile_hardware()`, `run_conformance()` (T1), `rerun()`, `export_records()` (T1). Each takes typed arguments plus `on_event: Callable[[Event], None]`, returns schema objects, never prints. |
-| `config.py` | `Settings` (pydantic-settings, env prefix `QSCORE_`): `profile` (`dev`/`ci`/`demo`), `fallbacks` (set of FB ids, validated against `17-fallbacks.md` ids; `dev`/`ci` force empty), `cache_dir`, `device_default`, `sandbox_mode` (`process`), `neon_dsn`, `neon_transport` (`postgres`), `hub_dataset_repo`, `hub_wheels_repo`, `local_llm_base_url`, `hf_router_base_url`, `worker_id`, `capabilities_override`. `get_settings()`. Prints the active profile and enabled fallbacks at startup (logged at INFO). |
-| `errors.py` | `QscoreError` → `InvalidInput` (carries `IssueReport`), `ConfigError`, `SandboxError` (`kind`: timeout, import_error, user_exception, not_a_circuit, args_for_circuit), `CompileError`, `MetricError`, `SimulationError` (incl. `GpuOutOfMemory` with planner estimate), `VerificationError`, `RecordError` (`NeonError`, `HubError`), `FetchError` (a repository clone failed, ChP-0035), `LayerError`, `FallbackRefused` (a fallback was needed but not enabled — message names the FB id). |
+| `config.py` | `Settings` (pydantic-settings, env prefix `QSCORE_`): `profile` (`dev`/`ci`/`demo`), `fallbacks` (set of FB ids, validated against `17-fallbacks.md` ids; `dev`/`ci` force empty), `cache_dir`, `device_default`, `sandbox_mode` (`process`), `platform_url`, `worker_token` (secret), `hub_dataset_repo`, `hub_wheels_repo`, `hf_router_base_url`, `hf_max_calls`, `hf_max_cost_usd`, `worker_id`, `capabilities_override`. `get_settings()`. Prints the active profile and enabled fallbacks at startup (logged at INFO). |
+| `errors.py` | `QscoreError` → `InvalidInput` (carries `IssueReport`), `ConfigError`, `SandboxError` (`kind`: timeout, import_error, user_exception, not_a_circuit, args_for_circuit), `CompileError`, `MetricError`, `SimulationError` (incl. `GpuOutOfMemory` with planner estimate), `VerificationError`, `RecordError` (`PlatformError`, `HubError`), `FetchError` (a repository clone failed, ChP-0035), `LayerError`, `FallbackRefused` (a fallback was needed but not enabled — message names the FB id). |
 | `logging.py` | `setup_logging(profile)`: JSON lines to stderr in worker mode, rich console in CLI; secrets redaction filter. |
 | `api/app.py` (T1) | `POST /validate`, `POST /jobs`, `GET /jobs/{id}`, `GET /jobs/{id}/events`, `GET /scorecards/{item_sha}`, `GET /leaderboard`, `GET /health` (incl. "GPU online" from `workers.last_seen_at`). Token auth for write endpoints. |
 
@@ -154,7 +153,7 @@ Public names below are part of the spec (R1). Private helpers are the implemente
 | `record/run_record.py` | `RunRecord` lifecycle; `rerun(record) -> RerunReport`. |
 | `record/provenance.py` | `collect(repo_root, seeds, settings) -> Provenance`. |
 | `record/report.py` | `render(scorecards, run_record, format)` (Markdown/HTML via Jinja2). |
-| `record/neon.py` | `NeonStore`: `claim_job`, `heartbeat`, `start_job`, `finish_job`, `fail_job`, `requeue_stale`, `insert_scorecard`, `insert_attempts`, `insert_events`, `insert_telemetry`, `upsert_worker`, `export_leaderboard_rows`. |
+| `record/jobs_client.py` | `JobsClient` (HTTPS, 11 §3): `register`, `claim`, `start`, `heartbeat`, `events`, `finish`, `fail`; errors → `PlatformError`. |
 | `record/hub.py` | `HubStore`: `put_circuit`, `put_scorecard`, `put_attempts_parquet`, `put_bench`, `put_leaderboard`, `commit_batch()`; content-addressed paths (`11-records-and-queue.md` §7). |
 | `record/spool.py` | FB-05 only (off by default): `spool_write`, `spool_replay`. Raises `FallbackRefused` if called when FB-05 is not enabled. |
 | `bench/suite.py` | `BENCH_SUITE`, `run_bench(devices, reps=3, warmup=1) -> BenchResult`; precision × fusion sweep; cache-knee check. |
@@ -177,7 +176,7 @@ Public names below are part of the spec (R1). Private helpers are the implemente
 | `improve/requests.py` | `build_requests(scorecard, ctx, policy)`, `extract_region(circuit, region) -> (subcircuit, qubit_map)`, `splice(original, region, candidate)`. |
 | `improve/loop.py` | Pure decision logic: `decide(attempt_inputs) -> Decision`, `should_stop(history, budget) -> StopReason | None`. |
 | `improve/reference_qiskit.py` | Handlers for `layout_search`, `routing_search`, `commutation_aware_routing`, `block_resynthesis`. |
-| `improve/openai_compat.py` (T1) | `OpenAICompatLayer(name, base_url, model, backend)`; backends `local` and `hf`. |
+| `improve/hf_layer.py` (T1) | `HfLayer(entry, external_inference, base_url, token, budget)`: `propose()`, `capabilities()`, per-call `CallRecord`s; `improve/models.py` (`load_registry`, `fetch_catalog`, `check_entry`) + `improve/models.yaml`; `improve/prompts.py` (`render`, `CandidateSet`, `PROMPT_VERSION`); `improve/protocol.py` (`ImprovementLayer`). |
 | `improve/prompts.py` (T1) | `PROMPT_VERSION`, `render(request)`. |
 | `improve/conformance.py` (T1) | `run_conformance(layer, fixtures) -> ConformanceReport`. |
 
@@ -185,7 +184,7 @@ Public names below are part of the spec (R1). Private helpers are the implemente
 
 | Concern | ★ Default | Alternatives (need a class B proposal) | Notes |
 |---|---|---|---|
-| Env and lock | **uv** (`uv sync`, `uv.lock`) | pip-tools, Poetry, pixi | uv also fetches Python 3.14 for the vLLM venv. |
+| Env and lock | **uv** (`uv sync`, `uv.lock`) | pip-tools, Poetry, pixi | |
 | CLI | **Typer** + Rich | Click, argparse | Typer gives `--help` for free; keep commands thin. |
 | Schemas | **Pydantic v2** | msgspec, attrs+cattrs | Pydantic exports JSON Schema; needed by UI and agents. |
 | YAML | **ruamel.yaml** (round-trip) | PyYAML (loses comments), strictyaml | Comments and order must survive edits. |

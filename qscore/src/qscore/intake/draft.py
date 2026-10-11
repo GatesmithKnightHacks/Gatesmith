@@ -493,9 +493,14 @@ def pick_candidates(
                 choices=tuple(f"{c.index}. {c.reference}" for c in candidates),
             )
         )
-    tokens = [t.strip() for t in pick.split(",") if t.strip()]
-    if not tokens:
-        raise _fail("Q103", PICK_FILE, f"empty pick {pick!r}", "Pass --pick 1,3 or names.")
+    exclude = pick.startswith("not:")
+    if exclude:
+        pick = pick.removeprefix("not:")
+    tokens = [t.strip() for t in pick.split(",")]
+    if not tokens or any(not token for token in tokens):
+        raise _fail(
+            "Q103", PICK_FILE, f"empty selector in pick {pick!r}", "Pass --pick 1,3 or names."
+        )
     issues: list[IssueModel] = []
     chosen: list[Candidate] = []
     for token in tokens:
@@ -519,6 +524,10 @@ def pick_candidates(
             chosen.append(matches[0])
     if issues:
         raise _raise(PICK_FILE, issues)
+    if exclude:
+        chosen = [c for c in candidates if c not in chosen]
+        if not chosen:
+            raise _fail("Q103", PICK_FILE, "exclusion leaves no draftable candidates")
     return chosen
 
 

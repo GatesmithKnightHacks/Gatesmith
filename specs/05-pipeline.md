@@ -46,7 +46,7 @@
 
 | Option | Isolation | Availability | Use |
 |---|---|---|---|
-| ★ **Process mode** | `subprocess.run` with timeout; `resource.setrlimit` (RLIMIT_AS = `mem_mb`, RLIMIT_CPU); temp working dir (line mode: the builder file's directory, ChP-0037); env stripped of every `*_TOKEN`, `*_KEY`, `*_DSN`, `*SECRET*`, `HF_*`, `NEON_*`, `GEMINI_*`, `OPENAI_*`; `-I` isolated mode; cwd = temp dir with repo on `sys.path` via the request | Everywhere (Linux/macOS; on Windows no rlimits → fail with ConfigError unless `sandbox_mode=process-unlimited` is set explicitly) | MVP |
+| ★ **Process mode** | `subprocess.run` with timeout; `resource.setrlimit` (RLIMIT_AS = `mem_mb`, RLIMIT_CPU); temp working dir (line mode: the builder file's directory, ChP-0037); env stripped of every `*_TOKEN`, `*_KEY`, `*_DSN`, `*SECRET*`, `HF_*`, `GEMINI_*`, `OPENAI_*`; `-I` isolated mode; cwd = temp dir with repo on `sys.path` via the request | Everywhere (Linux/macOS; on Windows no rlimits → fail with ConfigError unless `sandbox_mode=process-unlimited` is set explicitly) | MVP |
 | Process + `unshare -n` | Also no network | Linux where unprivileged user namespaces are allowed; check on the W7900 (root in a container may not allow it) | If it works, enable by setting `sandbox_network=off` |
 | Container (`podman`/`docker run --network=none -v repo:ro`) | Strong | Laptop/Vultr; probably not on the W7900 | Later |
 
@@ -69,7 +69,7 @@ Intent vs circuit (`04-contracts.md` §2.2): reversible gate set (Q400); measure
 
 - **Does:** a plain-language summary per item: source, qubits, gate counts, parameters, measurements, the intent in one sentence, permitted changes, target, planned compute, what will **not** be checked, and each default marked "(default)".
 - **How:** fixed sentence templates, no generated prose, so the summary doubles as alt text for the circuit drawing.
-- **Confirm:** interactive prompt (CLI), the Confirm screen (UI), `--yes`, or the stored confirmation for a queued job. The confirmation (mode, time, manifest hash) is stored in the run record (`<out>/run.json`, 04 §13) and in Neon (`manifests.confirmed_*`). `services` takes `confirm` as a required keyword: a callback (interactive) or the literal `"yes"` (`--yes`); there is no silent default (ChP-0028).
+- **Confirm:** interactive prompt (CLI), the Confirm screen (UI), `--yes`, or the stored confirmation for a queued job. The confirmation (mode, time, manifest hash) is stored in the run record (`<out>/run.json`, 04 §13) and, for queued jobs, by the platform with the job (11 §3). `services` takes `confirm` as a required keyword: a callback (interactive) or the literal `"yes"` (`--yes`); there is no silent default (ChP-0028).
 - **Never:** starts compute before confirmation.
 
 ## 6. Compile (`compile/pipeline.py`, `stages.py`, `select.py`)
@@ -104,7 +104,7 @@ Rules D01–D10 turn metric values into findings with evidence, severity, region
 
 ## 9. Scorecard and requests (`record/scorecard.py`, `improve/requests.py`)
 
-- **Does:** writes one scorecard per item (atomic write to `scorecards/<item_id>.json` locally; then Neon and Hub when configured), keyed by item hash and score version.
+- **Does:** writes one scorecard per item (atomic write to `scorecards/<item_id>.json` locally; then the Hub when configured), keyed by item hash and score version.
 - **Then:** for each unsuppressed finding that some layer can serve, builds an improvement request (`04-contracts.md` §4): the region cut out as a convex block in OpenQASM 3, a qubit map, objective, permitted changes, invariants and budget.
 - **Compiled circuit export (ChP-0034).** For every item with a representative compile, write `compiled/<item_id>.qasm` under the output directory: `qiskit.qasm3.dumps` of the representative compiled circuit, preceded by one `// <key>: <JSON>` comment line each for, in order, `qscore`, `score_version`, `item_id`, `item_sha256`, `target` (`{"name", "num_qubits"}`), `transpiler_seed`, `optimization_level`, `initial_layout` (`Layout.initial_index_layout()`, ancillas included) and `final_index_layout` (one entry per virtual qubit); both layouts are `null` when the circuit has no layout. OpenQASM 3 does not carry a layout or the device width: a reloaded file has only as many physical qubits as its highest index uses. The file is the exact circuit scored; it is not re-optimized, re-routed or rewritten. Items without a representative (`representative_seed: null`) get no file; the run record says why (04 §13 `compiled_skipped`). An exporter error raises `RecordError` naming the item (exit 3) after that item's scorecard is written; it is never replaced by QASM 2, QPY or a partial file. The write is atomic.
 - **Never:** sends more than the region when the manifest says region only; omits provenance.
@@ -128,14 +128,13 @@ Proves a returned candidate keeps the invariants before anything is scored as be
 | `qscore report` | `render_report` | Markdown/HTML from scorecards. |
 | `qscore diff A B` | `diff_scorecards` | Field-by-field with tolerances. |
 | `qscore bench` | `run_bench` | CPU vs GPU suite. |
+| `qscore models check` | `check_models` | Checks every pinned `hf` model:provider in `improve/models.yaml` against the live Inference Providers catalog (live + structured output); exit 0 all ok, 3 otherwise (ChP-0048). |
 | `qscore profile [--refresh]` | `profile_hardware` | Prints and caches the hardware profile. |
 | `qscore conform LAYER` | `run_conformance` | T1. |
 | `qscore explain CODE` | `catalog.explain` | e.g. `qscore explain Q202`. |
 | `qscore rerun SCORECARD` | `rerun` | Repeats inputs and compares. |
 | `qscore migrate FILE` | `versions.migrate` | Upgrades documents. |
 | `qscore worker` | `worker.run_worker` | Queue loop. |
-| `qscore db migrate` | `record.neon` | Applies `scripts/neon/*.sql` in order, recording applied files in `schema_migrations`. |
-| `qscore db ping` | `record.neon` | Connects with the configured role, prints server version, role and applied migrations; exit 4 on failure. |
 | `qscore export` | `export_records` | Attempts/leaderboard to the Hub (T1). |
 
 **Exit codes:** `0` clean · `1` findings at or above `--fail-on` (default: never) · `2` invalid input (issue report has errors) · `3` runtime failure (any uncaught `QscoreError`, including `FallbackRefused`) · `4` configuration error (missing settings/secrets, incompatible environment).
@@ -188,7 +187,7 @@ Each catalog entry: `code`, `severity`, `title`, `message` template, `hint` temp
 
 ## 13. Events and progress
 
-Services emit `Event`s (`04-contracts.md` §8) through `on_event`. The CLI renders a progress bar; the worker batches events to Neon `job_events` every 2 s or 50 events; the UI shows live updates. Events are informative only: never parse an event to drive logic.
+Services emit `Event`s (`04-contracts.md` §8) through `on_event`. The CLI renders a progress bar; the worker batches events to the platform (`POST /api/jobs/{id}/events`) every 2 s or 50 events; the UI shows live updates. Events are informative only: never parse an event to drive logic.
 
 ## 14. Practices the pipeline must show (from the build guide)
 

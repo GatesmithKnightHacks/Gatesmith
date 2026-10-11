@@ -40,6 +40,9 @@ from qscore.schemas.run import (
     RunRecord,
     RunScorecardRef,
 )
+from qscore.schemas.run import (
+    BenchResult as BenchResultDoc,
+)
 from qscore.schemas.scorecard import Scorecard
 from qscore.schemas.versions import SCORE_VERSION
 from qscore.score.engine import score_item_compiled
@@ -220,9 +223,22 @@ def discover_candidates(
         emit("stage_finished", f"Only one circuit found: {candidates[0].reference} — drafting it")
         pick = "1"
     chosen = drafting.pick_candidates(candidates, pick, prompt, no_input=no_input)
+    has_declarations = any(
+        (root / name).is_file()
+        for name in ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt")
+    )
     for c in chosen:
         for miss in missing_imports(c, root):
-            emit("warning", miss.describe(), stage="discover")
+            emit(
+                "warning",
+                miss.describe()
+                + (
+                    f" Dependency declarations exist; run qscore deps {root}."
+                    if has_declarations
+                    else ""
+                ),
+                stage="discover",
+            )
     supplied = drafting.load_values(values, candidates, root) if values is not None else None
     items = drafting.draft_items(chosen, supplied, prompt, no_input=no_input)
     added, skipped = drafting.merge_into(doc, items)
@@ -482,3 +498,361 @@ def score_qasm_text(
     src.parent.mkdir(parents=True, exist_ok=True)
     src.write_text(text, encoding="utf-8")
     return score_circuit(src, out_dir, target, on_event, confirm=confirm)
+
+
+@dataclass(frozen=True)
+class ReferenceBuildResult:
+    path: Path
+    scored: int
+    failures: int
+    exit_code: int
+
+
+def build_reference(
+    out_dir: Path = Path("qscore-reference-src"), on_event: OnEvent | None = None
+) -> ReferenceBuildResult:
+    """Score the pinned public corpus with default settings (ChP-0038 R3).
+
+    This maintainer command executes the selected builders in the normal sandbox.
+    Each invalid/partial entry remains in the output's failure ledger. Infrastructure
+    and recording failures abort the command; a missing dependency is never installed.
+    """
+    from importlib.resources import files
+
+    from pydantic import ValidationError
+    from ruamel.yaml import YAML
+    from ruamel.yaml.error import YAMLError
+
+    from qscore.record.reference import summarize, write_corpus
+    from qscore.schemas.reference import (
+        REFERENCE_SCHEMA,
+        CorpusCatalog,
+        ReferenceCorpus,
+        ReferenceFailure,
+    )
+
+    emit = _Events(on_event)
+    try:
+        catalog = CorpusCatalog.model_validate(
+            YAML(typ="safe").load(files("qscore.reference").joinpath("corpus.yaml").read_text())
+        )
+    except (OSError, UnicodeError, YAMLError, ValidationError) as exc:
+        raise RecordError(f"could not read pinned reference catalog: {exc}") from exc
+    settings = get_settings()
+    out_dir = out_dir.resolve()
+    repos = {}
+    sources = []
+    for source in catalog.repositories:
+        emit("stage_started", f"cloning {source.url}@{source.commit}", stage="reference")
+        repo = fetch.clone(
+            source.url, out_dir / source.id, source.commit, timeout_s=settings.fetch_timeout_s
+        )
+        if repo.commit != source.commit:
+            raise RecordError(
+                f"reference source {source.id}: expected {source.commit}, got {repo.commit}"
+            )
+        modifications = list(source.modifications)
+        if source.id == "mqt":
+            # Explicit approved corpus preparation, not an import-error recovery path.
+            stub = repo.path / "src/mqt/bench/_version.py"
+            if stub.exists():
+                raise RecordError(f"reference source unexpectedly contains generated file: {stub}")
+            try:
+                stub.write_text(
+                    "# Generated explicitly for qscore reference build; not a release version.\n"
+                    'version = "0+qscore.reference.613281f"\n'
+                    'version_tuple = (0, "qscore.reference.613281f")\n',
+                    encoding="utf-8",
+                )
+            except OSError as exc:
+                raise RecordError(f"could not prepare MQT version metadata {stub}: {exc}") from exc
+            modifications.append("src/mqt/bench/_version.py: explicit reference-build version stub")
+        sources.append(source.model_copy(update={"modifications": modifications}))
+        repos[source.id] = repo
+    cards: list[Scorecard] = []
+    failures: list[ReferenceFailure] = []
+    for index, entry in enumerate(catalog.circuits, 1):
+        emit(
+            "item_started",
+            f"reference {index}/{len(catalog.circuits)}: {entry.id}",
+            item_id=entry.id,
+        )
+        repo = repos[entry.repository]
+        manifest = ProjectManifest.model_validate(
+            {
+                "schema": "qscore.project/v0.2",
+                "project": {"name": "qscore-reference", "root": "."},
+                "circuits": [{"id": entry.id, "source": entry.source}],
+            }
+        )
+        digest = sha256_hex(canonical_json(manifest.model_dump(mode="json")))
+        try:
+            result = _score(
+                manifest,
+                repo.path,
+                digest,
+                out_dir / "runs" / entry.id,
+                settings,
+                emit,
+                "<reference corpus>",
+                confirm="yes",
+            )
+        except InvalidInput as exc:
+            codes = sorted({issue.code for issue in exc.report.issues}) if exc.report else []
+            failures.append(ReferenceFailure(circuit_id=entry.id, codes=codes, error=str(exc)))
+            emit("warning", f"{entry.id}: {exc}", item_id=entry.id)
+            continue
+        card = result.scorecards[0]
+        cards.append(card)
+        if card.status != "complete":
+            errors = [f"{m.id}: {m.error.message}" for m in card.metrics if m.error is not None]
+            reference = card.model_dump(mode="json").get("x-reference", {}).get("benchpress", {})
+            if "error" in reference:
+                errors.append(f"Benchpress: {reference['error']}")
+            failures.append(
+                ReferenceFailure(
+                    circuit_id=entry.id,
+                    codes=[],
+                    error="; ".join(errors) or f"card status {card.status}",
+                )
+            )
+    first = cards[0].provenance if cards else None
+    corpus = ReferenceCorpus.model_validate(
+        {
+            "schema": REFERENCE_SCHEMA,
+            "score_version": SCORE_VERSION,
+            "created_at": datetime.now(UTC),
+            "sources": sources,
+            "targets": summarize(cards),
+            "failures": failures,
+            "provenance": {
+                "qiskit": first.qiskit if first else None,
+                "lock_sha256": first.lock_sha256 if first else None,
+                "git_commit": first.git_commit if first else None,
+                "catalog_sha256": sha256_hex(canonical_json(catalog.model_dump(mode="json"))),
+            },
+        }
+    )
+    path = write_corpus(corpus, out_dir / f"corpus-{SCORE_VERSION}.json")
+    good = sum(c.status == "complete" for c in cards)
+    emit("run_finished", f"reference corpus: {good} complete, {len(failures)} failed; {path}")
+    return ReferenceBuildResult(
+        path, good, len(failures), 2 if any(f.codes for f in failures) else 3 if failures else 0
+    )
+
+
+@dataclass(frozen=True)
+class DependencyResult:
+    environment: Path
+    installed: bool
+
+
+def prepare_dependencies(
+    path: Path = Path("."), on_event: OnEvent | None = None, *, confirm: ConfirmArg
+) -> DependencyResult:
+    """Show the dependency plan and exact manifest diff before installing (ChP-0039)."""
+    import io
+    import os
+    import tempfile
+
+    from ruamel.yaml import YAML
+
+    from qscore.intake import deps
+
+    emit = _Events(on_event)
+    path = path.resolve()
+    if not path.exists():
+        raise InvalidInput(f"dependency project path not found: {path}", report=None)
+    manifest_path = path if path.is_file() else path / "qscore.yaml"
+    root = path.parent if path.is_file() else path
+    original = new_text = None
+    if manifest_path.is_file():
+        doc, project_root, original = _read_discovery_manifest(manifest_path)
+        root = (manifest_path.parent / project_root).resolve()
+        project = doc["project"]
+        if "runner" in project and not isinstance(project["runner"], dict):
+            raise InvalidInput("project.runner must be a mapping", report=None)
+        if "runner" not in project:
+            project["runner"] = CommentedMap()
+        project["runner"]["env"] = "uv"
+        stream = io.StringIO()
+        YAML(typ="rt").dump(doc, stream)
+        new_text = stream.getvalue()
+    plan = deps.inspect_dependencies(root)
+    summary = deps.render_plan(plan)
+    if original is not None and new_text is not None:
+        summary += "\n\n" + drafting.diff(original, new_text, manifest_path.name)
+    else:
+        summary += "\nNo manifest exists; set project.runner.env: uv in your subsequent draft."
+    if confirm == "yes":
+        emit("warning", summary, stage="deps", confirmation="yes_flag")
+    elif not confirm(summary):
+        return DependencyResult(plan.environment, False)
+    else:
+        emit(
+            "stage_finished",
+            "Dependency installation confirmed",
+            stage="deps",
+            confirmation="interactive",
+        )
+    if original is not None and _dependency_manifest_text(manifest_path) != original:
+        raise RecordError("manifest changed after confirmation; run qscore deps again")
+    environment = deps.prepare(plan)
+    if new_text is not None:
+        # Preserve a concurrent researcher edit instead of overwriting it after installation.
+        if _dependency_manifest_text(manifest_path) != original:
+            raise RecordError(
+                f"environment prepared, but {manifest_path} changed; set runner.env: uv manually"
+            )
+        try:
+            fd, temporary = tempfile.mkstemp(prefix=".qscore-deps-", dir=manifest_path.parent)
+            with os.fdopen(fd, "w", encoding="utf-8") as manifest_stream:
+                manifest_stream.write(new_text)
+            os.replace(temporary, manifest_path)
+        except OSError as exc:
+            raise RecordError(f"environment prepared but manifest update failed: {exc}") from exc
+    emit("stage_finished", f"Project dependencies ready: {environment}", stage="deps")
+    return DependencyResult(environment, True)
+
+
+# --- EXPERIMENTAL AMD ROCm benchmark (09 §7, ChP-0032 downscaled by ChP-0046) ---------------
+
+
+@dataclass
+class BenchRunResult:
+    bench: BenchResultDoc
+    report_path: Path
+    out_dir: Path
+
+
+def run_bench(
+    out_dir: Path,
+    devices: list[Literal["cpu", "gpu"]],
+    sizes: list[int] | None = None,
+    reps: int = 3,
+    warmup: int = 1,
+    fusion_sweep: bool = True,
+    on_event: OnEvent | None = None,
+) -> BenchRunResult:
+    """CPU vs GPU statevector suite; writes bench.json, gpu-identity.json, telemetry.jsonl and
+    amd-w7900.md to `out_dir`. A requested GPU that Aer cannot use raises SimulationError."""
+    import json
+    import math
+
+    from qscore.bench.suite import BENCH_SUITE, SUITE_NAME
+    from qscore.bench.suite import run_bench as run_suite
+    from qscore.errors import SimulationError
+    from qscore.hardware.profiler import amd_smi_json, detect_gpu, is_w7900
+    from qscore.record.provenance import collect
+    from qscore.record.w7900 import render_w7900
+    from qscore.schemas.common import GpuInfo
+    from qscore.sim.backends import aer_build, gpu_available
+    from qscore.sim.telemetry import GpuSampler, parse_metric
+
+    emit = _Events(on_event)
+    started = datetime.now(UTC)
+    settings = get_settings()
+    aer_version, build = aer_build()
+    has_gpu_device = gpu_available()
+    if "gpu" in devices and not has_gpu_device:
+        raise SimulationError(
+            f"--device gpu requested but Aer ({aer_version}, build {build}) has no GPU device"
+        )
+    gpu = detect_gpu() if "gpu" in devices else None  # CPU-only runs need no ROCm tooling
+    budget: int | None = None
+    planning: dict[str, object] | None = None
+    if "gpu" in devices:
+        if gpu is None:
+            raise SimulationError("Aer has a GPU device but amd-smi is not on PATH (identity)")
+        free_mb = parse_metric(amd_smi_json("metric", "--mem-usage"))["free_vram_mb"]
+        if free_mb is None:
+            raise SimulationError("amd-smi did not report free VRAM; cannot admit GPU work")
+        total = int(gpu.vram_gib * 1024**3)
+        free = int(free_mb * 1024**2)
+        budget = math.floor(0.9 * min(total, free))  # ChP-0032 B, exclusive mode: R = 0
+        planning = {
+            "total_bytes_T": total,
+            "free_bytes_F": free,
+            "reserved_bytes_R": 0,
+            "mode": "exclusive",
+            "overhead_factor": 1.2,
+            "overhead_source": "declared initial estimate (not measured)",
+            "safety_margin": 0.10,
+            "budget_bytes": budget,
+        }
+        emit("stage_started", f"GPU {gpu.name} ({gpu.arch}); budget {budget / 1024**3:.1f} GiB")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    sampler = GpuSampler()
+    progress = lambda message: emit("stage_started", message, stage="bench")  # noqa: E731
+    if "gpu" in devices:
+        with sampler:
+            outcome = run_suite(
+                devices,
+                sizes or list(BENCH_SUITE["sizes"]),
+                reps,
+                warmup,
+                fusion_sweep,
+                budget,
+                progress,
+            )
+    else:
+        outcome = run_suite(
+            devices, sizes or list(BENCH_SUITE["sizes"]), reps, warmup, False, None, progress
+        )
+    provenance = collect(settings, [], int(BENCH_SUITE["seed"]), started)
+    if gpu is not None:
+        provenance = provenance.model_copy(
+            update={"rocm": gpu.rocm, "gpu": GpuInfo(name=gpu.name, arch=gpu.arch)}
+        )
+    bench = BenchResultDoc.model_validate(
+        {
+            "schema": "qscore.bench/v0.2",
+            "suite": SUITE_NAME,
+            "devices": devices,
+            "reps": reps,
+            "warmup": warmup,
+            "rows": [r.model_dump(mode="json") for r in outcome.rows],
+            "crossover": {
+                "double": outcome.crossover_qubits,
+                "fusion_best_double": outcome.fusion_best,
+            },
+            "provenance": provenance.model_dump(mode="json"),
+        }
+    )
+    telemetry = (
+        sampler.summary()
+        if "gpu" in devices
+        else {"status": "unavailable", "reason": "no GPU work requested"}
+    )
+    evidence = {
+        "w7900": is_w7900(gpu),
+        "differential": outcome.differential,
+        "telemetry": telemetry,
+        "unmeasured": outcome.unmeasured,
+        "aer": {"version": aer_version, "build": build, "gpu_available": has_gpu_device},
+        "memory_planning": planning,
+        "experimental": True,
+    }
+    (out_dir / "bench.json").write_text(
+        json.dumps(bench.model_dump(mode="json", by_alias=True), indent=2) + "\n"
+    )
+    (out_dir / "gpu-identity.json").write_text(
+        json.dumps(
+            {"gpu": gpu.model_dump(mode="json") if gpu else None, "evidence": evidence}, indent=2
+        )
+        + "\n"
+    )
+    with (out_dir / "telemetry.jsonl").open("w") as fh:
+        for row in sampler.samples:
+            fh.write(json.dumps(row) + "\n")
+    report = out_dir / "amd-w7900.md"
+    report.write_text(render_w7900(gpu, bench, evidence))
+    emit("stage_finished", f"Benchmark written to {out_dir}", stage="bench")
+    return BenchRunResult(bench, report, out_dir)
+
+
+def _dependency_manifest_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise RecordError(f"cannot recheck dependency manifest {path}: {exc}") from exc

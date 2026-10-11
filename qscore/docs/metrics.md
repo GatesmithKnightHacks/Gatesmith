@@ -31,6 +31,8 @@ Number of active qubits (touched by at least one non-directive operation) in the
 
 Reference: Qiskit `QuantumCircuit`; qscore definition (06 §2.1).
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `size`
 
 Total number of operations after compilation.
@@ -42,6 +44,8 @@ Total number of operations after compilation.
 | deterministic | compiled | ops | compiled, logical | 1 |
 
 Reference: Qiskit `QuantumCircuit.size`.
+
+[Published convention and differences](standard.md#measurement-conventions).
 
 ### `depth`
 
@@ -55,6 +59,8 @@ Number of time steps (layers) of the compiled circuit.
 
 Reference: Qiskit `QuantumCircuit.depth`.
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `two_qubit_count`
 
 Number of two-qubit gates after compilation, usually the main cost driver; the default objective.
@@ -66,6 +72,8 @@ Number of instructions with `operation.num_qubits == 2` in the compiled circuit.
 | deterministic | compiled | gates | compiled, logical | 1 |
 
 Reference: qscore definition (06 §2.1).
+
+[Published convention and differences](standard.md#measurement-conventions).
 
 ### `two_qubit_depth`
 
@@ -79,6 +87,8 @@ Number of layers of two-qubit gates after compilation.
 
 Reference: Qiskit `QuantumCircuit.depth` with a filter.
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `measurement_count`
 
 How many measurements the circuit makes.
@@ -91,6 +101,8 @@ Number of `measure` instructions in the logical circuit.
 
 Reference: qscore definition (06 §2.1).
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `toffoli_count`
 
 How many Toffoli gates the logical circuit uses; the objective for reversible circuits.
@@ -102,6 +114,8 @@ Number of `ccx` instructions (and `mcx` with exactly two controls) in the logica
 | deterministic | logical | gates | logical | 1 |
 
 Reference: qscore definition (06 §2.1).
+
+[Published convention and differences](standard.md#measurement-conventions).
 
 ## Hardware
 
@@ -117,6 +131,8 @@ Share of two-qubit gates that exist only because the hardware's connectivity for
 
 Reference: qscore definition (06 §2.2); routing via Qiskit's preset pass managers.
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `swaps_inserted`
 
 How many SWAPs the router added to fit the circuit onto the hardware.
@@ -129,6 +145,8 @@ Number of `swap` instructions in the route-only output (init, layout and routing
 
 Reference: Qiskit preset pass manager stages.
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `compile_ratio`
 
 How compilation changed the two-qubit gate count compared with a plain translation.
@@ -140,6 +158,8 @@ How compilation changed the two-qubit gate count compared with a plain translati
 | deterministic | compiled | ratio | compiled, raw_translation | 1 |
 
 Reference: qscore definition (06 §2.2).
+
+[Published convention and differences](standard.md#measurement-conventions).
 
 ### `reliability_heuristic`
 
@@ -155,6 +175,8 @@ An op with `e = 1` is faulty: the value is exactly 0, the op is listed in `fault
 
 Reference: Expected-fidelity style of mapomatic (Nation & Treinish, PRX Quantum 4, 010327, 2023) and MQT Predictor.
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `scheduled_duration`
 
 How long the compiled circuit takes to run, compared with how long the qubits keep their state.
@@ -167,6 +189,8 @@ Critical-path duration of the compiled circuit from ALAP scheduling with the tar
 
 Reference: Qiskit `ALAPScheduleAnalysis`.
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `seed_spread`
 
 How much the result depends on the compiler's random seed.
@@ -178,6 +202,8 @@ How much the result depends on the compiler's random seed.
 | deterministic | compiled | ratio | compiled | 1 |
 
 Reference: qscore definition (06 §2.2).
+
+[Published convention and differences](standard.md#measurement-conventions).
 
 ## Opportunities
 
@@ -193,6 +219,8 @@ SupermarQ's six features on the logical circuit: program communication, critical
 
 Reference: Tomesh et al., "SupermarQ: A Scalable Quantum Benchmark Suite", HPCA 2022 (arXiv:2202.11045); formulas ported from the published SupermarQ source.
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `entanglement_variance`
 
 How unevenly the two-qubit gates are spread over the qubits.
@@ -204,6 +232,8 @@ Population variance of `c_i`, the number of two-qubit operations touching logica
 | deterministic | logical | gates^2 | logical | 1 |
 
 Reference: Inspired by Li et al., "QASMBench", ACM TQC 2023 (arXiv:2005.13018); not the same formula.
+
+[Published convention and differences](standard.md#measurement-conventions).
 
 ### `structure`
 
@@ -217,6 +247,8 @@ On the logical circuit: (a) commuting runs, maximal connected DAG runs of two-qu
 
 Reference: Qiskit `CollectCliffords`, `CollectLinearFunctions`; qscore commuting-run detection (06 §2.3).
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `resynthesis_potential`
 
 How many two-qubit gates could be saved by re-synthesizing small two-qubit blocks optimally.
@@ -228,6 +260,8 @@ Sum over two-qubit blocks of the compiled circuit (`Collect2qBlocks` + `Consolid
 | deterministic | compiled | gates | compiled, raw_translation | 1 |
 
 Reference: KAK decomposition: Vidal & Dawson, PRA 69, 010301 (2004); Qiskit `TwoQubitBasisDecomposer`.
+
+[Published convention and differences](standard.md#measurement-conventions).
 
 ## Research
 
@@ -243,6 +277,8 @@ For each `size_sweep` value: rebuild the circuit in the sandbox, compile with th
 
 Reference: Log-log ordinary least squares power-law fit (06 §2.4).
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `simulated_task_score`
 
 How well the compiled circuit still does its job under realistic noise (needs GPU simulation; not in the MVP build).
@@ -255,6 +291,8 @@ Noisy simulation of the representative compiled circuit under the target's noise
 
 Reference: Qiskit Aer; `hellinger_fidelity` from `qiskit.quantum_info`.
 
+[Published convention and differences](standard.md#measurement-conventions).
+
 ### `mirror_score`
 
 How much noise builds up when the circuit runs forwards then backwards; noise accumulation, not task quality.
@@ -266,3 +304,5 @@ Probability of returning to |0...0> after the compiled circuit followed by its i
 | statistical | compiled | probability | compiled, simulation | 1 |
 
 Reference: Mirror circuits: Proctor et al., Nature Physics 18, 75 (2022).
+
+[Published convention and differences](standard.md#measurement-conventions).

@@ -4,6 +4,8 @@ Every approved change to `specs/` gets one line here: date, files, proposal id, 
 
 | Date | Files | Proposal | Summary |
 |---|---|---|---|
+| 2026-10-11 | 01, 02, 03, 04, 05 §11, 09 §2, 10 §5 (rewritten), 11, 13, 15 T25, 17, 18, README | ChP-0048 | Model layer = `hf` only: open-weight models via HF Inference Providers (pinned `model:provider`, strict JSON-schema replies, catalog check, budgets); local vLLM layer, `model_loaded` memory mode, `local_model` flag removed; FB-02 retired; `qscore models check` specified. Approved by the user; implementation deferred (T25 open). |
+| 2026-10-11 | 00, 01, 02, 03, 04, 05, 09, 10, 11 (rewritten), 12, 13, 14, 15, 16, 17, 18, decisions D-018, README, templates | ChP-0047 | Neon removed: queue behind the platform's HTTPS job API (11 §3), records on local files + Hub, leaderboard parquet; FB-03 retired, FB-05 retargeted; `neon_write` flag, `[neon]` extra, `neon` marker, `db migrate/ping` dropped; Neon sponsor track dropped. Approved by the user (directive). |
 | 2026-10-11 | 05 §1 | ChP-0044 | Folder discovery lists candidates past unreadable files and warns per file (located); single file or no candidates still exit 2. Approved by the user. |
 | 2026-10-11 | 06 §2.3 | ChP-0043 | `resynthesis_potential` takes the KAK minimum from the synthesized block (Qiskit 2.5.2 `num_basis_gates` undercounts SWAP-class blocks); folded into score version `qscore-2026.2`. Approved by the user. |
 | 2026-10-11 | 05 §1 | lead (class B) | Builder signal: returned names bound to circuit-returning methods (`qc.decompose()` etc.); found on QED-C. |

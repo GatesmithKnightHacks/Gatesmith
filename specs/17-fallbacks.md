@@ -18,10 +18,10 @@ Status values: **planned** (in the architecture; code may exist behind the switc
 | ID | Trigger | Substitute | Switch | Status | Demo profile | Origin |
 |---|---|---|---|---|---|---|
 | FB-01 | Aer's ROCm build fails within its 90-min timebox in GPU session 1 | A small PyTorch statevector backend on ROCm for **ideal** simulations, CPU Aer for noisy ones, behind `sim/backends.py`; every result labelled `backend: torch-sv` | `sim.gpu_backend = torch` (explicit config, never automatic) | planned — **needs the user's go when triggered** (it is extra work) | off | Architecture v2, risk table |
-| FB-02 | vLLM does not run on gfx1100 with the image | llama.cpp ROCm build (or lemonade-sdk build) serving the official Qiskit GGUF model through the same OpenAI-style API | `llm.local.server = llama-cpp` (explicit config) | planned — needs the user's go when triggered | off | Architecture v2 |
-| FB-03 | Port 5432 blocked from Radeon Cloud | (a) Neon Data API: `claim_job` etc. via PostgREST `/rpc/*` with JWT auth (needs Neon Auth or an external JWKS) **or** (b) platform relay: worker → HTTPS → Vultr API → Neon | `records.neon_transport = data-api|relay` (explicit config) | **needs decision** (choose a or b only if the S1 egress check fails) | — | Architecture v2 |
+| ~~FB-02~~ | **Retired by ChP-0048** (no local model server; the `hf` layer calls Inference Providers) | — | — | **retired** | — | Architecture v2 |
+| ~~FB-03~~ | **Retired by ChP-0047** (the database-port fallback no longer applies; workers use HTTPS only) | — | — | **retired** | — | Architecture v2 |
 | FB-04 | GPU out-of-memory during a simulation batch (the planner's estimate was wrong) | Retry with half the batch; if it still fails, run that group on the CPU | `QSCORE_FALLBACKS` includes `FB-04` | planned | on (if approved) | Architecture v2, failure table |
-| FB-05 | Worker loses Neon mid-job | Spool results to `~/.qscore/spool/<job>/` and replay on reconnect (idempotent keys) | `QSCORE_FALLBACKS` includes `FB-05` | planned | on (if approved) | Architecture v2, failure table |
+| FB-05 | Worker loses the platform job API mid-job (ChP-0047) | Spool results to `~/.qscore/spool/<job>/` and replay on reconnect (idempotent keys) | `QSCORE_FALLBACKS` includes `FB-05` | planned | on (if approved) | Architecture v2, failure table |
 | FB-07 | QPY written by a newer Qiskit (runner env ≠ engine env) cannot be read | Transport the circuit as OpenQASM 3 instead | `QSCORE_FALLBACKS` includes `FB-07` | planned (irrelevant while `runner.env: engine`, the MVP default) | off | Build guide |
 
 (FB-06 was retired before use: the mirror-circuit score is a separate, labelled metric `mirror_score`, not a substitute for `simulated_task_score`.)

@@ -15,12 +15,14 @@ def test_score_version() -> None:
 
 def test_all_schema_ids_listed() -> None:
     # 04 §1: twelve ids plus `qscore.run` (ChP-0004/ChP-0028) and `qscore.values` (ChP-0029);
+    # ChP-0038 adds reference v0.1.
     # scorecard is v0.3 (ChP-0028), run is v0.3 (ChP-0034/ChP-0035), values is v0.1 (ChP-0029).
-    assert len(SCHEMA_VERSIONS) == 14
+    assert len(SCHEMA_VERSIONS) == 15
     assert SCHEMA_VERSIONS["qscore.scorecard"] == "v0.3"
     assert SCHEMA_VERSIONS["qscore.run"] == "v0.3"
     assert SCHEMA_VERSIONS["qscore.values"] == "v0.1"
-    others = {"qscore.scorecard", "qscore.run", "qscore.values"}
+    assert SCHEMA_VERSIONS["qscore.reference"] == "v0.1"
+    others = {"qscore.scorecard", "qscore.run", "qscore.values", "qscore.reference"}
     assert {v for k, v in SCHEMA_VERSIONS.items() if k not in others} == {"v0.2"}
 
 

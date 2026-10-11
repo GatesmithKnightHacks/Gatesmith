@@ -11,6 +11,12 @@ from qscore.schemas.scorecard import Finding
 
 CASES: list[tuple[str, dict[str, Any], str]] = [
     (
+        "D09",
+        {"overhead_rising": True, "exponent_gap": -0.4},
+        "Routing overhead rises at every sweep size; compiled size grows with exponent -0.40 "
+        "over logical.",
+    ),
+    (
         "D01",
         {
             "routing_overhead": 0.42,

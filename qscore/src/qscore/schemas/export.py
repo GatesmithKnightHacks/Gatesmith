@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from qscore.schemas.improvement import ImprovementRequest, Proposal
 from qscore.schemas.manifest import ProjectManifest
 from qscore.schemas.records import AttemptRecord, JobSpec
+from qscore.schemas.reference import ReferenceCorpus
 from qscore.schemas.run import (
     BenchResult,
     Event,
@@ -24,6 +25,7 @@ from qscore.schemas.values import DraftValues
 
 # Schema id → model. `qscore.conformance/v0.2` is exported once ChP-0004 defines it.
 EXPORTED: dict[str, type[BaseModel]] = {
+    "qscore.reference/v0.1": ReferenceCorpus,
     "qscore.project/v0.2": ProjectManifest,
     "qscore.scorecard/v0.3": Scorecard,
     "qscore.request/v0.2": ImprovementRequest,

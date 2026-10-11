@@ -14,10 +14,10 @@ from pathlib import Path
 from openqasm3.parser import QASM3ParsingError
 from qiskit import QuantumCircuit, qasm2, qasm3, qpy
 
-from qscore.errors import InvalidInput, SandboxError
+from qscore.errors import ConfigError, InvalidInput, SandboxError
 from qscore.intake.compat import describe, removed_apis
 from qscore.intake.discover import parse_source
-from qscore.intake.sandbox import BuilderRequest, run_builder
+from qscore.intake.sandbox import BuilderRequest, project_python, run_builder
 from qscore.intake.script import prefix, script_text
 from qscore.schemas.common import sha256_hex
 from qscore.schemas.manifest import BuilderSource, CircuitItem, Runner
@@ -31,6 +31,7 @@ class LoadedCircuit:
     circuit_sha256: str
     qasm_version: int | None
     rebuild: Callable[[int], QuantumCircuit] | None = None
+    dependency_sha256: str | None = None
 
 
 def qpy_sha256(circuit: QuantumCircuit) -> str:
@@ -117,7 +118,16 @@ def load_builder(
     """Run a curated builder in the sandbox, bind angles, and expose a sandboxed size rebuild."""
     source = item.source
     assert isinstance(source, BuilderSource)
-    assert runner.env == "engine"  # `uv` is refused in validate/pipeline.py before any build
+    python = None
+    dependency_sha256 = None
+    if runner.env == "uv":
+        python = project_python(root, runner.timeout_s, runner.mem_mb)
+        try:
+            dependency_sha256 = sha256_hex((root / ".qscore/deps.json").read_bytes())
+        except OSError as exc:
+            raise ConfigError(
+                f"project dependency record missing/unreadable; run qscore deps {root}"
+            ) from exc
     rel, function = source.builder.split("::")
     args = dict(source.args)
     if size is not None:
@@ -155,7 +165,11 @@ def load_builder(
             (issue,) = exc.report.issues
             return QasmProblem(exc.code, issue.message, issue.location.line, issue.location.column)
     try:
-        built = run_builder(request, runner.timeout_s, runner.mem_mb)
+        built = (
+            run_builder(request, runner.timeout_s, runner.mem_mb)
+            if python is None
+            else run_builder(request, runner.timeout_s, runner.mem_mb, python=python)
+        )
     except SandboxError as exc:
         codes = {
             "timeout": "Q300",
@@ -181,7 +195,7 @@ def load_builder(
             raise InvalidInput(f"[{loaded.code}] size {value}: {loaded.message}", report=None)
         return loaded.circuit
 
-    return LoadedCircuit(circuit, qpy_sha256(circuit), None, rebuild)
+    return LoadedCircuit(circuit, qpy_sha256(circuit), None, rebuild, dependency_sha256)
 
 
 def _compat_hint(file: Path, rel: str) -> str:

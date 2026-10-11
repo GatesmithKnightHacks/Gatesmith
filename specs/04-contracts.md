@@ -1,6 +1,6 @@
 # 04 · Contracts: schemas, versions and identifiers
 
-> **Status:** binding; changes are class A (R5) · **Read:** before touching `schemas/`, anything that reads or writes JSON/YAML, Neon rows, Hub files, or the platform API.
+> **Status:** binding; changes are class A (R5) · **Read:** before touching `schemas/`, anything that reads or writes JSON/YAML, Hub files, or the platform API.
 > Pydantic models in `qscore/src/qscore/schemas/` implement these contracts; exported JSON Schemas live in `qscore/schemas/`. Values in examples are illustrative.
 
 ## 1. Schema ids and versioning
@@ -235,8 +235,8 @@ Pauli strings use Qiskit's `SparsePauliOp` label order (qubit 0 is the rightmost
 {
   "schema": "qscore.proposal/v0.2",
   "request_id": "packing_qaoa_p2/r0/D01#1",
-  "layer": {"name": "local", "version": "0.1", "model": "Qiskit/granite-3.3-8b-qiskit",
-            "provider": "vllm", "prompt_version": "p-2026.1"},
+  "layer": {"name": "hf", "version": "hf-p-2026.1", "model": "openai/gpt-oss-120b",
+            "provider": "cerebras", "prompt_version": "p-2026.1"},
   "candidate": {"format": "openqasm3", "scope": "region", "qasm": "OPENQASM 3.0; …"},
   "claims": {"metric": "two_qubit_count", "direction": "decrease", "estimate": -6, "equivalent": true},
   "rationale": "Reorder commuting RZZ terms so interacting qubits are adjacent."
@@ -279,12 +279,12 @@ Claims are recorded, never trusted. A proposal that fails to parse against this 
   "options": {"groups": null, "metrics": null, "skip": [], "device": "auto", "precision": null,
               "seeds": null, "no_cache": false},
   "improve": null, "bench": null, "conform": null,
-  "requires": {"gpu": true, "aer_gpu": true, "local_model": false},
+  "requires": {"gpu": true, "aer_gpu": true},
   "budget": {"wall_time_s": 900, "gpu_time_s": 600}
 }
 ```
 
-- `requires` uses only boolean flags so that matching is `requires <@ capabilities` (JSONB containment) in `claim_job()`. Flags: `gpu`, `aer_gpu`, `local_model`, `hub_write`, `neon_write`.
+- `requires` uses only boolean flags so that matching is simple containment (every `true` flag in `requires` is `true` in the worker's capabilities; 11 §2). Flags: `gpu`, `aer_gpu`, `hub_write`.
 - `improve`: `{layers: ["reference-qiskit","local"], rounds: 4, max_proposals: 4}`; `bench`: `{suite: "default", devices: ["cpu","gpu"], reps: 3}`; `conform`: `{layer: "hf", model: "…", fixtures: "default"}`.
 
 ## 8. Event `qscore.event/v0.2`
@@ -298,7 +298,7 @@ Claims are recorded, never trusted. A proposal that fails to parse against this 
 
 ## 9. Plan `qscore.plan/v0.2`
 
-Per item and metric: `{metric, device: cpu|gpu, method, precision, est_bytes, est_seconds, status: planned|skipped|unavailable, reason}`; per item totals; the memory mode used (`model_loaded` or `exclusive`) and the hardware profile id.
+Per item and metric: `{metric, device: cpu|gpu, method, precision, est_bytes, est_seconds, status: planned|skipped|unavailable, reason}`; per item totals; the memory mode used (`exclusive`; ChP-0048) and the hardware profile id.
 
 ## 10. Issue report `qscore.issues/v0.2`
 
@@ -318,7 +318,7 @@ Per item and metric: `{metric, device: cpu|gpu, method, precision, est_bytes, es
 ## 12. Compatibility and migration rules
 
 - `check_compatible(document)` accepts same major, any minor ≤ current; refuses newer minor with a clear error naming the version.
-- Stored JSON (Neon `jsonb`, Hub files) always includes `schema`; readers dispatch on it.
+- Stored JSON (Hub files, platform job store) always includes `schema`; readers dispatch on it.
 - Exported JSON Schemas are committed under `qscore/schemas/<id with / replaced by _>.json`; `tests/contract/test_schema_drift.py` fails if they differ from `export_json_schemas()`.
 
 ## 13. Run record `qscore.run/v0.3` (`<out>/run.json`; ChP-0004, ChP-0028, ChP-0034, ChP-0035)
@@ -353,7 +353,7 @@ Written last by every confirmed scoring run.
 
 | Field | Rules |
 |---|---|
-| `confirmation.mode` | `interactive` (prompt or Confirm screen), `yes_flag` (`--yes`), `stored` (queued job); the same values as Neon `manifests.confirmed_mode` (11 §1). |
+| `confirmation.mode` | `interactive` (prompt or Confirm screen), `yes_flag` (`--yes`), `stored` (queued job); the same values the platform stores with a submitted job (11 §3). |
 | `interpretation` | The full summary shown before confirmation (05 §5). |
 | `status` | `complete` if every scorecard is complete, `failed` if every one failed, else `partial`. |
 | `exit_code` | `null` from the CLI/services (the CLI applies `--allow-partial`/`--fail-on` afterwards, 05 §11); the worker sets it for queued jobs. |

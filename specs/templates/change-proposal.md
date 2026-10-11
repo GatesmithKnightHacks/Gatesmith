@@ -34,7 +34,7 @@
 |---|---|
 | MVP scope and tiers | |
 | Gates and timeline (hours) | |
-| Contracts / schemas / stored data (Neon, Hub) | |
+| Contracts / schemas / stored data (platform job store, Hub) | |
 | Other specs and sections that must change | |
 | Modules and public functions | |
 | Tests and golden values | |

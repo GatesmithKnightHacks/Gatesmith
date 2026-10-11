@@ -2,7 +2,7 @@
   "$defs": {
     "Confirmation": {
       "additionalProperties": false,
-      "description": "How the run was confirmed before compute (05 §5); modes match Neon `confirmed_mode`.",
+      "description": "How the run was confirmed before compute (05 §5); modes as stored with a job (11 §3).",
       "patternProperties": {
         "^x-": {}
       },
