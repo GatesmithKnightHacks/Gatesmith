@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 from qiskit import QuantumCircuit, qasm2
+from qiskit.circuit import Instruction
 
 from qscore.schemas.manifest import CircuitItem
 from qscore.validate.semantic_checks import semantic_issues
@@ -121,6 +122,48 @@ def test_q406_classical_control() -> None:
         "h q[0]; measure q[0] -> c[0]; if (c==1) x q[1];"
     )
     assert "Q406" in _codes(_item({"intent": "structure_only"}), qc)
+
+
+def _wrapped(body: QuantumCircuit, name: str = "wrapper") -> QuantumCircuit:
+    operation = Instruction(name, body.num_qubits, body.num_clbits, [])
+    operation.definition = body
+    outer = QuantumCircuit(body.num_qubits, body.num_clbits)
+    outer.append(operation, outer.qubits, outer.clbits)
+    return outer
+
+
+@pytest.mark.parametrize("depth", [1, 3])
+def test_q406_classical_control_in_nested_instruction_definition(depth: int) -> None:
+    qc = QuantumCircuit(1, 1)
+    with qc.if_test((qc.clbits[0], 1)):
+        qc.x(0)
+    for _ in range(depth):
+        qc = _wrapped(qc)
+    issues = semantic_issues(_item(), qc, Path("."), "qscore.yaml", 0)
+    assert [issue.code for issue in issues] == ["Q406"]
+    assert issues[0].location.field == "circuits[0].source"
+    assert "if_else" in issues[0].message
+
+
+def test_q406_shared_definition_reports_control_once() -> None:
+    body = QuantumCircuit(1, 1)
+    with body.if_test((body.clbits[0], 1)):
+        body.x(0)
+    qc = _wrapped(body)
+    qc.append(qc.data[0].operation, qc.qubits, qc.clbits)
+    issues = semantic_issues(_item(), qc, Path("."), "qscore.yaml", 0)
+    assert [issue.code for issue in issues] == ["Q406"]
+    assert issues[0].message == "classical control (if_else) is not supported in the MVP"
+
+
+def test_q406_cyclic_custom_definition_does_not_loop() -> None:
+    operation = Instruction("recursive", 1, 0, [])
+    body = QuantumCircuit(1)
+    body.append(operation, [0], copy=False)
+    operation.definition = body
+    qc = QuantumCircuit(1)
+    qc.append(operation, [0], copy=False)
+    assert _codes(_item(), qc) == []
 
 
 def test_q407_opaque_gate_without_definition() -> None:
