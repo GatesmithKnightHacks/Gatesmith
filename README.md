@@ -9,6 +9,7 @@
   <a href="https://www.ibm.com/quantum/qiskit"><img src="https://img.shields.io/badge/qiskit-%E2%89%A5%202.5-6929C4" alt="Qiskit 2.5 or newer" /></a>
   <a href="https://2026.knighthacks.org/"><img src="https://img.shields.io/badge/Knight%20Hacks-Fall%202026-0B0B0B" alt="Knight Hacks Fall 2026" /></a>
   <img src="https://img.shields.io/badge/status-hackathon%20prototype-orange" alt="Status: hackathon prototype" />
+  <a href="https://app.paper.design/file/01M4HRSADT6ENEYVNPGZ0CSW1Z"><img src="https://img.shields.io/badge/design-Paper-5FEEA3" alt="Design in Paper" /></a>
 </p>
 
 ---
