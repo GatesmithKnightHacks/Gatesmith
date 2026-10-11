@@ -1,5 +1,6 @@
 /**
- * Filmstrips of the live flow, to review motion frame by frame against the storyboards (M1–M6, DS-07).
+ * Filmstrips of the live flow, to review motion frame by frame against the storyboards (M1–M10) and
+ * the motion system (DS-07 tokens, DS-08 feedback): main column fades 400, chrome holds still.
  *
  *   node scripts/filmstrip.mjs            # normal motion  → tests/output/film/
  *   REDUCED=1 node scripts/filmstrip.mjs  # reduced motion → tests/output/film-reduced/
@@ -255,9 +256,18 @@ sheet('13-s09-to-s10', f, { to: 900 })
 
 // Rail navigation: Export → Runs
 await page.waitForTimeout(500)
-f = await record(1000, () => page.getByRole('button', { name: 'Runs', exact: true }).first().click())
+f = await record(1000, () => page.locator('nav.rail [aria-keyshortcuts="g r"]').click())
 await readViewTransition('rail → Runs')
 sheet('14-rail-to-runs', f, { to: 900 })
+
+// Rail (M10): the hover label at 0 ms, then Expand 52 → 200 with the labels fading in after
+await page.waitForTimeout(400)
+f = await record(400, () => page.locator('nav.rail [aria-keyshortcuts="g l"]').hover())
+sheet('14b-rail-hover', f, { to: 300, step: 30 })
+f = await record(700, () => page.locator('nav.rail [aria-label="Expand"]').click())
+sheet('14c-rail-expand', f, { to: 600, step: 30 })
+await page.locator('nav.rail [aria-label="Collapse"]').click()
+await page.evaluate(() => localStorage.removeItem('gatesmith.railExpanded'))
 
 // Inspector section collapse and expand (deep link S-04)
 await page.goto(`${BASE}/#/workspace`, { waitUntil: 'networkidle' })

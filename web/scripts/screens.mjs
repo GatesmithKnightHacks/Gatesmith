@@ -16,4 +16,9 @@ export const SCREENS = {
   'S-14': '/leaderboard',
   'S-15': '/screening',
   'S-16': '/bench',
+  'S-17': '/signin',
+  'S-18': '/signup',
+  'S-19': '/account',
+  /** The small-screen gate (S-20/S-21); its target is drawn at phone and tablet sizes, so diff skips it. */
+  'S-20': '/gate',
 }

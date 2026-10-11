@@ -14,6 +14,7 @@ import { PNG } from 'pngjs'
 import { SCREENS } from './screens.mjs'
 
 export const STATES = {
+  'S-00': ['feedback'],
   'S-01': ['drag-over', 'bad-file', 'fetching', 'offline', 'focus', 'no-circuits'],
   'S-02': ['scanning', 'no-circuit', 'no-qiskit', 'private-repo', 'focus', 'offline'],
   'S-03': ['validating', 'issues', 'rejected', 'impractical', 'offline', 'gpu-off'],
@@ -29,6 +30,9 @@ export const STATES = {
   'S-14': ['no-runs-yet', 'one-run', 'loading', 'empty', 'error', 'offline', 'keyboard-focus', 'not-listed'],
   'S-15': ['loading', 'empty', 'unsupported', 'disagree', 'focus', 'offline'],
   'S-16': ['loading', 'empty', 'not-loaded', 'invalid', 'focus', 'offline'],
+  'S-17': ['typing', 'signing-in', 'wrong-password', 'session-ended', 'offline'],
+  'S-18': ['empty', 'keyboard-focus', 'invalid-email', 'weak-password', 'email-in-use', 'creating', 'created', 'offline'],
+  'S-19': ['signed-out', 'editing', 'saved', 'sync-failed', 'offline', 'delete-confirmation', 'loading', 'keyboard-focus', 'empty', 'token-created'],
 }
 
 const BASE = process.env.BASE ?? 'http://localhost:5173'
