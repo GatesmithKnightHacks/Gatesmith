@@ -1,0 +1,52 @@
+{
+  "scorecard": "scorecards/commuting_chain.json",
+  "status": "complete",
+  "item_sha256": "8004d696f7e026c6e17b2ce2728ca66f2907c809395316424e19f9303c7d0599",
+  "circuit_sha256": "65af055b6afbb5fdb284d5f10d253697cdf9a47ef36cd623a7bc604e48f72575",
+  "representative_seed": 11,
+  "compiled_two_qubit_count": 6,
+  "findings": [
+    {
+      "id": "D03#1",
+      "rule": "D03"
+    },
+    {
+      "id": "D05#1",
+      "rule": "D05"
+    }
+  ],
+  "request_id": "commuting_chain/r1/D03#1",
+  "request_scope": "region",
+  "request_qubits": 7,
+  "request_source": "logical",
+  "extracted_region": {
+    "scope": "logical",
+    "qubits": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "layers": [
+      0,
+      5
+    ],
+    "gate_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  "skipped": [
+    {
+      "finding": "D05#1",
+      "reason": "no strategy of ['block_resynthesis'] is permitted and served"
+    }
+  ]
+}

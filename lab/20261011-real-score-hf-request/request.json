@@ -1,0 +1,146 @@
+{
+  "schema": "qscore.request/v0.2",
+  "request_id": "commuting_chain/r1/D03#1",
+  "item": {
+    "id": "commuting_chain",
+    "item_sha256": "8004d696f7e026c6e17b2ce2728ca66f2907c809395316424e19f9303c7d0599",
+    "score_version": "qscore-2026.2"
+  },
+  "finding": {
+    "id": "D03#1",
+    "rule": "D03",
+    "severity": "warning",
+    "region": {
+      "scope": "logical",
+      "qubits": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "layers": [
+        0,
+        5
+      ],
+      "gate_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "evidence": {
+      "num_ops": 6,
+      "num_qubits": 7
+    }
+  },
+  "circuit": {
+    "format": "openqasm3",
+    "scope": "region",
+    "qasm": "OPENQASM 3.0;\ninclude \"stdgates.inc\";\nqubit[7] q;\ncz q[0], q[1];\ncz q[1], q[2];\ncz q[2], q[3];\ncz q[3], q[4];\ncz q[4], q[5];\ncz q[5], q[6];\n",
+    "qubit_map": {
+      "0": 0,
+      "1": 1,
+      "2": 2,
+      "3": 3,
+      "4": 4,
+      "5": 5,
+      "6": 6
+    },
+    "num_qubits": 7
+  },
+  "target": {
+    "backend": "line-7",
+    "basis": [
+      "cx",
+      "rz",
+      "sx",
+      "x"
+    ],
+    "coupling_map": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        4,
+        3
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        5,
+        4
+      ],
+      [
+        5,
+        6
+      ],
+      [
+        6,
+        5
+      ]
+    ]
+  },
+  "objective": {
+    "primary": "two_qubit_count",
+    "direction": "minimize"
+  },
+  "permitted": {
+    "changes": [
+      "commuting_reorder"
+    ],
+    "ancillas": {
+      "add": 0,
+      "reuse": true
+    }
+  },
+  "invariants": {
+    "intent": "exact_unitary",
+    "verification": "exact",
+    "global_phase": "ignore"
+  },
+  "budget": {
+    "max_proposals": 1,
+    "timeout_s": 60.0
+  },
+  "permitted_strategies": [
+    "commutation_aware_routing"
+  ],
+  "privacy": {
+    "external_inference": true,
+    "send_region_only": true
+  },
+  "proposal_schema": "qscore.proposal/v0.2"
+}
