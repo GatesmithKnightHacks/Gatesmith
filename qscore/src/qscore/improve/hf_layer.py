@@ -23,7 +23,9 @@ from openai.types.chat import ChatCompletionMessageParam
 from openqasm3.parser import QASM3ParsingError
 from pydantic import TypeAdapter, ValidationError
 from qiskit import QuantumCircuit, qasm2, qasm3
+from qiskit.circuit import Gate
 from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 
 from qscore.config import Settings, get_settings
 from qscore.errors import ConfigError, HfBudgetExhausted, LayerError
@@ -42,7 +44,7 @@ def load_model_entries(path: Path | None = None) -> list[ModelEntry]:
     source = path if path is not None else Path(__file__).with_name("models.yaml")
     try:
         entries = TypeAdapter(list[ModelEntry]).validate_python(YAML(typ="safe").load(source))
-    except (OSError, ValidationError) as exc:
+    except (OSError, ValidationError, YAMLError) as exc:
         raise ConfigError(f"invalid HF panel {source}: {type(exc).__name__}") from exc
     if not entries or len({e.routed_id for e in entries}) != len(entries):
         raise ConfigError(f"HF panel {source} must be non-empty with unique model:provider ids")
@@ -97,6 +99,8 @@ class HfJobContext:
 
     def check_capacity(self, reservation: Decimal) -> None:
         with self._lock:
+            if not reservation.is_finite() or reservation < 0:
+                raise ConfigError("HF cost reservation must be finite and non-negative")
             if self.calls >= self.max_calls:
                 raise HfBudgetExhausted("budget: hf calls")
             if self._committed + reservation > self.max_cost_usd:
@@ -110,6 +114,8 @@ class HfJobContext:
 
     def settle(self, reservation: Decimal, actual: Decimal) -> None:
         with self._lock:
+            if not actual.is_finite() or actual < 0:
+                raise LayerError("HF usage cost must be finite and non-negative")
             self._committed += actual - reservation
 
     def catalog(self, fetch: Callable[[], dict[str, Any]]) -> dict[str, Any]:
@@ -121,6 +127,8 @@ class HfJobContext:
 
 def validate_catalog(entry: ModelEntry, catalog: dict[str, Any]) -> None:
     """Require the exact pinned provider's live structured-output capability."""
+    if not isinstance(catalog, dict):
+        raise LayerError("HF /models catalog must be an object")
     data = catalog.get("data")
     if not isinstance(data, list):
         raise LayerError("HF /models catalog has invalid data (expected array)")
@@ -268,6 +276,16 @@ class HfLayer:
             raise LayerError(f"external inference disabled for request {request.request_id}")
         if request.circuit.scope != "region":
             raise LayerError(f"external inference requires region scope: {request.request_id}")
+        n_qubits = request.circuit.num_qubits
+        qubit_map = request.circuit.qubit_map
+        if (
+            set(qubit_map) != {str(i) for i in range(n_qubits)}
+            or len(set(qubit_map.values())) != n_qubits
+            or any(q < 0 for q in qubit_map.values())
+        ):
+            raise LayerError("input region qubit_map must map each local index to a unique qubit")
+        if any(not 0 <= q < n_qubits for edge in request.target.coupling_map for q in edge):
+            raise LayerError("input target coupling map is not restricted to region-local qubits")
         allowed_changes = {
             strategy
             for change in request.permitted.changes
@@ -290,6 +308,10 @@ class HfLayer:
             raise LayerError(f"invalid input region QASM: {type(exc).__name__}") from exc
         if region.num_qubits != request.circuit.num_qubits:
             raise LayerError("input region QASM qubit count disagrees with request")
+        if region.num_clbits or any(
+            inst.clbits or not isinstance(inst.operation, Gate) for inst in region.data
+        ):
+            raise LayerError("input region must contain unitary gates without classical bits")
         # A byte per token is conservative for byte-level BPE, with additional
         # room for chat framing and the response schema sent separately.
         prompt_bound = (
@@ -508,7 +530,9 @@ class HfLayer:
             return "qubit count outside requested region"
         # Region extraction currently permits unitary gates only. Check classical
         # declarations/instructions too, so a model cannot introduce measurements.
-        if circuit.num_clbits != region.num_clbits or any(inst.clbits for inst in circuit.data):
+        if circuit.num_clbits != region.num_clbits or any(
+            inst.clbits or not isinstance(inst.operation, Gate) for inst in circuit.data
+        ):
             return "classical bits or measurements changed"
         if request.finding.region is not None and request.finding.region.scope == "compiled":
             outside = set(circuit.count_ops()) - set(request.target.basis)

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import httpx2
@@ -469,3 +471,143 @@ def test_lazy_credentials_guard_precedes_missing_token(
     improvement_request.privacy.external_inference = True
     with pytest.raises(ConfigError, match="HF_TOKEN"):
         layer.propose(improvement_request)
+
+
+def test_unpinned_constructor_entry_is_refused(entry: ModelEntry) -> None:
+    with pytest.raises(ConfigError, match="pinned"):
+        HfLayer(entry.model_copy(update={"provider": "fastest"}))
+
+
+def test_invalid_panel_yaml_is_typed_config_error(tmp_path: Path) -> None:
+    path = tmp_path / "models.yaml"
+    path.write_text("[unterminated")
+    with pytest.raises(ConfigError, match="invalid HF panel"):
+        load_model_entries(path)
+
+
+def test_partial_reply_retains_valid_candidate_and_failure_reason(
+    entry: ModelEntry,
+    improvement_request: ImprovementRequest,
+) -> None:
+    router = Router(
+        entry,
+        [
+            (
+                200,
+                response(
+                    json.dumps(
+                        {
+                            "candidates": [candidate("invalid"), candidate(QASM2, "openqasm2")],
+                        }
+                    )
+                ),
+            )
+        ],
+    )
+    layer = layer_for(router)
+    assert len(layer.propose(improvement_request)) == 1
+    record = layer.call_records[0]
+    assert record.n_proposals == 1 and record.outcome == "proposals"
+    assert len(record.invalid_candidates) == 1
+
+
+def test_connection_failures_have_three_wire_records(
+    entry: ModelEntry,
+    improvement_request: ImprovementRequest,
+) -> None:
+    router = Router(entry, [])
+    posts = 0
+
+    def handle(req: httpx2.Request) -> httpx2.Response:
+        nonlocal posts
+        if req.method == "GET":
+            return router.handle(req)
+        posts += 1
+        raise httpx2.ConnectError("fixture connection reset", request=req)
+
+    client = OpenAI(
+        api_key="fixture-not-a-secret",
+        base_url="https://fixture.invalid/v1",
+        http_client=httpx2.Client(transport=httpx2.MockTransport(handle)),
+    )
+    layer = HfLayer(entry, client=client, sleep=lambda seconds: None)
+    with pytest.raises(LayerError, match="APIConnectionError"):
+        layer.propose(improvement_request)
+    assert posts == 3 and layer.job.calls == 3
+    assert len(layer.call_records) == 3
+    assert len({record.call_id for record in layer.call_records}) == 3
+    assert all(record.http_status is None for record in layer.call_records)
+    assert all(not record.accounting_known for record in layer.call_records)
+
+
+def test_retry_backoff_cannot_exceed_request_deadline(
+    entry: ModelEntry,
+    improvement_request: ImprovementRequest,
+) -> None:
+    improvement_request.budget.timeout_s = 0.25
+    router = Router(entry, [(429, {"error": {"message": "limited"}})])
+    layer = layer_for(router)
+    with pytest.raises(LayerError, match="retry exceeds layer timeout"):
+        layer.propose(improvement_request)
+    assert len(router.posts) == 1
+
+
+def test_output_usage_beyond_reserved_limit_is_explicit_failure(
+    entry: ModelEntry,
+    improvement_request: ImprovementRequest,
+) -> None:
+    router = Router(
+        entry,
+        [
+            (
+                200,
+                response(
+                    '{"candidates":[]}',
+                    usage={
+                        "prompt_tokens": 100,
+                        "completion_tokens": 2049,
+                        "total_tokens": 2149,
+                    },
+                ),
+            )
+        ],
+    )
+    layer = layer_for(router)
+    with pytest.raises(LayerError, match="reserved token bound"):
+        layer.propose(improvement_request)
+    assert layer.call_records[0].error_type == "UnexpectedUsage"
+    assert layer.call_records[0].accounting_known
+
+
+def test_concurrent_budget_reservations_cannot_overspend() -> None:
+    job = HfJobContext(max_calls=2, max_cost_usd=1)
+
+    def reserve() -> bool:
+        try:
+            job.reserve(Decimal(".6"))
+        except HfBudgetExhausted:
+            return False
+        return True
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: reserve(), range(2)))
+    assert sorted(results) == [False, True]
+    assert job.cost_reserved_usd == 0.6 and job.calls == 1
+
+
+@pytest.mark.parametrize("change", ["qubit_map", "coupling_map", "reset"])
+def test_invalid_region_metadata_or_nonunitary_input_never_leaves_process(
+    entry: ModelEntry,
+    improvement_request: ImprovementRequest,
+    change: str,
+) -> None:
+    if change == "qubit_map":
+        improvement_request.circuit.qubit_map = {"0": 4, "1": 4}
+    elif change == "coupling_map":
+        improvement_request.target.coupling_map = [(4, 8)]
+    else:
+        improvement_request.circuit.qasm += " reset q[0];"
+    router = Router(entry, [])
+    with pytest.raises(LayerError):
+        layer_for(router).propose(improvement_request)
+    assert router.gets == 0 and not router.posts
