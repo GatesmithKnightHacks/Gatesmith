@@ -1,0 +1,171 @@
+import asyncio
+import hashlib
+import hmac
+import json
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+from qscore.errors import LayerError
+from test_bundle import BASE, HEAD, fixture_bundle, metadata
+from test_gemini import settings
+
+from qscore_review.app import Service, create_app
+from qscore_review.state import State
+
+
+def payload():
+    return {
+        "action": "completed",
+        "repository": {"id": 1, "full_name": "org/demo", "private": False},
+        "installation": {"id": 2},
+        "workflow_run": {"id": 4},
+    }
+
+
+def headers(raw, secret="x" * 32, delivery="delivery-1"):
+    return {
+        "x-github-delivery": delivery,
+        "x-github-event": "workflow_run",
+        "x-hub-signature-256": "sha256="
+        + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest(),
+    }
+
+
+class FakeGitHub:
+    def __init__(self, raw=None, config=None, stale=False):
+        self.raw = raw or fixture_bundle()
+        self.run, self.pr = metadata()
+        self.config_raw = config
+        self.stale = stale
+        self.posts = []
+        self.calls = []
+
+    async def token(self, installation):
+        assert installation == 2
+        return "test-token"
+
+    async def close(self):
+        pass
+
+    async def request(self, method, path, **kwargs):
+        self.calls.append((method, path, kwargs))
+        if path.endswith("/actions/runs/4"):
+            return self.run
+        if "/artifacts?" in path:
+            return {
+                "total_count": 1,
+                "artifacts": [{"name": "qscore-review-bundle", "id": 10, "expired": False}],
+            }
+        if path.endswith("/pulls/5"):
+            if self.stale:
+                return dict(self.pr, head={"sha": "c" * 40, "repo": {"id": 1}})
+            return self.pr
+        raise AssertionError((method, path))
+
+    async def artifact(self, repository, artifact_id, token):
+        return self.raw
+
+    async def config(self, repository, base_sha, token):
+        assert base_sha == BASE
+        return self.config_raw
+
+    async def sticky(self, repo, pr, token, body):
+        self.posts.append(("summary", body))
+        return 11
+
+    async def check(self, repo, head, token, conclusion, summary, identity, check_id=None):
+        assert head == HEAD
+        self.posts.append(("check", conclusion))
+        return 12
+
+    async def pages(self, path, token):
+        return []
+
+
+class FailedGemini:
+    async def draft(self, *args):
+        raise LayerError("quota")
+
+
+def test_webhook_hmac_precedes_json_allowlist_and_delivery_dedup(tmp_path):
+    cfg = settings(tmp_path)
+    state = State(tmp_path / "state.db")
+    app = create_app(cfg, state=state, github=FakeGitHub(), start_worker=False)
+    with TestClient(app) as client:
+        assert client.post("/webhooks/github", content=b"not-json").status_code == 401
+        raw = json.dumps(payload()).encode()
+        assert client.post("/webhooks/github", content=raw, headers=headers(raw)).json() == {
+            "status": "queued"
+        }
+        assert client.post("/webhooks/github", content=raw, headers=headers(raw)).json() == {
+            "status": "duplicate"
+        }
+        wrong = payload()
+        wrong["installation"]["id"] = 99
+        raw = json.dumps(wrong).encode()
+        assert client.post("/webhooks/github", content=raw, headers=headers(raw)).status_code == 400
+
+
+def test_real_service_posts_deterministic_summary_and_check_once(tmp_path):
+    cfg = settings(tmp_path)
+    state = State(tmp_path / "state.db")
+    github = FakeGitHub()
+    service = Service(cfg, state, github, FailedGemini())
+    asyncio.run(service.process("workflow_run", payload()))
+    assert github.posts[0][0] == "summary"
+    assert github.posts[1] == ("check", "neutral")
+    assert "worse outside seed spread" in github.posts[0][1]
+    asyncio.run(service.process("workflow_run", payload()))
+    assert len(github.posts) == 2
+
+
+def test_engine_policy_failure_survives_gemini_quota(tmp_path):
+    cfg = settings(tmp_path)
+    cfg.knowledge_path = Path(__file__).parents[1] / "knowledge/qiskit.json"
+    state = State(tmp_path / "state.db")
+    config = {"gemini": True, "fail_on": "new_high"}
+    github = FakeGitHub(
+        fixture_bundle(config=config), b"version: 1\ngemini: true\nfail_on: new_high\n"
+    )
+    service = Service(cfg, state, github, FailedGemini())
+    asyncio.run(service.process("workflow_run", payload()))
+    assert github.posts[0][0] == "summary"
+    assert github.posts[-1] == ("check", "failure")
+    assert "Gemini review failed" in github.posts[-2][1]
+
+
+def test_stale_head_never_posts(tmp_path):
+    cfg = settings(tmp_path)
+    github = FakeGitHub(stale=True)
+    service = Service(cfg, State(tmp_path / "state.db"), github, FailedGemini())
+    asyncio.run(service.process("workflow_run", payload()))
+    assert not github.posts
+
+
+def test_fork_artifact_cannot_opt_itself_into_gemini(tmp_path):
+    cfg = settings(tmp_path)
+    github = FakeGitHub(fixture_bundle(config={"gemini": True}))
+    service = Service(cfg, State(tmp_path / "state.db"), github, FailedGemini())
+    import pytest
+    from qscore.errors import RecordError
+
+    with pytest.raises(RecordError, match="trusted base"):
+        asyncio.run(service.process("workflow_run", payload()))
+    assert github.posts[-1] == ("check", "failure")
+
+
+def test_durable_worker_records_sanitized_failure_and_recovers(tmp_path):
+    state = State(tmp_path / "state.db")
+    service = Service(settings(tmp_path), state, FakeGitHub(), FailedGemini())
+    state.enqueue("bad-job", "workflow_run", {"private-secret": "never-log-this"})
+
+    async def exercise():
+        task = asyncio.create_task(service.run())
+        await asyncio.sleep(0.02)
+        service.stopping = True
+        service.wake.set()
+        await task
+
+    asyncio.run(exercise())
+    row = state.db.execute("SELECT status,error_type FROM jobs").fetchone()
+    assert tuple(row) == ("failed", "KeyError")
