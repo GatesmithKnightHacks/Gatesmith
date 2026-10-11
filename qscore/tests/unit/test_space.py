@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -275,12 +276,17 @@ def test_ui_is_read_only_has_loading_rates_links_and_no_token(
     assert app.is_running is False
 
 
+@pytest.mark.parametrize("logging_level", [logging.INFO, logging.DEBUG])
 def test_real_sdk_cannot_make_more_than_three_attempts(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    logging_level: int,
 ) -> None:
     from huggingface_hub import hf_hub_download, set_client_factory
     from huggingface_hub.utils import _http
 
+    caplog.set_level(logging_level)
     calls: list[tuple[str, str]] = []
 
     def respond(request: httpx2.Request) -> httpx2.Response:

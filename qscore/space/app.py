@@ -117,6 +117,10 @@ def _configure_hub_http() -> None:
 
     # SDK retry warnings include signed download URLs; our guard logs safe counts.
     hub_logging.set_verbosity_error()
+    # HTTP request INFO logs and transport DEBUG traces can expose signed URLs or
+    # headers when a caller raises the root log level. Keep warnings/errors visible.
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
+    logging.getLogger("httpcore2").setLevel(logging.WARNING)
     set_client_factory(_make_hub_client)
 
 
