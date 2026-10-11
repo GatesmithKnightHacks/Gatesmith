@@ -72,7 +72,7 @@ class Gemini:
             system_instruction=SYSTEM,
             temperature=0.1,
             response_mime_type="application/json",
-            response_schema=ReviewDraft,
+            response_json_schema=ReviewDraft.model_json_schema(by_alias=True),
             max_output_tokens=output_cap,
             thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.HIGH),
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),

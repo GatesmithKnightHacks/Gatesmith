@@ -125,3 +125,69 @@ def test_missing_invalid_or_excess_usage_keeps_entire_reservation(tmp_path, fiel
     with pytest.raises(LayerError, match="already attempted"):
         asyncio.run(client.draft("head", "comparison", {}))
     assert len(models.calls) == 1
+
+
+def test_actual_developer_api_sdk_serializes_strict_json_schema_without_repair(tmp_path):
+    import httpx
+    from google import genai
+    from google.genai import types
+
+    from qscore_review.contracts import ReviewDraft
+
+    captured = []
+
+    def transport(request):
+        assert request.url.host == "generativelanguage.googleapis.com"
+        captured.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "candidates": [
+                    {
+                        "content": {
+                            "role": "model",
+                            "parts": [
+                                {
+                                    "text": json.dumps(
+                                        {
+                                            "schema": "qscore.review/v0.1",
+                                            "summary_note": "",
+                                            "comments": [],
+                                        }
+                                    )
+                                }
+                            ],
+                        },
+                        "finishReason": "STOP",
+                    }
+                ],
+                "usageMetadata": {
+                    "promptTokenCount": 100,
+                    "candidatesTokenCount": 50,
+                    "thoughtsTokenCount": 200,
+                    "totalTokenCount": 350,
+                },
+            },
+        )
+
+    async def exercise():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as http:
+            sdk = genai.Client(
+                api_key="test-not-a-real-key",
+                http_options=types.HttpOptions(
+                    httpx_async_client=http, retry_options=types.HttpRetryOptions(attempts=1)
+                ),
+            )
+            layer = Gemini(settings(tmp_path), State(tmp_path / "state.db"), sdk)
+            draft = await layer.draft("sdk-head", "comparison", {})
+            assert draft.schema_id == "qscore.review/v0.1"
+            await sdk.aio.aclose()
+
+    asyncio.run(exercise())
+    config = captured[0]["generationConfig"]
+    assert "responseSchema" not in config
+    assert config["responseJsonSchema"] == ReviewDraft.model_json_schema(by_alias=True)
+    assert config["responseJsonSchema"]["additionalProperties"] is False
+    # SDK 2.29 copies this nested configuration with its original snake_case keys.
+    assert config["thinkingConfig"]["thinking_level"] == "HIGH"
+    assert "tools" not in captured[0]
