@@ -108,7 +108,8 @@ export function PoweredBy() {
     <div className="powered-by">
       <span>Powered by the</span>
       <span className="powered-by-name">qscore</span>
-      <span>engine · qscore-2026.1</span>
+      <span>engine ·</span>
+      <span className="mono">qscore-2026.1</span>
     </div>
   )
 }
