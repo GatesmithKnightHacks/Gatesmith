@@ -1,0 +1,17 @@
+name: qscore review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+# Actions read is used only to identify this workflow run. Neither token scope can
+# write repository contents, and credentials are removed before scoring builders.
+permissions:
+  contents: read
+  actions: read
+jobs:
+  qscore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # Replace this placeholder with the reviewed bot release commit; never use
+      # the PR's revision as the Action implementation.
+      - uses: GatesmithKnightHacks/Gatesmith/review-bot/action@REVIEW_BOT_COMMIT_SHA
